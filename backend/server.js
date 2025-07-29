@@ -363,42 +363,14 @@ app.post('/webhook-text', express.text({ type: '*/*' }), asyncHandler(async (req
 }));
 
 /**
- * POST /migrate-settings - Create settings table
+ * POST /migrate-settings - Initialize default settings
  */
 app.post('/migrate-settings', asyncHandler(async (req, res) => {
-  logger.info('Creating settings table');
+  logger.info('Initializing default settings');
 
   try {
-    // Create settings table
-    const { error: createError } = await supabase.rpc('execute_sql', {
-      sql: `CREATE TABLE IF NOT EXISTS settings (
-        id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
-        user_id VARCHAR(50) NOT NULL UNIQUE,
-        settings JSONB NOT NULL,
-        created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
-        updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
-      );`
-    });
-
-    if (createError) {
-      logger.error('Failed to create settings table', { error: createError.message });
-      return res.status(500).json({ 
-        error: 'Failed to create settings table',
-        details: createError.message
-      });
-    }
-
-    // Create index
-    const { error: indexError } = await supabase.rpc('execute_sql', {
-      sql: 'CREATE INDEX IF NOT EXISTS idx_settings_user_id ON settings(user_id);'
-    });
-
-    if (indexError) {
-      logger.warn('Failed to create settings index', { error: indexError.message });
-    }
-
-    // Insert default settings
-    const { error: insertError } = await supabase
+    // Insert or update default settings directly
+    const { data, error } = await supabase
       .from('settings')
       .upsert({
         user_id: 'default',
@@ -412,28 +384,33 @@ app.post('/migrate-settings', asyncHandler(async (req, res) => {
           scoring: {
             timeWindowMinutes: 60
           }
-        }
-      });
+        },
+        updated_at: new Date().toISOString()
+      }, {
+        onConflict: 'user_id'
+      })
+      .select();
 
-    if (insertError) {
-      logger.error('Failed to insert default settings', { error: insertError.message });
+    if (error) {
+      logger.error('Failed to initialize settings', { error: error.message });
       return res.status(500).json({ 
-        error: 'Failed to insert default settings',
-        details: insertError.message
+        error: 'Failed to initialize settings',
+        details: error.message
       });
     }
 
-    logger.info('Settings table created successfully');
+    logger.info('Settings initialized successfully');
     
     res.json({ 
       success: true, 
-      message: 'Settings table created and default settings inserted'
+      message: 'Default settings initialized successfully',
+      data: data
     });
     
   } catch (error) {
-    logger.error('Settings migration failed', { error: error.message });
+    logger.error('Settings initialization failed', { error: error.message });
     res.status(500).json({ 
-      error: 'Migration failed', 
+      error: 'Initialization failed', 
       message: error.message 
     });
   }
@@ -639,22 +616,22 @@ app.post('/api/settings', asyncHandler(async (req, res) => {
         return res.status(500).json({ error: insertError.message });
       }
 
-      const data = insertData;
-      const error = null;
+      logger.info('Settings inserted successfully', { 
+        showWeights: settings.ui?.showWeights,
+        settingsKeys: Object.keys(settings)
+      });
+      
+      return res.json({ 
+        success: true, 
+        message: 'Settings saved successfully',
+        settings: insertData.settings
+      });
     } else if (updateError) {
       logger.error('Error updating settings', { error: updateError.message, settings });
       return res.status(500).json({ error: updateError.message });
-    } else {
-      const data = updateData;
-      const error = null;
     }
 
-    if (error) {
-      logger.error('Error saving settings', { error: error.message, settings });
-      return res.status(500).json({ error: error.message });
-    }
-
-    logger.info('Settings saved successfully', { 
+    logger.info('Settings updated successfully', { 
       showWeights: settings.ui?.showWeights,
       settingsKeys: Object.keys(settings)
     });
@@ -662,7 +639,7 @@ app.post('/api/settings', asyncHandler(async (req, res) => {
     res.json({ 
       success: true, 
       message: 'Settings saved successfully',
-      settings: data.settings
+      settings: updateData.settings
     });
 
   } catch (error) {

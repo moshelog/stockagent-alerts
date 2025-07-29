@@ -363,6 +363,83 @@ app.post('/webhook-text', express.text({ type: '*/*' }), asyncHandler(async (req
 }));
 
 /**
+ * POST /migrate-settings - Create settings table
+ */
+app.post('/migrate-settings', asyncHandler(async (req, res) => {
+  logger.info('Creating settings table');
+
+  try {
+    // Create settings table
+    const { error: createError } = await supabase.rpc('execute_sql', {
+      sql: `CREATE TABLE IF NOT EXISTS settings (
+        id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
+        user_id VARCHAR(50) NOT NULL UNIQUE,
+        settings JSONB NOT NULL,
+        created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+        updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+      );`
+    });
+
+    if (createError) {
+      logger.error('Failed to create settings table', { error: createError.message });
+      return res.status(500).json({ 
+        error: 'Failed to create settings table',
+        details: createError.message
+      });
+    }
+
+    // Create index
+    const { error: indexError } = await supabase.rpc('execute_sql', {
+      sql: 'CREATE INDEX IF NOT EXISTS idx_settings_user_id ON settings(user_id);'
+    });
+
+    if (indexError) {
+      logger.warn('Failed to create settings index', { error: indexError.message });
+    }
+
+    // Insert default settings
+    const { error: insertError } = await supabase
+      .from('settings')
+      .upsert({
+        user_id: 'default',
+        settings: {
+          ui: {
+            showAlertsTable: true,
+            showScoreMeter: true,
+            showStrategyPanel: true,
+            showWeights: true
+          },
+          scoring: {
+            timeWindowMinutes: 60
+          }
+        }
+      });
+
+    if (insertError) {
+      logger.error('Failed to insert default settings', { error: insertError.message });
+      return res.status(500).json({ 
+        error: 'Failed to insert default settings',
+        details: insertError.message
+      });
+    }
+
+    logger.info('Settings table created successfully');
+    
+    res.json({ 
+      success: true, 
+      message: 'Settings table created and default settings inserted'
+    });
+    
+  } catch (error) {
+    logger.error('Settings migration failed', { error: error.message });
+    res.status(500).json({ 
+      error: 'Migration failed', 
+      message: error.message 
+    });
+  }
+}));
+
+/**
  * POST /migrate-timeframe - Add timeframe column to alerts table
  */
 app.post('/migrate-timeframe', asyncHandler(async (req, res) => {
@@ -1307,12 +1384,14 @@ app.get('/test-webhook', (req, res) => {
             resultDiv.innerHTML = '⏳ Sending webhook...';
 
             try {
+                // Format as text: TICKER|TIMEFRAME|INDICATOR|TRIGGER
+                const textPayload = `${data.ticker}|15m|${data.indicator}|${data.trigger}`;
                 const response = await fetch('/webhook', {
                     method: 'POST',
                     headers: {
-                        'Content-Type': 'application/json',
+                        'Content-Type': 'text/plain',
                     },
-                    body: JSON.stringify(data)
+                    body: textPayload
                 });
 
                 const result = await response.json();

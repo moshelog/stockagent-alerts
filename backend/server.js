@@ -1385,7 +1385,7 @@ app.get('/test-webhook', (req, res) => {
 
             try {
                 // Format as text: TICKER|TIMEFRAME|INDICATOR|TRIGGER
-                const textPayload = `${data.ticker}|15m|${data.indicator}|${data.trigger}`;
+                const textPayload = data.ticker + '|15m|' + data.indicator + '|' + data.trigger;
                 const response = await fetch('/webhook', {
                     method: 'POST',
                     headers: {

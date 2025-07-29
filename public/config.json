@@ -1,0 +1,140 @@
+{
+  "apiBase": "https://stockagent-backend-production.up.railway.app/api",
+  "pollIntervalMs": 5000,
+  "webhookUrl": "https://stockagent-backend-production.up.railway.app/webhook",
+  "weights": {
+    "rsi_oversold": -2.5,
+    "rsi_overbought": 2.0,
+    "macd_bullish": 1.8,
+    "macd_bearish": -1.5,
+    "bollinger_upper": 1.2,
+    "bollinger_lower": -1.8,
+    "volume_spike": 0.8,
+    "momentum_positive": 1.5,
+    "momentum_negative": -1.2,
+    "sentiment_bullish": 0.9,
+    "sentiment_bearish": -0.7
+  },
+  "alertTypes": {
+    "rsi_oversold": { "indicator": "RSI", "trigger": "Oversold", "description": "RSI below 30, potential buy signal" },
+    "rsi_overbought": {
+      "indicator": "RSI",
+      "trigger": "Overbought",
+      "description": "RSI above 70, potential sell signal"
+    },
+    "macd_bullish": {
+      "indicator": "MACD",
+      "trigger": "Bullish Cross",
+      "description": "MACD line crosses above signal line"
+    },
+    "macd_bearish": {
+      "indicator": "MACD",
+      "trigger": "Bearish Cross",
+      "description": "MACD line crosses below signal line"
+    },
+    "bollinger_upper": {
+      "indicator": "Bollinger",
+      "trigger": "Upper Band",
+      "description": "Price touches upper Bollinger band"
+    },
+    "bollinger_lower": {
+      "indicator": "Bollinger",
+      "trigger": "Lower Band",
+      "description": "Price touches lower Bollinger band"
+    },
+    "volume_spike": { "indicator": "Volume", "trigger": "Spike", "description": "Volume exceeds 2x average" },
+    "momentum_positive": {
+      "indicator": "Momentum",
+      "trigger": "Positive",
+      "description": "Positive momentum indicator"
+    },
+    "momentum_negative": {
+      "indicator": "Momentum",
+      "trigger": "Negative",
+      "description": "Negative momentum indicator"
+    },
+    "sentiment_bullish": { "indicator": "Sentiment", "trigger": "Bullish", "description": "Positive market sentiment" },
+    "sentiment_bearish": { "indicator": "Sentiment", "trigger": "Bearish", "description": "Negative market sentiment" }
+  },
+  "thresholds": {
+    "buy": -5,
+    "sell": 5
+  },
+  "ai": {
+    "model": "gpt-4",
+    "maxTokens": 2000,
+    "enabled": true
+  },
+  "strategies": [
+    {
+      "id": "buy-discount-zone",
+      "name": "Buy on discount zone",
+      "summary": "IF [Zones:Discount Zone + Nautilus:Normal Bullish Divergence]",
+      "rule": "if (discount_zone && normal_bullish_divergence) { signal = 'BUY'; confidence = 0.85; }",
+      "enabled": true,
+      "threshold": 3,
+      "timeframe": "15m",
+      "components": {
+        "discount_zone": 1.9,
+        "normal_bullish_divergence": 2.3
+      },
+      "performance": {
+        "netPL": 15.2,
+        "winRate": 72,
+        "maxDrawdown": -3.1
+      },
+      "alertDetails": [
+        {
+          "id": "discount_zone",
+          "name": "Discount Zone",
+          "weight": 1.9,
+          "indicator": "extreme_zones"
+        },
+        {
+          "id": "normal_bullish_divergence",
+          "name": "Normal Bullish Divergence",
+          "weight": 2.3,
+          "indicator": "nautilus"
+        }
+      ]
+    },
+    {
+      "id": "sell-premium-zone",
+      "name": "Sell on Premium zone",
+      "summary": "IF [Zones:Premium Zone + Nautilus:Normal Bearish Divergence]",
+      "rule": "if (premium_zone && normal_bearish_divergence) { signal = 'SELL'; confidence = 0.82; }",
+      "enabled": true,
+      "threshold": -4,
+      "timeframe": "15m",
+      "components": {
+        "premium_zone": -1.8,
+        "normal_bearish_divergence": -2.5
+      },
+      "performance": {
+        "netPL": 11.8,
+        "winRate": 68,
+        "maxDrawdown": -4.3
+      },
+      "alertDetails": [
+        {
+          "id": "premium_zone",
+          "name": "Premium Zone",
+          "weight": -1.8,
+          "indicator": "extreme_zones"
+        },
+        {
+          "id": "normal_bearish_divergence",
+          "name": "Normal Bearish Divergence",
+          "weight": -2.5,
+          "indicator": "nautilus"
+        }
+      ]
+    }
+  ],
+  "ui": {
+    "showAlertsTable": true,
+    "showScoreMeter": true,
+    "showStrategyPanel": true,
+    "showWeights": true
+  }
+}

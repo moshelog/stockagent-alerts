@@ -1,0 +1,33 @@
+{
+  "name": "stockagent-backend",
+  "version": "1.0.0",
+  "description": "StockAgent backend service for TradingView webhook processing and strategy evaluation",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js",
+    "dev": "nodemon server.js",
+    "setup": "node setup.js",
+    "init-db": "echo 'Please run the SQL from scripts/init-schema.sql in your Supabase SQL editor'"
+  },
+  "dependencies": {
+    "@supabase/supabase-js": "^2.39.0",
+    "cors": "^2.8.5",
+    "dotenv": "^16.3.1",
+    "express": "^4.18.2",
+    "express-rate-limit": "^7.1.5",
+    "helmet": "^7.1.0",
+    "winston": "^3.17.0"
+  },
+  "devDependencies": {
+    "nodemon": "^3.0.2"
+  },
+  "keywords": [
+    "trading",
+    "tradingview",
+    "webhook",
+    "supabase",
+    "alerts"
+  ],
+  "author": "StockAgent",
+  "license": "MIT"
+}

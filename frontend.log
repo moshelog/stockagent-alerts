@@ -1,0 +1,196 @@
+
+> my-v0-project@0.1.0 dev /Users/moshelugasi/Downloads/Github/stockagent alerts
+> next dev
+
+   ▲ Next.js 15.2.4
+   - Local:        http://localhost:3000
+   - Network:      http://192.168.1.3:3000
+
+ ✓ Starting...
+ ✓ Ready in 2.1s
+ ○ Compiling / ...
+ ✓ Compiled / in 3.5s (1756 modules)
+ GET / 200 in 3733ms
+ ✓ Compiled in 582ms (834 modules)
+ GET / 200 in 38ms
+ GET / 200 in 19ms
+ GET / 200 in 21ms
+ GET / 200 in 17ms
+ GET / 200 in 19ms
+ ✓ Compiled /settings in 315ms (1754 modules)
+ GET /settings 200 in 352ms
+ GET / 200 in 10ms
+ GET / 200 in 91ms
+ ✓ Compiled in 248ms (843 modules)
+ GET / 200 in 12ms
+ ✓ Compiled in 137ms (843 modules)
+ GET / 200 in 8ms
+ ✓ Compiled in 109ms (843 modules)
+ GET / 200 in 12ms
+ ✓ Compiled in 215ms (843 modules)
+ GET / 200 in 8ms
+ ✓ Compiled in 155ms (843 modules)
+ GET / 200 in 11ms
+ ✓ Compiled in 158ms (843 modules)
+ GET / 200 in 9ms
+ ✓ Compiled in 286ms (843 modules)
+ GET / 200 in 9ms
+ ✓ Compiled in 107ms (843 modules)
+ GET / 200 in 6ms
+ ✓ Compiled in 99ms (843 modules)
+ GET / 200 in 8ms
+ ✓ Compiled in 135ms (843 modules)
+ GET / 200 in 6ms
+ ✓ Compiled in 289ms (843 modules)
+ GET / 200 in 8ms
+ ✓ Compiled in 352ms (843 modules)
+ GET / 200 in 7ms
+ ✓ Compiled in 198ms (843 modules)
+ GET / 200 in 6ms
+ ✓ Compiled in 288ms (843 modules)
+ GET / 200 in 6ms
+ ✓ Compiled in 622ms (1768 modules)
+ GET / 200 in 40ms
+ ✓ Compiled in 317ms (1772 modules)
+ GET / 200 in 46ms
+ ✓ Compiled in 229ms (1772 modules)
+ GET / 200 in 22ms
+ ✓ Compiled in 189ms (1772 modules)
+ GET / 200 in 23ms
+ ✓ Compiled in 272ms (1772 modules)
+ GET / 200 in 21ms
+ ✓ Compiled in 347ms (1772 modules)
+ GET / 200 in 24ms
+ ⚠ Fast Refresh had to perform a full reload due to a runtime error.
+ GET / 200 in 152ms
+ ✓ Compiled in 274ms (1772 modules)
+ GET / 200 in 81ms
+ ⚠ Fast Refresh had to perform a full reload due to a runtime error.
+ ✓ Compiled in 208ms (1772 modules)
+ GET / 200 in 38ms
+ ✓ Compiled in 533ms (1772 modules)
+ ✓ Compiled in 154ms (845 modules)
+ ✓ Compiled in 346ms (1772 modules)
+ ⨯ ./app/page.tsx
+Module parse failed: Identifier 'alertConfig' has already been declared (58:11)
+|     ]);
+|     // Add this state near the top of the Dashboard component, after the existing states
+>     const [alertConfig, setAlertConfig] = useState({
+|         nautilus: [
+|             {
+
+Import trace for requested module:
+./app/page.tsx
+ ⨯ ./app/page.tsx
+Module parse failed: Identifier 'alertConfig' has already been declared (58:11)
+|     ]);
+|     // Add this state near the top of the Dashboard component, after the existing states
+>     const [alertConfig, setAlertConfig] = useState({
+|         nautilus: [
+|             {
+
+Import trace for requested module:
+./app/page.tsx
+ ⨯ ./app/page.tsx
+Error:   [31mx[0m Expected ';', '}' or <eof>
+    ,-[[36;1;4m/Users/moshelugasi/Downloads/Github/stockagent alerts/app/page.tsx[0m:43:1]
+ [2m40[0m |     
+ [2m41[0m |       // DEPRECATED: Now using real API data from useAvailableAlerts hook
+ [2m42[0m |       // const [alertConfig, setAlertConfig] = useState({
+ [2m43[0m | [35;1m,[0m[35;1m-[0m[35;1m>[0m     nautilus: [
+ [2m44[0m | [35;1m|[0m         { id: "normal_bearish_divergence", name: "Normal Bearish Divergence", weight: -2.5 },
+ [2m45[0m | [35;1m|[0m         { id: "normal_bullish_divergence", name: "Normal Bullish Divergence", weight: 2.3 },
+ [2m46[0m | [35;1m|[0m         { id: "hidden_bearish_divergence", name: "Hidden Bearish Divergence", weight: -2.8 },
+ [2m47[0m | [35;1m|[0m         { id: "hidden_bullish_divergence", name: "Hidden Bullish Divergence", weight: 2.6 },
+ [2m48[0m | [35;1m|[0m         { id: "multiple_bullish_divergence", name: "Multiple Bullish Divergence", weight: 3.2 },
+ [2m49[0m | [35;1m|[0m         { id: "multiple_bearish_divergence", name: "Multiple Bearish Divergence", weight: -3.0 },
+ [2m50[0m | [35;1m|[0m         { id: "bullish_dipx", name: "Bullish DipX", weight: 2.1 },
+ [2m51[0m | [35;1m|[0m         { id: "bearish_dipx", name: "Bearish DipX", weight: -2.0 },
+ [2m52[0m | [35;1m|[0m         { id: "buy_signal", name: "Buy Signal", weight: 2.4 },
+ [2m53[0m | [35;1m|[0m         { id: "sell_signal", name: "Sell Signal", weight: -2.2 },
+ [2m54[0m | [35;1m|[0m         { id: "oscillator_oversold", name: "Oscillator Oversold", weight: 1.8 },
+ [2m55[0m | [35;1m|[0m         { id: "oscillator_overbought", name: "Oscillator Overbought", weight: -1.9 },
+ [2m56[0m | [35;1m|[0m         { id: "bullish_volume_cross", name: "Bullish Volume Cross", weight: 1.5 },
+ [2m57[0m | [35;1m|[0m         { id: "bearish_volume_cross", name: "Bearish Volume Cross", weight: -1.4 },
+ [2m58[0m | [35;1m|[0m         { id: "bullish_peak", name: "Bullish Peak", weight: 2.0 },
+ [2m59[0m | [35;1m|[0m         { id: "bearish_peak", name: "Bearish Peak", weight: -2.1 },
+ [2m60[0m | [35;1m|[0m       ],
+ [2m61[0m | [35;1m|[0m[35;1m-[0m[35;1m>[0m     market_core: [
+    : [35;1m`[0m[35;1m---[0m[33;1m               ^[0m
+    : [35;1m`[0m[35;1m---[0m[35;1m-[0m [35;1mThis is the expression part of an expression statement[0m
+ [2m62[0m |           { id: "bullish_ob_break", name: "Bullish OB Break", weight: 2.2 },
+ [2m63[0m |           { id: "bearish_ob_break", name: "Bearish OB Break", weight: -2.0 },
+ [2m64[0m |           { id: "touching_bearish_ob", name: "Touching Bearish OB", weight: -1.5 },
+    `----
+
+Caused by:
+    Syntax Error
+
+Import trace for requested module:
+./app/page.tsx
+ ⨯ ./app/page.tsx
+Error:   [31mx[0m Expression expected
+     ,-[[36;1;4m/Users/moshelugasi/Downloads/Github/stockagent alerts/app/page.tsx[0m:718:1]
+ [2m715[0m |         initial={{ opacity: 0, y: -20 }}
+ [2m716[0m |         animate={{ opacity: 1, y: 0 }}
+ [2m717[0m |         transition={{ duration: 0.5 }}
+ [2m718[0m |       >
+     : [35;1m      ^[0m
+ [2m719[0m |         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+ [2m720[0m |           <div className="flex items-center justify-between h-16">
+ [2m721[0m |             <div className="flex items-center gap-3">
+     `----
+  [31mx[0m Unterminated regexp literal
+     ,-[[36;1;4m/Users/moshelugasi/Downloads/Github/stockagent alerts/app/page.tsx[0m:745:1]
+ [2m742[0m |             </div>
+ [2m743[0m |           </div>
+ [2m744[0m |         </div>
+ [2m745[0m |       </motion.header>
+     : [35;1m       ^^^^^^^^^^^^^^^[0m
+ [2m746[0m | 
+ [2m747[0m |       {/* Main Content */}
+ [2m748[0m |       <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+     `----
+  [31mx[0m Expression expected
+     ,-[[36;1;4m/Users/moshelugasi/Downloads/Github/stockagent alerts/app/page.tsx[0m:745:1]
+ [2m742[0m |             </div>
+ [2m743[0m |           </div>
+ [2m744[0m |         </div>
+ [2m745[0m |       </motion.header>
+     : [35;1m        ^^^^^^^^^^^^^^[0m
+ [2m746[0m | 
+ [2m747[0m |       {/* Main Content */}
+ [2m748[0m |       <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+     `----
+
+Caused by:
+    Syntax Error
+
+Import trace for requested module:
+./app/page.tsx
+ ✓ Compiled in 799ms (1774 modules)
+ ✓ Compiled in 353ms (1774 modules)
+ ✓ Compiled in 211ms (1774 modules)
+ ✓ Compiled in 260ms (846 modules)
+ ✓ Compiled in 342ms (1774 modules)
+ ✓ Compiled in 297ms (1776 modules)
+ ✓ Compiled in 219ms (1776 modules)
+ ✓ Compiled in 341ms (1776 modules)
+ ✓ Compiled in 345ms (1776 modules)
+ ✓ Compiled in 399ms (1776 modules)
+ ✓ Compiled in 318ms (1776 modules)
+ ✓ Compiled in 196ms (1776 modules)
+ ✓ Compiled in 291ms (1776 modules)
+ ✓ Compiled in 199ms (1776 modules)
+ ✓ Compiled in 384ms (1776 modules)
+ ✓ Compiled in 204ms (847 modules)
+ ✓ Compiled in 98ms (847 modules)
+ ✓ Compiled in 81ms (847 modules)
+ ✓ Compiled in 389ms (1776 modules)
+ ✓ Compiled in 192ms (847 modules)
+ ✓ Compiled in 404ms (1776 modules)
+ ✓ Compiled in 529ms (1776 modules)
+ ✓ Compiled in 383ms (1776 modules)
+ ✓ Compiled in 541ms (1776 modules)
+ ✓ Compiled in 570ms (1776 modules)
+ ✓ Compiled in 519ms (1776 modules)

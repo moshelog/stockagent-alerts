@@ -1,0 +1,39 @@
+🔄 Testing database connection...
+✅ Database connection successful
+🚀 StockAgent Backend running on port 3001
+📊 Environment: development
+🔗 Health check: http://localhost:3001/api/health
+📡 Webhook URL: http://localhost:3001/webhook
+📨 Webhook received: FIXED | Extreme Zones | Discount Zone
+✅ Alert saved: ea1a3676-3d7a-496b-a4b0-25d85bfae546
+📊 Evaluating 2 enabled strategies for FIXED
+📈 Strategy "Buy on discount zone" for FIXED: { complete: false, found: 1, missing: 1, timeframe: '15m' }
+📈 Strategy "Sell on Premium zone" for FIXED: { complete: false, found: 0, missing: 2, timeframe: '15m' }
+📨 Webhook received: FIXED | Nautilus™ | Normal Bullish Divergence
+✅ Alert saved: db000358-4bdd-4d8c-aef3-93066191283e
+📊 Evaluating 2 enabled strategies for FIXED
+📈 Strategy "Buy on discount zone" for FIXED: { complete: true, found: 2, missing: 0, timeframe: '15m' }
+🎯 STRATEGY COMPLETED! BUY signal for FIXED {
+  strategy: 'Buy on discount zone',
+  action: 'BUY',
+  score: 4.2,
+  foundRules: 2
+}
+📈 Strategy "Sell on Premium zone" for FIXED: { complete: false, found: 0, missing: 2, timeframe: '15m' }
+✅ Database connection successful
+📨 Webhook received: DEMO | Extreme Zones | Discount Zone
+✅ Alert saved: aae53411-dda7-4864-bc76-43dbe560f765
+📊 Evaluating 2 enabled strategies for DEMO
+📈 Strategy "Buy on discount zone" for DEMO: { complete: false, found: 1, missing: 1, timeframe: '15m' }
+📈 Strategy "Sell on Premium zone" for DEMO: { complete: false, found: 0, missing: 2, timeframe: '15m' }
+📨 Webhook received: DEMO | Nautilus™ | Normal Bullish Divergence
+✅ Alert saved: 677518bb-f3a6-4071-9c3a-c1fd22e67fd0
+📊 Evaluating 2 enabled strategies for DEMO
+📈 Strategy "Buy on discount zone" for DEMO: { complete: true, found: 2, missing: 0, timeframe: '15m' }
+🎯 STRATEGY COMPLETED! BUY signal for DEMO {
+  strategy: 'Buy on discount zone',
+  action: 'BUY',
+  score: 4.2,
+  foundRules: 2
+}
+📈 Strategy "Sell on Premium zone" for DEMO: { complete: false, found: 0, missing: 2, timeframe: '15m' }

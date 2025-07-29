@@ -82,10 +82,10 @@ const validateAlertPayload = (req, res, next) => {
 // ============================================================================
 
 /**
- * POST /webhook - Receive TradingView alerts (JSON format)
+ * POST /webhook-json - Receive TradingView alerts (JSON format)
  * Expected payload: { ticker, time?, indicator, trigger }
  */
-app.post('/webhook', validateAlertPayload, asyncHandler(async (req, res) => {
+app.post('/webhook-json', validateAlertPayload, asyncHandler(async (req, res) => {
   const { ticker, time, indicator, trigger } = req.body;
   
   logger.info('Webhook received', {

@@ -159,6 +159,108 @@ app.post('/webhook', validateAlertPayload, asyncHandler(async (req, res) => {
 }));
 
 /**
+ * POST /webhook - Receive TradingView alerts (Primary endpoint)
+ * Expected payload: "TICKER|TIMEFRAME|INDICATOR|TRIGGER" or "TICKER|TIMEFRAME|INDICATOR|TRIGGER|TIME"
+ */
+app.post('/webhook', express.text({ type: '*/*' }), asyncHandler(async (req, res) => {
+  const body = req.body.toString().trim();
+  
+  logger.info('Webhook received', {
+    contentType: req.get('Content-Type'),
+    body: body
+  });
+
+  // Parse text format: "TICKER|TIMEFRAME|INDICATOR|TRIGGER" or "TICKER|TIMEFRAME|INDICATOR|TRIGGER|TIME"
+  const parts = body.split('|');
+  
+  if (parts.length < 4) {
+    return res.status(400).json({ 
+      error: 'Invalid text format. Expected: TICKER|TIMEFRAME|INDICATOR|TRIGGER or TICKER|TIMEFRAME|INDICATOR|TRIGGER|TIME',
+      received: body 
+    });
+  }
+
+  const ticker = parts[0].trim();
+  const timeframe = parts[1].trim();
+  const indicator = parts[2].trim();
+  const trigger = parts[3].trim();
+  const time = parts[4] ? parts[4].trim() : null;
+
+  // Validate required fields
+  if (!ticker || !timeframe || !indicator || !trigger) {
+    return res.status(400).json({
+      error: 'Missing required fields after parsing',
+      required: ['ticker', 'timeframe', 'indicator', 'trigger'],
+      parsed: { ticker, timeframe, indicator, trigger }
+    });
+  }
+
+  logger.info('Webhook parsed', {
+    ticker,
+    timeframe,
+    indicator,
+    trigger,
+    timestamp: time || new Date().toISOString()
+  });
+
+  try {
+    // Insert alert into database
+    const alertData = {
+      ticker: ticker.toUpperCase(),
+      timeframe,
+      indicator,
+      trigger,
+      timestamp: time ? 
+        (typeof time === 'string' && time.length === 13 ? 
+          new Date(parseInt(time)).toISOString() : 
+          new Date(time).toISOString()) : 
+        new Date().toISOString()
+    };
+    
+    const { data: newAlert, error: insertError } = await supabase
+      .from('alerts')
+      .insert(alertData)
+      .select()
+      .single();
+    
+    if (insertError) {
+      logger.error('Failed to insert webhook alert', {
+        error: insertError.message,
+        alertData
+      });
+      return res.status(500).json({
+        error: 'Database error',
+        message: insertError.message
+      });
+    }
+
+    logger.info('Webhook alert inserted successfully', {
+      id: newAlert.id,
+      ticker: newAlert.ticker
+    });
+
+    res.status(200).json({
+      success: true,
+      alert: newAlert,
+      message: 'Webhook processed successfully'
+    });
+    
+  } catch (error) {
+    logger.error('Webhook processing error', {
+      error: error.message,
+      stack: error.stack,
+      ticker,
+      indicator,
+      trigger
+    });
+    res.status(500).json({
+      error: 'Internal server error',
+      message: error.message
+    });
+  }
+}));
+
+/**
  * POST /webhook-text - Receive TradingView alerts (Text format)
  * Expected payload: "TICKER|TIMEFRAME|INDICATOR|TRIGGER" or "TICKER|TIMEFRAME|INDICATOR|TRIGGER|TIME"
  */

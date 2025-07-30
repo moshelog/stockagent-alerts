@@ -57,6 +57,20 @@ export interface Config {
   }
 }
 
+// Helper function to construct API URLs consistently
+function constructApiUrl(apiBase: string, endpoint: string): string {
+  let baseUrl = apiBase
+  // Remove /api suffix if present
+  if (baseUrl.endsWith('/api')) {
+    baseUrl = baseUrl.slice(0, -4)
+  }
+  // Ensure it's a full URL
+  if (!baseUrl.startsWith('http')) {
+    baseUrl = `https://${baseUrl}`
+  }
+  return `${baseUrl}${endpoint}`
+}
+
 export function useConfig() {
   const [config, setConfig] = useState<Config | null>(null)
   const [loading, setLoading] = useState(true)
@@ -78,7 +92,9 @@ export function useConfig() {
       
       // Now try to load user settings from database using the backend URL
       try {
-        const settingsResponse = await fetch(`${baseConfig.apiBase.replace('/api', '')}/api/settings`)
+        const settingsUrl = constructApiUrl(baseConfig.apiBase, '/api/settings')
+        console.log('📥 Loading settings from URL:', settingsUrl)
+        const settingsResponse = await fetch(settingsUrl)
         if (settingsResponse.ok) {
           const userSettings = await settingsResponse.json()
           // Merge base config with user settings
@@ -109,22 +125,32 @@ export function useConfig() {
     // Auto-save to database
     try {
       setSaving(true)
-      const response = await fetch(`${newConfig.apiBase.replace('/api', '')}/api/settings`, {
+      
+      const settingsUrl = constructApiUrl(newConfig.apiBase, '/api/settings')
+      console.log('🔄 Saving settings to URL:', settingsUrl)
+      console.log('🔄 Settings data:', { ui: newConfig.ui, scoring: newConfig.scoring })
+      
+      const response = await fetch(settingsUrl, {
         method: "POST",
         headers: {
           "Content-Type": "application/json"
         },
         body: JSON.stringify({
           ui: newConfig.ui,
-          scoring: newConfig.scoring
+          scoring: newConfig.scoring || { timeWindowMinutes: 60 }
         })
       })
 
       if (!response.ok) {
-        console.error("Failed to save settings:", await response.text())
+        const errorText = await response.text()
+        console.error("❌ Failed to save settings:", response.status, errorText)
+        throw new Error(`HTTP ${response.status}: ${errorText}`)
+      } else {
+        const result = await response.json()
+        console.log('✅ Settings saved successfully:', result)
       }
     } catch (err) {
-      console.error("Error saving settings:", err)
+      console.error("❌ Error saving settings:", err)
     } finally {
       setSaving(false)
     }

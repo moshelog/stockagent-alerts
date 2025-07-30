@@ -490,7 +490,6 @@ export default function SettingsPage() {
                     onClick={() => {
                       const newShowWeights = !config.ui.showWeights;
                       updateConfig({
-                        ...config,
                         ui: {
                           ...config.ui,
                           showWeights: newShowWeights

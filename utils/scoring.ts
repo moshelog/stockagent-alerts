@@ -23,9 +23,9 @@ export interface LastAction {
 function mapIndicatorName(simplifiedIndicator: string): string {
   const indicatorMap: { [key: string]: string } = {
     'extreme_zones': 'Extreme Zones',
-    'nautilus': 'Oscillator',
-    'market_core': 'SMC',
-    'market_waves': 'Waves'
+    'nautilus': 'Nautilus™',
+    'market_core': 'Market Core Pro™',
+    'market_waves': 'Market Waves Pro™'
   }
   
   return indicatorMap[simplifiedIndicator] || simplifiedIndicator
@@ -74,72 +74,156 @@ export function generateScoringData(
 
   // Process each active strategy (one row per strategy)
   for (const strategy of activeStrategies) {
-    if (!strategy.rules || strategy.rules.length === 0) continue
+    // Use rule_groups if available, otherwise fall back to rules
+    const hasRuleGroups = strategy.rule_groups && strategy.rule_groups.length > 0
+    
+    if (!hasRuleGroups && (!strategy.rules || strategy.rules.length === 0)) continue
 
-    const requiredAlerts = strategy.rules.map(rule => ({
-      indicator: rule.indicator,
-      trigger: rule.trigger
-    }))
-
-    // Find the ticker with the most matching alerts for this strategy
+    // Find completed strategies first, then best partial matches
     let bestTicker = 'N/A'
     let maxMatches = 0
     let bestFoundAlerts: string[] = []
     let bestMissingAlerts: string[] = []
     let bestScore = 0
+    let foundCompleteStrategy = false
 
     for (const [ticker, tickerAlerts] of alertsByTicker) {
-      const foundAlerts: Alert[] = []
-      const missingAlerts: string[] = []
+      let strategyCompleted = false
+      let foundAlerts: Alert[] = []
+      let missingAlerts: string[] = []
 
-      for (const required of requiredAlerts) {
-        // Map the simplified indicator name to the full name used in alerts
-        const fullIndicatorName = mapIndicatorName(required.indicator)
-        
-        const found = tickerAlerts.find(alert => 
-          alert.indicator === fullIndicatorName && 
-          alert.trigger === required.trigger
-        )
-        
-        if (found) {
-          foundAlerts.push(found)
-        } else {
-          missingAlerts.push(required.trigger)
+      if (hasRuleGroups) {
+        // NEW LOGIC: Handle rule groups with AND/OR operators
+        let allGroupsMatched = true
+        const allFoundInGroups: Alert[] = []
+        const allMissingInGroups: string[] = []
+
+        for (const group of strategy.rule_groups) {
+          const groupAlerts = group.alerts.map((alert: any) => ({
+            indicator: alert.indicator,
+            trigger: alert.name
+          }))
+
+          if (group.operator === 'OR') {
+            // OR group: at least one alert must be found
+            let foundInGroup = false
+            let groupFoundAlerts: Alert[] = []
+            
+            for (const required of groupAlerts) {
+              const fullIndicatorName = mapIndicatorName(required.indicator)
+              const found = tickerAlerts.find(alert => 
+                alert.indicator === fullIndicatorName && 
+                alert.trigger === required.trigger
+              )
+              
+              if (found) {
+                foundInGroup = true
+                groupFoundAlerts.push(found)
+                break // Only need one for OR
+              }
+            }
+
+            if (foundInGroup) {
+              allFoundInGroups.push(...groupFoundAlerts)
+            } else {
+              allGroupsMatched = false
+              // For OR groups, show all options as missing if none found
+              allMissingInGroups.push(...groupAlerts.map(g => g.trigger))
+            }
+
+          } else {
+            // AND group: all alerts must be found
+            let allFoundInGroup = true
+            const groupFoundAlerts: Alert[] = []
+            const groupMissingAlerts: string[] = []
+
+            for (const required of groupAlerts) {
+              const fullIndicatorName = mapIndicatorName(required.indicator)
+              const found = tickerAlerts.find(alert => 
+                alert.indicator === fullIndicatorName && 
+                alert.trigger === required.trigger
+              )
+              
+              if (found) {
+                groupFoundAlerts.push(found)
+              } else {
+                allFoundInGroup = false
+                groupMissingAlerts.push(required.trigger)
+              }
+            }
+
+            if (allFoundInGroup) {
+              allFoundInGroups.push(...groupFoundAlerts)
+            } else {
+              allGroupsMatched = false
+              allMissingInGroups.push(...groupMissingAlerts)
+            }
+          }
         }
+
+        strategyCompleted = allGroupsMatched
+        foundAlerts = allFoundInGroups
+        missingAlerts = allMissingInGroups
+
+      } else {
+        // OLD LOGIC: Fallback to simple rules (all AND)
+        const requiredAlerts = strategy.rules.map((rule: any) => ({
+          indicator: rule.indicator,
+          trigger: rule.trigger
+        }))
+
+        for (const required of requiredAlerts) {
+          const fullIndicatorName = mapIndicatorName(required.indicator)
+          const found = tickerAlerts.find(alert => 
+            alert.indicator === fullIndicatorName && 
+            alert.trigger === required.trigger
+          )
+          
+          if (found) {
+            foundAlerts.push(found)
+          } else {
+            missingAlerts.push(required.trigger)
+          }
+        }
+
+        strategyCompleted = missingAlerts.length === 0
       }
 
-      // If this ticker has more matches for this strategy, use it
-      if (foundAlerts.length > maxMatches) {
+      // Priority: Complete strategies first, then most matches
+      const shouldUseThisTicker = !foundCompleteStrategy && (
+        strategyCompleted || // This ticker completes the strategy
+        foundAlerts.length > maxMatches // This ticker has more matches
+      )
+
+      if (shouldUseThisTicker) {
         maxMatches = foundAlerts.length
         bestTicker = ticker
         bestFoundAlerts = foundAlerts.map(a => a.trigger)
         bestMissingAlerts = missingAlerts
         bestScore = foundAlerts.reduce((sum, alert) => sum + alert.weight, 0)
+        
+        if (strategyCompleted) {
+          foundCompleteStrategy = true
+        }
 
         // Check if this strategy is complete and should generate an action
-        if (missingAlerts.length === 0 && foundAlerts.length > 0 && !lastAction) {
-          // Check if this triggers an action based on threshold
-          const crossesThreshold = 
-            (strategy.threshold > 0 && bestScore >= strategy.threshold) ||
-            (strategy.threshold < 0 && bestScore <= strategy.threshold) ||
-            (strategy.threshold === 0 && Math.abs(bestScore) >= 2) // Default threshold for neutral
+        if (strategyCompleted && foundAlerts.length > 0 && !lastAction) {
+          // Strategy is complete - determine action
+          let action: "Buy" | "Sell"
+          
+          const strategyName = strategy.name.toLowerCase()
+          if (strategyName.includes('buy') || strategyName.includes('discount') || strategy.threshold > 0) {
+            action = "Buy"
+          } else if (strategyName.includes('sell') || strategyName.includes('premium') || strategy.threshold < 0) {
+            action = "Sell"
+          } else {
+            action = bestScore >= 0 ? "Buy" : "Sell"
+          }
 
-          if (crossesThreshold) {
-            // Determine action based on score and threshold
-            let action: "Buy" | "Sell"
-            if (strategy.threshold > 0) {
-              action = "Sell" // Positive threshold = sell signal
-            } else if (strategy.threshold < 0) {
-              action = "Buy" // Negative threshold = buy signal  
-            } else {
-              action = bestScore > 0 ? "Buy" : "Sell" // Score-based for neutral threshold
-            }
-
-            lastAction = {
-              action,
-              ticker: bestTicker,
-              strategy: strategy.name
-            }
+          lastAction = {
+            action,
+            ticker: bestTicker,
+            strategy: strategy.name
           }
         }
       }
@@ -147,13 +231,33 @@ export function generateScoringData(
 
     // Only add this strategy to the results if it has at least one matching alert
     if (bestTicker !== 'N/A' && maxMatches > 0) {
+      // Check if this strategy is completed (no missing alerts)
+      let displayMissingAlerts = bestMissingAlerts
+      
+      if (bestMissingAlerts.length === 0 && bestFoundAlerts.length > 0) {
+        // Strategy is complete - determine the action that was triggered
+        const strategyName = strategy.name.toLowerCase()
+        let triggeredAction: string
+        
+        if (strategyName.includes('buy') || strategyName.includes('discount') || strategy.threshold > 0) {
+          triggeredAction = "Buy triggered"
+        } else if (strategyName.includes('sell') || strategyName.includes('premium') || strategy.threshold < 0) {
+          triggeredAction = "Sell triggered"
+        } else {
+          // Fallback: use score direction
+          triggeredAction = bestScore >= 0 ? "Buy triggered" : "Sell triggered"
+        }
+        
+        displayMissingAlerts = [triggeredAction]
+      }
+      
       strategyScores.push({
         strategy: strategy.name,
         ticker: bestTicker,
         timeframe: `${strategy.timeframe}m`,
         timestamp: new Date().toLocaleTimeString(), // Current time for when this was calculated
         alertsFound: bestFoundAlerts,
-        missingAlerts: bestMissingAlerts,
+        missingAlerts: displayMissingAlerts,
         score: bestScore
       })
     }

@@ -1200,11 +1200,36 @@ app.get('/monitoring', (req, res) => {
 });
 
 /**
- * GET /test-webhook - Simple HTML form to test webhooks manually
+ * GET /test-webhook - Dynamic HTML form synced with Available Alerts database
  */
-app.get('/test-webhook', (req, res) => {
-  const html = `
-<!DOCTYPE html>
+app.get('/test-webhook', asyncHandler(async (req, res) => {
+  try {
+    // Fetch available alerts from database
+    const { data: availableAlerts, error } = await supabase
+      .from('available_alerts')
+      .select('*')
+      .eq('enabled', true)
+      .order('indicator', { ascending: true });
+
+    if (error) {
+      logger.error('Failed to fetch available alerts for test webhook', { error: error.message });
+      // Fallback to basic form if database fails
+      return res.status(500).send('<h1>Database Error</h1><p>Could not load available alerts.</p>');
+    }
+
+    // Group alerts by indicator
+    const alertsByIndicator = {};
+    availableAlerts.forEach(alert => {
+      if (!alertsByIndicator[alert.indicator]) {
+        alertsByIndicator[alert.indicator] = [];
+      }
+      alertsByIndicator[alert.indicator].push(alert.trigger);
+    });
+
+    // Get unique indicators for dropdown
+    const indicators = Object.keys(alertsByIndicator);
+
+    const html = `<!DOCTYPE html>
 <html lang="en">
 <head>
     <meta charset="UTF-8">
@@ -1213,22 +1238,30 @@ app.get('/test-webhook', (req, res) => {
     <style>
         body {
             font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-            max-width: 600px;
+            max-width: 800px;
             margin: 50px auto;
             padding: 20px;
-            background: #0a0a0a;
-            color: #fff;
+            background: #0f0f23;
+            color: #E0E6ED;
         }
         .container {
-            background: #1a1a1a;
+            background: #1e2538;
             padding: 30px;
             border-radius: 12px;
-            border: 1px solid #333;
+            border: 1px solid #2d3748;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
         }
         h1 {
-            color: #00ff88;
+            color: #4ade80;
             text-align: center;
+            margin-bottom: 10px;
+            font-size: 2.5rem;
+        }
+        .subtitle {
+            text-align: center;
+            color: #A3A9B8;
             margin-bottom: 30px;
+            font-style: italic;
         }
         .form-group {
             margin-bottom: 20px;
@@ -1236,104 +1269,142 @@ app.get('/test-webhook', (req, res) => {
         label {
             display: block;
             margin-bottom: 8px;
-            color: #ccc;
+            color: #E0E6ED;
             font-weight: 500;
         }
         select, input {
             width: 100%;
             padding: 12px;
-            border: 1px solid #444;
-            border-radius: 6px;
-            background: #2a2a2a;
-            color: #fff;
+            border: 1px solid #4a5568;
+            border-radius: 8px;
+            background: #2d3748;
+            color: #E0E6ED;
             font-size: 14px;
+            box-sizing: border-box;
         }
         select:focus, input:focus {
             outline: none;
-            border-color: #00ff88;
+            border-color: #4ade80;
+            box-shadow: 0 0 0 3px rgba(74, 222, 128, 0.1);
         }
         button {
             width: 100%;
             padding: 15px;
-            background: #00ff88;
-            color: #000;
+            background: #4ade80;
+            color: #0f0f23;
             border: none;
-            border-radius: 6px;
+            border-radius: 8px;
             font-size: 16px;
             font-weight: 600;
             cursor: pointer;
-            transition: background 0.2s;
+            transition: all 0.2s;
         }
         button:hover {
-            background: #00cc6a;
+            background: #22c55e;
+            transform: translateY(-1px);
         }
         .result {
             margin-top: 20px;
             padding: 15px;
-            border-radius: 6px;
+            border-radius: 8px;
             display: none;
         }
         .success {
-            background: #1a4a3a;
-            border: 1px solid #00ff88;
-            color: #00ff88;
+            background: rgba(74, 222, 128, 0.1);
+            border: 1px solid #4ade80;
+            color: #4ade80;
         }
         .error {
-            background: #4a1a1a;
-            border: 1px solid #ff4444;
-            color: #ff4444;
+            background: rgba(239, 68, 68, 0.1);
+            border: 1px solid #ef4444;
+            color: #ef4444;
         }
         .info {
-            background: #1a1a4a;
-            border: 1px solid #4488ff;
-            color: #4488ff;
+            background: rgba(59, 130, 246, 0.1);
+            border: 1px solid #3b82f6;
+            color: #3b82f6;
+            margin-bottom: 25px;
+            border-radius: 8px;
+            padding: 15px;
+        }
+        .sync-indicator {
+            background: rgba(74, 222, 128, 0.1);
+            border: 1px solid #4ade80;
+            color: #4ade80;
+            padding: 10px;
+            border-radius: 6px;
             margin-bottom: 20px;
+            text-align: center;
+            font-size: 0.9rem;
+        }
+        .form-row {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 15px;
+        }
+        @media (max-width: 600px) {
+            .form-row {
+                grid-template-columns: 1fr;
+            }
         }
     </style>
 </head>
 <body>
     <div class="container">
         <h1>🚀 StockAgent Webhook Tester</h1>
+        <p class="subtitle">Turn Every Alert into Automated Success</p>
+        
+        <div class="sync-indicator">
+            ✅ Synced with Available Alerts Database (${availableAlerts.length} active alerts)
+        </div>
         
         <div class="info">
             <strong>ℹ️ Test your webhook integration:</strong><br>
-            • Fill the form below<br>
-            • Click "Send Alert"<br>
-            • Check your frontend dashboard for the alert<br>
-            • Verify data appears in Supabase database
+            • Select from ${indicators.length} available indicators<br>
+            • Choose appropriate timeframe and trigger<br>
+            • Click "Send Alert" to test webhook<br>
+            • Verify alert appears in dashboard and database
         </div>
 
         <form id="webhookForm">
-            <div class="form-group">
-                <label for="ticker">Ticker Symbol:</label>
-                <input type="text" id="ticker" name="ticker" value="BTC" required>
+            <div class="form-row">
+                <div class="form-group">
+                    <label for="ticker">Ticker Symbol:</label>
+                    <input type="text" id="ticker" name="ticker" value="BTC" required>
+                </div>
+                
+                <div class="form-group">
+                    <label for="timeframe">Timeframe:</label>
+                    <select id="timeframe" name="timeframe" required>
+                        <option value="1m">1 Minute</option>
+                        <option value="5m">5 Minutes</option>
+                        <option value="15m" selected>15 Minutes</option>
+                        <option value="30m">30 Minutes</option>
+                        <option value="1h">1 Hour</option>
+                        <option value="4h">4 Hours</option>
+                        <option value="1d">1 Day</option>
+                    </select>
+                </div>
             </div>
 
             <div class="form-group">
                 <label for="indicator">Indicator:</label>
                 <select id="indicator" name="indicator" required>
-                    <option value="Nautilus™">Nautilus™</option>
-                    <option value="Extreme Zones">Extreme Zones</option>
-                    <option value="Market Waves Pro™">Market Waves Pro™</option>
-                    <option value="Market Core Pro™">Market Core Pro™</option>
-                    <option value="RSI">RSI</option>
-                    <option value="MACD">MACD</option>
-                    <option value="Custom">Custom</option>
+                    ${indicators.map(indicator => 
+                        `<option value="${indicator}">${indicator}</option>`
+                    ).join('')}
                 </select>
             </div>
 
             <div class="form-group">
                 <label for="trigger">Trigger/Signal:</label>
                 <select id="trigger" name="trigger" required>
-                    <option value="Normal Bullish Divergence">Normal Bullish Divergence</option>
-                    <option value="Normal Bearish Divergence">Normal Bearish Divergence</option>
-                    <option value="Discount Zone">Discount Zone</option>
-                    <option value="Premium Zone">Premium Zone</option>
-                    <option value="Buy+">Buy+</option>
-                    <option value="Sell-">Sell-</option>
-                    <option value="Bullish BoS">Bullish BoS</option>
-                    <option value="Bearish BoS">Bearish BoS</option>
-                    <option value="Test Signal">Test Signal</option>
+                    ${alertsByIndicator[indicators[0]] ? 
+                        alertsByIndicator[indicators[0]].map(trigger => 
+                            `<option value="${trigger}">${trigger}</option>`
+                        ).join('') : 
+                        '<option value="Test Signal">Test Signal</option>'
+                    }
                 </select>
             </div>
 
@@ -1344,12 +1415,16 @@ app.get('/test-webhook', (req, res) => {
     </div>
 
     <script>
+        // Dynamic alert data from database
+        const alertsByIndicator = ${JSON.stringify(alertsByIndicator)};
+        
         document.getElementById('webhookForm').addEventListener('submit', async function(e) {
             e.preventDefault();
             
             const formData = new FormData(e.target);
             const data = {
                 ticker: formData.get('ticker').toUpperCase(),
+                timeframe: formData.get('timeframe'),
                 indicator: formData.get('indicator'),
                 trigger: formData.get('trigger'),
                 time: new Date().toISOString()
@@ -1362,7 +1437,7 @@ app.get('/test-webhook', (req, res) => {
 
             try {
                 // Format as text: TICKER|TIMEFRAME|INDICATOR|TRIGGER
-                const textPayload = data.ticker + '|15m|' + data.indicator + '|' + data.trigger;
+                const textPayload = data.ticker + '|' + data.timeframe + '|' + data.indicator + '|' + data.trigger;
                 const response = await fetch('/webhook', {
                     method: 'POST',
                     headers: {
@@ -1375,27 +1450,20 @@ app.get('/test-webhook', (req, res) => {
 
                 if (response.ok) {
                     resultDiv.className = 'result success';
-                    resultDiv.innerHTML = \`
-                        <strong>✅ Webhook sent successfully!</strong><br>
-                        <strong>Alert ID:</strong> \${result.alert.id}<br>
-                        <strong>Ticker:</strong> \${result.alert.ticker}<br>
-                        <strong>Signal:</strong> \${result.alert.indicator} - \${result.alert.trigger}<br>
-                        <br>
-                        ℹ️ Check your frontend dashboard and Supabase database!
-                    \`;
+                    resultDiv.innerHTML = '<strong>✅ Webhook sent successfully!</strong><br>' +
+                        '<strong>Alert ID:</strong> ' + result.alert.id + '<br>' +
+                        '<strong>Ticker:</strong> ' + result.alert.ticker + '<br>' +
+                        '<strong>Timeframe:</strong> ' + result.alert.timeframe + '<br>' +
+                        '<strong>Signal:</strong> ' + result.alert.indicator + ' - ' + result.alert.trigger + '<br>' +
+                        '<br>ℹ️ Check your frontend dashboard and Supabase database!';
                 } else {
                     resultDiv.className = 'result error';
-                    resultDiv.innerHTML = \`
-                        <strong>❌ Error:</strong> \${result.error || 'Unknown error'}<br>
-                        <strong>Details:</strong> \${result.message || 'No details available'}
-                    \`;
+                    resultDiv.innerHTML = '<strong>❌ Error:</strong> ' + (result.error || 'Unknown error') + '<br>' +
+                        '<strong>Details:</strong> ' + (result.message || 'No details available');
                 }
             } catch (error) {
                 resultDiv.className = 'result error';
-                resultDiv.innerHTML = \`
-                    <strong>❌ Network Error:</strong><br>
-                    \${error.message}
-                \`;
+                resultDiv.innerHTML = '<strong>❌ Network Error:</strong><br>' + error.message;
             }
         });
 
@@ -1407,35 +1475,7 @@ app.get('/test-webhook', (req, res) => {
             // Clear current options
             trigger.innerHTML = '';
             
-            let options = [];
-            
-            switch(indicator) {
-                case 'Nautilus™':
-                    options = [
-                        'Normal Bullish Divergence',
-                        'Normal Bearish Divergence',
-                        'Hidden Bullish Divergence',
-                        'Hidden Bearish Divergence'
-                    ];
-                    break;
-                case 'Extreme Zones':
-                    options = ['Discount Zone', 'Premium Zone'];
-                    break;
-                case 'Market Waves Pro™':
-                    options = ['Buy+', 'Sell-', 'Wave Up', 'Wave Down'];
-                    break;
-                case 'Market Core Pro™':
-                    options = ['Bullish BoS', 'Bearish BoS', 'Support', 'Resistance'];
-                    break;
-                case 'RSI':
-                    options = ['Oversold', 'Overbought'];
-                    break;
-                case 'MACD':
-                    options = ['Bullish Cross', 'Bearish Cross'];
-                    break;
-                default:
-                    options = ['Test Signal', 'Buy Signal', 'Sell Signal'];
-            }
+            const options = alertsByIndicator[indicator] || ['Test Signal'];
             
             options.forEach(opt => {
                 const option = document.createElement('option');
@@ -1446,11 +1486,15 @@ app.get('/test-webhook', (req, res) => {
         });
     </script>
 </body>
-</html>
-  `;
-  
-  res.send(html);
-});
+</html>`;
+
+    res.send(html);
+    
+  } catch (error) {
+    logger.error('Test webhook page error', { error: error.message });
+    res.status(500).send('<h1>Server Error</h1><p>Could not load test webhook page.</p>');
+  }
+}));
 
 // ============================================================================
 // ERROR HANDLING

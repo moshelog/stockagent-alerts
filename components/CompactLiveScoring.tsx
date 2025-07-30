@@ -52,6 +52,34 @@ export function CompactLiveScoring({
     return `${alerts.slice(0, 2).join(", ")}, +${alerts.length - 2}`
   }
 
+  const formatMissingAlerts = (alerts: string[]) => {
+    if (alerts.length === 0) return <span>—</span>
+    
+    return (
+      <span>
+        {alerts.map((alert, index) => {
+          if (alert === "Buy triggered") {
+            return (
+              <span key={index} className="px-2 py-1 bg-green-500/20 text-green-400 rounded-md text-xs font-semibold">
+                {alert}
+              </span>
+            )
+          } else if (alert === "Sell triggered") {
+            return (
+              <span key={index} className="px-2 py-1 bg-red-500/20 text-red-400 rounded-md text-xs font-semibold">
+                {alert}
+              </span>
+            )
+          } else {
+            return <span key={index}>{alert}</span>
+          }
+        }).reduce((prev, curr, index) => 
+          index === 0 ? curr : [prev, ", ", curr]
+        )}
+      </span>
+    )
+  }
+
   return (
     <motion.div
       className="bg-background-surface rounded-2xl shadow-lg border border-gray-800/50 overflow-hidden"
@@ -159,7 +187,7 @@ export function CompactLiveScoring({
                   {formatAlertsList(item.alertsFound)}
                 </td>
                 <td className="px-3 py-2 text-xs" style={{ color: "#A3A9B8" }}>
-                  {formatAlertsList(item.missingAlerts)}
+                  {formatMissingAlerts(item.missingAlerts)}
                 </td>
                 {showWeights && (
                   <td className="px-3 py-2 text-right">

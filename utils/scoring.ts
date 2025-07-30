@@ -73,12 +73,17 @@ export function generateScoringData(
     let requiredAlerts: Array<{indicator: string, trigger: string}> = []
     
     if (strategy.rule_groups && strategy.rule_groups.length > 0) {
-      // Use rule groups - for now, just take first group as example
-      const firstGroup = strategy.rule_groups[0]
-      requiredAlerts = firstGroup.alerts.map((alert: any) => ({
-        indicator: mapIndicatorName(alert.indicator),
-        trigger: alert.name
-      }))
+      // Handle OR logic: take ALL alerts from ALL groups for OR matching
+      const allGroupAlerts: Array<{indicator: string, trigger: string}> = []
+      strategy.rule_groups.forEach((group: any) => {
+        group.alerts.forEach((alert: any) => {
+          allGroupAlerts.push({
+            indicator: mapIndicatorName(alert.indicator),
+            trigger: alert.name
+          })
+        })
+      })
+      requiredAlerts = allGroupAlerts
     } else if (strategy.rules) {
       requiredAlerts = strategy.rules.map((rule: any) => ({
         indicator: mapIndicatorName(rule.indicator),
@@ -103,25 +108,48 @@ export function generateScoringData(
     // Check each ticker
     for (const [ticker, tickerAlerts] of alertsByTicker) {
       let foundAlerts: Alert[] = []
-      let allFound = true
+      let strategyTriggered = false
 
-      // Simple AND logic: find all required alerts
-      for (const required of requiredAlerts) {
-        const found = tickerAlerts.find(alert => 
-          alert.indicator === required.indicator && 
-          alert.trigger === required.trigger
-        )
-        
-        if (found) {
-          foundAlerts.push(found)
-        } else {
-          allFound = false
-          break
+      // Check if this strategy has OR logic (rule_groups)
+      const hasORLogic = strategy.rule_groups && strategy.rule_groups.length > 0 && 
+                        strategy.rule_groups.some((group: any) => group.operator === 'OR')
+
+      if (hasORLogic) {
+        // OR logic: find ANY required alert
+        for (const required of requiredAlerts) {
+          const found = tickerAlerts.find(alert => 
+            alert.indicator === required.indicator && 
+            alert.trigger === required.trigger
+          )
+          
+          if (found) {
+            foundAlerts.push(found)
+            strategyTriggered = true
+            console.log(`🎯 OR Match found: ${found.ticker} ${found.indicator}:${found.trigger}`)
+            break // Only need one for OR
+          }
         }
+      } else {
+        // AND logic: find all required alerts
+        let allFound = true
+        for (const required of requiredAlerts) {
+          const found = tickerAlerts.find(alert => 
+            alert.indicator === required.indicator && 
+            alert.trigger === required.trigger
+          )
+          
+          if (found) {
+            foundAlerts.push(found)
+          } else {
+            allFound = false
+            break
+          }
+        }
+        strategyTriggered = allFound
       }
 
-      // If all required alerts found, strategy is triggered
-      if (allFound && foundAlerts.length > 0) {
+      // If strategy is triggered
+      if (strategyTriggered && foundAlerts.length > 0) {
         // Determine action type
         const strategyName = strategy.name.toLowerCase()
         let action: "Buy" | "Sell" = "Buy"

@@ -155,11 +155,11 @@ export function CompactLiveScoring({
           </thead>
           <tbody>
             {tickerData.length === 0 ? (
-              // Show placeholder rows to maintain height and force scrollbar
-              [...Array(8)].map((_, index) => (
-                <tr key={`placeholder-${index}`} className="border-b border-gray-800/50">
-                  <td className="px-3 py-3 text-xs text-gray-500" colSpan={6}>
-                    {index === 0 ? "Loading strategies..." : ""}
+              // Show message when no strategies are triggered
+              [...Array(1)].map((_, index) => (
+                <tr key={`no-triggers-${index}`} className="border-b border-gray-800/50">
+                  <td className="px-3 py-3 text-sm text-gray-400 text-center" colSpan={6}>
+                    No strategy conditions were met.
                   </td>
                 </tr>
               ))

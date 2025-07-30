@@ -113,9 +113,9 @@ export default function AvailableAlertsPanel({ alertConfig, onUpdateWeight, show
                 {/* Alert Name */}
                 <div className="flex-1 min-w-0">
                   <span 
-                    className="text-sm font-medium block truncate cursor-help" 
+                    className="text-sm font-medium block truncate" 
                     style={{ color: "#E0E6ED" }} 
-                    title={alertExplanations[alert.name] || alert.name}
+                    title={alertExplanations[alert.name] || undefined}
                   >
                     {alert.name}
                   </span>

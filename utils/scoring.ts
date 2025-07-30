@@ -190,13 +190,20 @@ export function generateScoringData(
           console.log(`📝 Alert details:`, allFoundAlerts.map(a => `${a.indicator}:${a.trigger}`))
           console.log(`===============================\n`)
           
+          // Get the most recent alert time from the found alerts
+          const mostRecentAlert = allFoundAlerts.reduce((latest, alert) => {
+            const alertTime = new Date(`1970-01-01 ${alert.time}`)
+            const latestTime = new Date(`1970-01-01 ${latest.time}`)
+            return alertTime > latestTime ? alert : latest
+          })
+
           triggeredActions.push({
             strategy: strategy.name,
             ticker: ticker,
             timeframe: `${strategy.timeframe || 15}m`,
-            timestamp: new Date().toLocaleTimeString(),
+            timestamp: mostRecentAlert.time, // Use the actual alert time instead of current time
             alertsFound: allFoundAlerts.map(a => a.trigger),
-            missingAlerts: [`${action} triggered`],
+            missingAlerts: [action], // Simplified action text (just "Buy" or "Sell")
             score: allFoundAlerts.reduce((sum, alert) => sum + (alert.weight || 0), 0)
           })
 
@@ -267,13 +274,20 @@ export function generateScoringData(
 
         console.log(`🎯 TRIGGERED: ${strategy.name} for ${ticker} → ${action}`)
         
+        // Get the most recent alert time from the found alerts
+        const mostRecentAlert = foundAlerts.reduce((latest, alert) => {
+          const alertTime = new Date(`1970-01-01 ${alert.time}`)
+          const latestTime = new Date(`1970-01-01 ${latest.time}`)
+          return alertTime > latestTime ? alert : latest
+        })
+        
         triggeredActions.push({
           strategy: strategy.name,
           ticker: ticker,
           timeframe: `${strategy.timeframe || 15}m`,
-          timestamp: new Date().toLocaleTimeString(),
+          timestamp: mostRecentAlert.time, // Use the actual alert time instead of current time
           alertsFound: foundAlerts.map(a => a.trigger),
-          missingAlerts: [`${action} triggered`],
+          missingAlerts: [action], // Simplified action text (just "Buy" or "Sell")
           score: foundAlerts.reduce((sum, alert) => sum + (alert.weight || 0), 0)
         })
 

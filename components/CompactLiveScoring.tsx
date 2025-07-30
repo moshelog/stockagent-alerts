@@ -117,7 +117,16 @@ export function CompactLiveScoring({
       <div className="border-t border-gray-700/50" />
 
       {/* Ticker Table */}
-      <div className="overflow-x-auto overflow-y-auto" style={{ maxHeight: "280px" }}>
+      <div 
+        className="overflow-x-auto border border-gray-700/30 rounded" 
+        style={{ 
+          minHeight: "250px", 
+          maxHeight: "250px",
+          overflowY: "scroll",
+          scrollbarWidth: "thin",
+          scrollbarColor: "#4B5563 #1F2937"
+        }}
+      >
         <table className="w-full">
           <thead className="bg-background border-b border-gray-700 sticky top-0">
             <tr>
@@ -144,7 +153,17 @@ export function CompactLiveScoring({
             </tr>
           </thead>
           <tbody>
-            {tickerData.map((item, index) => (
+            {tickerData.length === 0 ? (
+              // Show placeholder rows to maintain height
+              [...Array(4)].map((_, index) => (
+                <tr key={`placeholder-${index}`} className="border-b border-gray-800/50">
+                  <td className="px-3 py-3 text-xs text-gray-500" colSpan={6}>
+                    {index === 0 ? "Loading strategies..." : ""}
+                  </td>
+                </tr>
+              ))
+            ) : (
+              tickerData.map((item, index) => (
               <motion.tr
                 key={`${item.strategy}-${item.ticker}`}
                 className="border-b border-gray-800/50 hover:bg-gray-800/30 transition-colors"
@@ -178,7 +197,8 @@ export function CompactLiveScoring({
                   </td>
                 )}
               </motion.tr>
-            ))}
+              ))
+            )}
           </tbody>
         </table>
       </div>

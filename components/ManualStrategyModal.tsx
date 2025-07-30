@@ -487,8 +487,8 @@ export default function ManualStrategyModal({ isOpen, onClose, onSave, editingSt
       if (index === 0) {
         return groupText
       } else {
-        // For subsequent groups, use the group's operator to connect to previous groups
-        return `${group.operator} ${groupText}`
+        // For subsequent groups, use OR logic to connect groups
+        return `OR ${groupText}`
       }
     })
 
@@ -684,7 +684,7 @@ export default function ManualStrategyModal({ isOpen, onClose, onSave, editingSt
 
                 {ruleGroups.length > 1 && (
                   <div className="text-xs text-center py-2" style={{ color: "#A3A9B8" }}>
-                    Groups are connected with AND logic
+                    Groups are connected with OR logic
                   </div>
                 )}
               </div>

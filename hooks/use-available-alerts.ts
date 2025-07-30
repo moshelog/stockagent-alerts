@@ -130,17 +130,22 @@ export function useAvailableAlerts() {
           body: JSON.stringify({ weight })
         })
 
-        // Update local state
-        setAlertConfig(prev => ({
-          ...prev,
-          [alertId.includes('nautilus') ? 'nautilus' : 
-           alertId.includes('market_core') ? 'market_core' :
-           alertId.includes('market_waves') ? 'market_waves' : 'extreme_zones']: 
-           prev[alertId.includes('nautilus') ? 'nautilus' : 
-              alertId.includes('market_core') ? 'market_core' :
-              alertId.includes('market_waves') ? 'market_waves' : 'extreme_zones']
-           .map(alert => alert.id === alertId ? { ...alert, weight } : alert)
-        }))
+        // Update local state - find which indicator category this alert belongs to
+        setAlertConfig(prev => {
+          const updatedConfig = { ...prev }
+          
+          // Find which indicator category contains this alert
+          Object.entries(updatedConfig).forEach(([indicator, alerts]) => {
+            const alertIndex = alerts.findIndex(alert => alert.id === alertId)
+            if (alertIndex !== -1) {
+              updatedConfig[indicator as keyof AlertConfig] = alerts.map(alert => 
+                alert.id === alertId ? { ...alert, weight } : alert
+              )
+            }
+          })
+          
+          return updatedConfig
+        })
       }
     } catch (err) {
       console.error('Failed to update alert weight:', err)

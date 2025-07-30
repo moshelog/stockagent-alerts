@@ -173,6 +173,7 @@ interface ManualStrategyModalProps {
     ruleGroups: RuleGroup[]
     threshold: number
     timeframe?: string
+    interGroupOperator?: "AND" | "OR"
   }) => void
   editingStrategy?: Strategy | null
   showWeights?: boolean
@@ -190,6 +191,7 @@ export default function ManualStrategyModal({ isOpen, onClose, onSave, editingSt
   ])
   const [threshold, setThreshold] = useState(0)
   const [timeframe, setTimeframe] = useState("15m")
+  const [interGroupOperator, setInterGroupOperator] = useState<"AND" | "OR">("OR")
 
   const timeframeOptions = [
     { value: "1m", label: "1 Minute" },
@@ -212,6 +214,7 @@ export default function ManualStrategyModal({ isOpen, onClose, onSave, editingSt
           ? `${editingStrategy.timeframe}m` 
           : editingStrategy.timeframe || "15m"
         setTimeframe(timeframeValue)
+        setInterGroupOperator("OR") // Default for existing strategies
 
         // Check if we have rule_groups (database field) or ruleGroups (frontend alias)
         if (editingStrategy.rule_groups && editingStrategy.rule_groups.length > 0) {
@@ -332,6 +335,7 @@ export default function ManualStrategyModal({ isOpen, onClose, onSave, editingSt
         ])
         setThreshold(0)
         setTimeframe("15m")
+        setInterGroupOperator("OR")
       }
     }
   }, [isOpen, editingStrategy])
@@ -445,6 +449,7 @@ export default function ManualStrategyModal({ isOpen, onClose, onSave, editingSt
         ruleGroups,
         threshold,
         timeframe,
+        interGroupOperator,
       }
 
       console.log('✅ Validation passed, calling onSave with:', strategyData)
@@ -487,8 +492,8 @@ export default function ManualStrategyModal({ isOpen, onClose, onSave, editingSt
       if (index === 0) {
         return groupText
       } else {
-        // For subsequent groups, use OR logic to connect groups
-        return `OR ${groupText}`
+        // For subsequent groups, use the selected inter-group operator
+        return `${interGroupOperator} ${groupText}`
       }
     })
 
@@ -683,8 +688,26 @@ export default function ManualStrategyModal({ isOpen, onClose, onSave, editingSt
                 ))}
 
                 {ruleGroups.length > 1 && (
-                  <div className="text-xs text-center py-2" style={{ color: "#A3A9B8" }}>
-                    Groups are connected with OR logic
+                  <div className="flex items-center justify-center gap-2 py-2">
+                    <span className="text-xs" style={{ color: "#A3A9B8" }}>
+                      Groups are connected with
+                    </span>
+                    <Select value={interGroupOperator} onValueChange={(value: "AND" | "OR") => setInterGroupOperator(value)}>
+                      <SelectTrigger className="w-16 h-6 bg-background border-gray-700 text-xs">
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent className="bg-background-surface border-gray-700">
+                        <SelectItem value="AND" className="text-white hover:bg-gray-800 text-xs">
+                          AND
+                        </SelectItem>
+                        <SelectItem value="OR" className="text-white hover:bg-gray-800 text-xs">
+                          OR
+                        </SelectItem>
+                      </SelectContent>
+                    </Select>
+                    <span className="text-xs" style={{ color: "#A3A9B8" }}>
+                      logic
+                    </span>
                   </div>
                 )}
               </div>

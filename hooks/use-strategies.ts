@@ -27,6 +27,8 @@ export interface Strategy {
       weight: number
     }>
   }>
+  // Inter-group operator (how groups are connected)
+  interGroupOperator?: "AND" | "OR"
   // Frontend-specific properties for compatibility
   ruleGroups?: Array<{
     id: string
@@ -132,6 +134,7 @@ export function useStrategies() {
         weight: number
       }>
     }>
+    interGroupOperator?: "AND" | "OR"
   }) => {
     if (!config) {
       console.error('❌ No config available for createStrategy')
@@ -153,7 +156,8 @@ export function useStrategies() {
           rules: strategyData.rules,
           threshold: strategyData.threshold,
           enabled: strategyData.enabled ?? true,
-          ruleGroups: strategyData.ruleGroups // Include group structure
+          ruleGroups: strategyData.ruleGroups, // Include group structure
+          interGroupOperator: strategyData.interGroupOperator || "OR" // Include inter-group operator
         })
       })
 
@@ -227,6 +231,7 @@ export function useStrategies() {
         weight: number
       }>
     }>
+    interGroupOperator: "AND" | "OR"
   }>) => {
     if (!config) return false
 

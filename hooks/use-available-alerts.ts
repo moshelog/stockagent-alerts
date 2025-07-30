@@ -33,8 +33,11 @@ export function useAvailableAlerts() {
     const fetchAvailableAlerts = async () => {
       try {
         setLoading(true)
+        console.log(`📡 Fetching available alerts from: ${config.apiBase}/available-alerts`)
         const response = await fetch(`${config.apiBase}/available-alerts`)
         const data = await response.json()
+
+        console.log(`📋 Raw API data (first 3):`, data.slice(0, 3))
 
         // Transform API data to component format
         const transformed: AlertConfig = {
@@ -50,6 +53,13 @@ export function useAvailableAlerts() {
             name: alert.trigger,
             weight: alert.weight
           }
+
+          console.log(`🔄 Processing alert:`, { 
+            indicator: alert.indicator, 
+            trigger: alert.trigger, 
+            weight: alert.weight,
+            generatedId: alertObj.id 
+          })
 
           // Map indicators to keys
           switch (alert.indicator) {
@@ -68,6 +78,13 @@ export function useAvailableAlerts() {
           }
         })
 
+        console.log(`📊 Transformed data:`, {
+          nautilus: transformed.nautilus.length,
+          market_core: transformed.market_core.length,
+          market_waves: transformed.market_waves.length,
+          extreme_zones: transformed.extreme_zones.length
+        })
+
         setAlertConfig(transformed)
         setError(null)
       } catch (err) {
@@ -83,6 +100,8 @@ export function useAvailableAlerts() {
 
   const updateWeight = async (alertId: string, weight: number) => {
     if (!config) return
+
+    console.log(`🔄 updateWeight called:`, { alertId, weight })
 
     try {
       // Find the alert in our local state to get the full trigger name
@@ -111,24 +130,44 @@ export function useAvailableAlerts() {
         }
       })
 
-      if (!foundAlert) return
+      console.log(`🔍 Found alert:`, { foundAlert, indicatorName })
+
+      if (!foundAlert) {
+        console.error(`❌ Alert not found in local state:`, alertId)
+        return
+      }
 
       // Find the database ID by matching indicator + trigger
+      console.log(`📡 Fetching available alerts from API...`)
       const availableAlertsResponse = await fetch(`${config.apiBase}/available-alerts`)
       const availableAlerts = await availableAlertsResponse.json()
+      console.log(`📋 Available alerts from API:`, availableAlerts.slice(0, 3))
+      
       const dbAlert = availableAlerts.find((a: any) => 
         a.indicator === indicatorName && a.trigger === foundAlert.name
       )
 
+      console.log(`🎯 Database alert match:`, dbAlert)
+
       if (dbAlert) {
+        console.log(`📤 Updating database with weight: ${weight}`)
         // Update in database
-        await fetch(`${config.apiBase}/available-alerts/${dbAlert.id}`, {
+        const updateResponse = await fetch(`${config.apiBase}/available-alerts/${dbAlert.id}`, {
           method: 'PUT',
           headers: {
             'Content-Type': 'application/json'
           },
           body: JSON.stringify({ weight })
         })
+
+        console.log(`📥 Update response:`, { 
+          status: updateResponse.status, 
+          ok: updateResponse.ok 
+        })
+
+        if (!updateResponse.ok) {
+          throw new Error(`Failed to update: ${updateResponse.status}`)
+        }
 
         // Update local state - find which indicator category this alert belongs to
         setAlertConfig(prev => {
@@ -138,6 +177,7 @@ export function useAvailableAlerts() {
           Object.entries(updatedConfig).forEach(([indicator, alerts]) => {
             const alertIndex = alerts.findIndex(alert => alert.id === alertId)
             if (alertIndex !== -1) {
+              console.log(`💾 Updating local state for ${indicator}:${alertId} to weight ${weight}`)
               updatedConfig[indicator as keyof AlertConfig] = alerts.map(alert => 
                 alert.id === alertId ? { ...alert, weight } : alert
               )
@@ -146,6 +186,10 @@ export function useAvailableAlerts() {
           
           return updatedConfig
         })
+
+        console.log(`✅ Weight update completed`)
+      } else {
+        console.error(`❌ Database alert not found:`, { indicatorName, triggerName: foundAlert.name })
       }
     } catch (err) {
       console.error('Failed to update alert weight:', err)

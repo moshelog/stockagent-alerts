@@ -32,6 +32,14 @@ function mapIndicatorName(simplifiedIndicator: string): string {
 }
 
 /**
+ * Normalize ticker names for matching (handles both BTC and BTCUSD formats)
+ */
+function normalizeTicker(ticker: string): string {
+  // Remove USD suffix and convert to uppercase
+  return ticker.replace(/USD$/, '').toUpperCase()
+}
+
+/**
  * Generate scoring data from alerts and strategies
  */
 export function generateScoringData(
@@ -60,14 +68,17 @@ export function generateScoringData(
     return alertTime >= timeWindowAgo
   })
 
-  // Group recent alerts by ticker
+  // Group recent alerts by normalized ticker (both BTC and BTCUSD map to BTC)
   const alertsByTicker = new Map<string, Alert[]>()
   recentAlerts.forEach(alert => {
-    if (!alertsByTicker.has(alert.ticker)) {
-      alertsByTicker.set(alert.ticker, [])
+    const normalizedTicker = normalizeTicker(alert.ticker)
+    if (!alertsByTicker.has(normalizedTicker)) {
+      alertsByTicker.set(normalizedTicker, [])
     }
-    alertsByTicker.get(alert.ticker)!.push(alert)
+    alertsByTicker.get(normalizedTicker)!.push(alert)
   })
+  
+  console.log(`📋 Grouped alerts by ticker:`, Array.from(alertsByTicker.keys()))
 
   const strategyScores: TickerScore[] = []
   let lastAction: LastAction | undefined
@@ -134,7 +145,11 @@ export function generateScoringData(
                 alert.trigger === required.trigger
               )
               
+              console.log(`🔍 OR group search: looking for indicator="${fullIndicatorName}" trigger="${required.trigger}"`)
+              console.log(`📋 Available in ticker alerts:`, tickerAlerts.map(a => `${a.indicator}:${a.trigger}`))
+              
               if (found) {
+                console.log(`✅ OR group match found: ${found.indicator}:${found.trigger}`)
                 foundInGroup = true
                 groupFoundAlerts.push(found)
                 break // Only need one for OR

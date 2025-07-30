@@ -40,7 +40,33 @@ const alertExplanations: { [key: string]: string } = {
   "Buy Signal": "Green triple lines below oscillator — signals potential buying opportunity (bullish).",
   "Sell Signal": "Red triple lines above oscillator — signals potential selling opportunity (bearish).",
   "Bullish Volume Cross": "Bullish volume overtakes bearish — shift toward buying pressure (bullish).",
-  "Bearish Volume Cross": "Bearish volume overtakes bullish — shift toward selling pressure (bearish)."
+  "Bearish Volume Cross": "Bearish volume overtakes bullish — shift toward selling pressure (bearish).",
+  
+  // SMC Alerts
+  "Bullish FVG Created": "A new bullish fair value gap is formed — marks a price imbalance likely to attract buyers (bullish).",
+  "Bearish FVG Created": "A new bearish fair value gap is formed — marks a price imbalance likely to attract sellers (bearish).",
+  "Bullish FVG Break": "Price breaks above a bullish fair value gap — signals confirmation of upward momentum (bullish).",
+  "Bearish Fvg Break": "Price breaks below a bearish fair value gap — signals confirmation of downward momentum (bearish).",
+  "Touching Bullish OB": "Price touches a bullish order block — potential support zone and possible upward bounce (bullish).",
+  "Touching Bearish OB": "Price touches a bearish order block — potential resistance zone and possible downward rejection (bearish).",
+  "Bullish OB Break": "Price breaks above a bullish order block — confirms buyer strength, supporting a move up (bullish).",
+  "Bearish OB Break": "Price breaks below a bearish order block — confirms seller strength, supporting a move down (bearish).",
+  "Bullish Liquidity Crossed": "Price briefly grabs liquidity above a high or below a low before reversing direction (bullish).",
+  "Bearish Liquidity Crossed": "Price briefly grabs liquidity above a high or below a low before reversing direction (bearish).",
+  "Bullish SFP Formed": "Price sweeps a recent low but fails to break down — possible bullish reversal (bullish).",
+  "Bearish SFP Formed": "Price sweeps a recent high but fails to break up — possible bearish reversal (bearish).",
+  "Bullish BoS": "Price breaks the previous high — confirms a bullish trend continuation (bullish).",
+  "Bearish BoS": "Price breaks the previous low — confirms a bearish trend continuation (bearish).",
+  "Bullish ChoCH": "A key level breaks upward, signaling a potential bullish trend reversal (bullish).",
+  "Bearish ChoCH": "A key level breaks downward, signaling a potential bearish trend reversal (bearish).",
+  "Bullish Fibonacci Created": "Price reaches a key Fibonacci retracement level to the upside — possible reaction zone (bullish).",
+  "Bearish Fibonacci Created": "Price reaches a key Fibonacci retracement level to the downside — possible reaction zone (bearish).",
+  "Bullish Channel Breakout": "Price breaks upward out of a channel — may accelerate an uptrend (bullish).",
+  "Bullish Channel Breakdown": "Price breaks downward out of a channel — may accelerate a downtrend (bearish).",
+  "Bearish Channel Breakout": "Price breaks above a resistance zone — signals possible start of an uptrend (bullish).",
+  "Bearish Channel Breakdown": "Price breaks below a support zone — signals possible start of a downtrend (bearish).",
+  "Wedge Breakout": "Price breaks upward out of a wedge pattern — signals potential upward move (bullish).",
+  "Wedge Breakdown": "Price breaks downward out of a wedge pattern — signals potential downward move (bearish)."
 }
 
 interface AvailableAlertsPanelProps {

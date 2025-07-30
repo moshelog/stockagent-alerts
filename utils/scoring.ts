@@ -269,8 +269,31 @@ export function generateScoringData(
       }
     }
 
-    // Only add this strategy to the results if it has at least one matching alert
-    if (bestTicker !== 'N/A' && maxMatches > 0) {
+    // Add this strategy to results if it has matches OR if we want to show all strategies
+    // Show strategies with matches, or if no matches but we want to display all active strategies
+    const shouldShowStrategy = (bestTicker !== 'N/A' && maxMatches > 0) || (maxMatches === 0)
+    
+    console.log(`🤔 Strategy "${strategy.name}": bestTicker=${bestTicker}, maxMatches=${maxMatches}, shouldShow=${shouldShowStrategy}`)
+    
+    if (shouldShowStrategy) {
+      // If no matches found, pick the first ticker for display
+      if (bestTicker === 'N/A' && maxMatches === 0) {
+        const firstTicker = Array.from(alertsByTicker.keys())[0]
+        if (firstTicker) {
+          bestTicker = firstTicker
+          bestFoundAlerts = []
+          // Get all required alerts as missing
+          if (hasRuleGroups) {
+            bestMissingAlerts = strategy.rule_groups.flatMap((group: any) => 
+              group.alerts.map((alert: any) => alert.name)
+            )
+          } else {
+            bestMissingAlerts = strategy.rules.map((rule: any) => rule.trigger)
+          }
+        }
+      }
+      
+      if (bestTicker !== 'N/A') {
       // Check if this strategy is completed (no missing alerts)
       let displayMissingAlerts = bestMissingAlerts
       
@@ -300,6 +323,7 @@ export function generateScoringData(
         missingAlerts: displayMissingAlerts,
         score: bestScore
       })
+      }
     }
   }
 

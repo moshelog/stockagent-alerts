@@ -67,7 +67,10 @@ export function generateScoringData(
 
   // Simple check: For each strategy, scan all recent alerts
   for (const strategy of activeStrategies) {
-    console.log(`🔍 Checking strategy: ${strategy.name}`)
+    console.log(`\n🔍 === CHECKING STRATEGY: ${strategy.name} ===`)
+    console.log(`🎯 Strategy ID: ${strategy.id}`)
+    console.log(`⚙️ Strategy enabled: ${strategy.enabled}`)
+    console.log(`📊 Strategy threshold: ${strategy.threshold}`)
     
     // Get required alerts for this strategy
     let requiredAlerts: Array<{indicator: string, trigger: string}> = []
@@ -75,6 +78,7 @@ export function generateScoringData(
     // Handle complex rule groups properly
     if (strategy.rule_groups && strategy.rule_groups.length > 0) {
       console.log(`📋 Strategy "${strategy.name}" has ${strategy.rule_groups.length} rule groups`)
+      console.log(`📋 Full rule_groups:`, JSON.stringify(strategy.rule_groups, null, 2))
       
       // Group alerts by ticker first
       const alertsByTicker = new Map<string, Alert[]>()
@@ -88,12 +92,15 @@ export function generateScoringData(
 
       // Check each ticker for this strategy
       for (const [ticker, tickerAlerts] of alertsByTicker) {
+        console.log(`\n🎯 Checking ticker: ${ticker} with ${tickerAlerts.length} alerts`)
+        console.log(`📱 Ticker alerts:`, tickerAlerts.map(a => `${a.indicator}:${a.trigger}`))
+        
         let strategyTriggered = false
         let allFoundAlerts: Alert[] = []
 
         // Check each rule group - strategy completes if ANY group completes
         for (const group of strategy.rule_groups) {
-          console.log(`🔍 Checking group with operator: ${group.operator}`)
+          console.log(`\n🔍 Checking group ${group.id || 'unknown'} with operator: ${group.operator}`)
           
           const groupAlerts = group.alerts.map((alert: any) => ({
             indicator: mapIndicatorName(alert.indicator),
@@ -175,7 +182,13 @@ export function generateScoringData(
             action = "Sell"
           }
 
-          console.log(`🎯 TRIGGERED: ${strategy.name} for ${ticker} → ${action}`)
+          console.log(`\n🎯 ===== STRATEGY TRIGGERED =====`)
+          console.log(`📋 Strategy: ${strategy.name}`)
+          console.log(`🎯 Ticker: ${ticker}`)
+          console.log(`⚡ Action: ${action}`)
+          console.log(`📊 Alerts found: ${allFoundAlerts.length}`)
+          console.log(`📝 Alert details:`, allFoundAlerts.map(a => `${a.indicator}:${a.trigger}`))
+          console.log(`===============================\n`)
           
           triggeredActions.push({
             strategy: strategy.name,
@@ -190,6 +203,8 @@ export function generateScoringData(
           if (!lastAction) {
             lastAction = { action, ticker, strategy: strategy.name }
           }
+        } else {
+          console.log(`❌ Strategy NOT triggered for ${ticker} (triggered: ${strategyTriggered}, alerts: ${allFoundAlerts.length})`)
         }
       }
       

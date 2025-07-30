@@ -181,7 +181,13 @@ export function generateScoringData(
 
         strategyCompleted = anyGroupMatched
         foundAlerts = allFoundInGroups
-        missingAlerts = allMissingInGroups
+        
+        // If strategy is completed, don't show missing alerts from incomplete groups
+        if (strategyCompleted) {
+          missingAlerts = [] // Clear missing alerts when strategy is complete
+        } else {
+          missingAlerts = allMissingInGroups
+        }
 
         console.log(`🎯 ${strategy.name} for ${ticker}: completed=${strategyCompleted}, found=${foundAlerts.length}, missing=${missingAlerts.length}`)
         if (foundAlerts.length > 0) {

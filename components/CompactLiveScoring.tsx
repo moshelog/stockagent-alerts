@@ -110,26 +110,6 @@ export function CompactLiveScoring({
             )}
           </div>
           
-          {/* Time Window Selector */}
-          {onTimeWindowChange && (
-            <div className="flex items-center gap-2">
-              <Clock className="w-4 h-4" style={{ color: "#A3A9B8" }} />
-              <select
-                value={timeWindowMinutes}
-                onChange={(e) => onTimeWindowChange(Number(e.target.value))}
-                className="bg-gray-700 text-white text-xs rounded px-2 py-1 border border-gray-600"
-                style={{ color: "#E0E6ED" }}
-              >
-                <option value={15}>15m</option>
-                <option value={30}>30m</option>
-                <option value={60}>1h</option>
-                <option value={120}>2h</option>
-                <option value={240}>4h</option>
-                <option value={720}>12h</option>
-                <option value={1440}>24h</option>
-              </select>
-            </div>
-          )}
         </div>
       </div>
 
@@ -137,7 +117,7 @@ export function CompactLiveScoring({
       <div className="border-t border-gray-700/50" />
 
       {/* Ticker Table */}
-      <div className="overflow-x-auto max-h-96 overflow-y-auto">
+      <div className="overflow-x-auto overflow-y-auto" style={{ maxHeight: "280px" }}>
         <table className="w-full">
           <thead className="bg-background border-b border-gray-700 sticky top-0">
             <tr>

@@ -371,10 +371,10 @@ export default function ManualStrategyModal({ isOpen, onClose, onSave, editingSt
       )
 
       const newGroups = prevGroups.map((group) => {
-        if (checked) {
-          // If we're checking the alert
-          if (group.id === groupId) {
-            // This is the target group - add the alert if not already present
+        if (group.id === groupId) {
+          // Only modify the target group
+          if (checked) {
+            // Add the alert if not already present
             const exists = group.alerts.some((item) => item.id === alertId)
             if (exists) {
               console.log(`Alert ${alertId} already exists in group ${groupId}`)
@@ -395,29 +395,16 @@ export default function ManualStrategyModal({ isOpen, onClose, onSave, editingSt
               ],
             }
           } else {
-            // This is not the target group - remove the alert if it exists (prevent duplicates)
-            const hasAlert = group.alerts.some((item) => item.id === alertId)
-            if (hasAlert) {
-              console.log(`Removing alert ${alertId} from group ${group.id} to prevent duplicates`)
-              return {
-                ...group,
-                alerts: group.alerts.filter((item) => item.id !== alertId),
-              }
-            }
-            return group
-          }
-        } else {
-          // If we're unchecking the alert
-          if (group.id === groupId) {
-            // Only remove from the target group
+            // Remove the alert from this group
             console.log(`Removing alert ${alertId} from group ${groupId}`)
             return {
               ...group,
               alerts: group.alerts.filter((item) => item.id !== alertId),
             }
           }
-          return group
         }
+        // Don't modify other groups - allow same alert in multiple groups
+        return group
       })
 
       console.log(
@@ -804,9 +791,7 @@ export default function ManualStrategyModal({ isOpen, onClose, onSave, editingSt
                               id={`${group.id}-${alert.id}`}
                               checked={isAlertSelectedInGroup(group.id, alert.id)}
                               onCheckedChange={(checked) => handleAlertToggle(group.id, alert.id, checked as boolean)}
-                              disabled={
-                                isAlertSelectedInAnyGroup(alert.id) && !isAlertSelectedInGroup(group.id, alert.id)
-                              }
+                              disabled={false}
                             />
                             <div className="flex-1 min-w-0">
                               <label

@@ -11,3 +11,4 @@ deployment-trigger-$(date +%s)# Force deployment - Mon Jul 28 22:10:06 +07 2025
 # Fix tooltip - remove question mark cursor and scope to text only - Wed Jul 30 08:37:15 PDT 2025
 # Add all Oscillator alert tooltips - Wed Jul 30 08:41:30 PDT 2025
 # Add all SMC alert tooltips - Wed Jul 30 08:45:45 PDT 2025
+# Change weight input to integer values 0-10 with step 1 - Wed Jul 30 08:49:30 PDT 2025

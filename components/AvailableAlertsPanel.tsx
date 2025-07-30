@@ -87,8 +87,8 @@ export default function AvailableAlertsPanel({ alertConfig, onUpdateWeight, show
   const currentAlerts = alerts[selectedIndicator] || []
 
   const handleWeightChange = (alertId: string, weight: number) => {
-    // Clamp weight between -5 and 5
-    const clampedWeight = Math.max(-5, Math.min(5, weight))
+    // Clamp weight between 0 and 10
+    const clampedWeight = Math.max(0, Math.min(10, Math.round(weight)))
     onUpdateWeight?.(alertId, clampedWeight)
   }
 
@@ -172,18 +172,16 @@ export default function AvailableAlertsPanel({ alertConfig, onUpdateWeight, show
                       type="number"
                       value={alert.weight}
                       onChange={(e) => {
-                        const value = Number.parseFloat(e.target.value) || 0
+                        const value = Number.parseInt(e.target.value) || 0
                         handleWeightChange(alert.id, value)
                       }}
-                      min={-5}
-                      max={5}
-                      step={0.1}
+                      min={0}
+                      max={10}
+                      step={1}
                       className={`w-16 h-8 text-xs bg-background border-gray-700 text-center font-medium ${
                         alert.weight > 0
                           ? "text-green-400 border-green-400/30"
-                          : alert.weight < 0
-                            ? "text-red-400 border-red-400/30"
-                            : "text-accent-neutral border-gray-700"
+                          : "text-accent-neutral border-gray-700"
                       }`}
                       placeholder="0"
                     />

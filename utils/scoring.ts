@@ -79,6 +79,13 @@ export function generateScoringData(
     
     if (!hasRuleGroups && (!strategy.rules || strategy.rules.length === 0)) continue
 
+    console.log(`🔍 Processing strategy: ${strategy.name}`)
+    if (hasRuleGroups) {
+      console.log(`📊 Rule groups:`, strategy.rule_groups)
+    } else {
+      console.log(`📊 Rules:`, strategy.rules)
+    }
+
     // Find completed strategies first, then best partial matches
     let bestTicker = 'N/A'
     let maxMatches = 0
@@ -165,6 +172,14 @@ export function generateScoringData(
         foundAlerts = allFoundInGroups
         missingAlerts = allMissingInGroups
 
+        console.log(`🎯 ${strategy.name} for ${ticker}: completed=${strategyCompleted}, found=${foundAlerts.length}, missing=${missingAlerts.length}`)
+        if (foundAlerts.length > 0) {
+          console.log(`✅ Found alerts: ${foundAlerts.map(a => a.trigger).join(', ')}`)
+        }
+        if (missingAlerts.length > 0) {
+          console.log(`❌ Missing alerts: ${missingAlerts.join(', ')}`)
+        }
+
       } else {
         // OLD LOGIC: Fallback to simple rules (all AND)
         const requiredAlerts = strategy.rules.map((rule: any) => ({
@@ -187,6 +202,14 @@ export function generateScoringData(
         }
 
         strategyCompleted = missingAlerts.length === 0
+
+        console.log(`🎯 ${strategy.name} for ${ticker}: completed=${strategyCompleted}, found=${foundAlerts.length}, missing=${missingAlerts.length}`)
+        if (foundAlerts.length > 0) {
+          console.log(`✅ Found alerts: ${foundAlerts.map(a => a.trigger).join(', ')}`)
+        }
+        if (missingAlerts.length > 0) {
+          console.log(`❌ Missing alerts: ${missingAlerts.join(', ')}`)
+        }
       }
 
       // Priority: Complete strategies first, then most matches

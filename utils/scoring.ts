@@ -111,7 +111,8 @@ export function generateScoringData(
 
       if (hasRuleGroups) {
         // NEW LOGIC: Handle rule groups with AND/OR operators
-        let allGroupsMatched = true
+        // Strategy completes if ANY group completes (groups are OR'd together)
+        let anyGroupMatched = false
         const allFoundInGroups: Alert[] = []
         const allMissingInGroups: string[] = []
 
@@ -142,8 +143,8 @@ export function generateScoringData(
 
             if (foundInGroup) {
               allFoundInGroups.push(...groupFoundAlerts)
+              anyGroupMatched = true // This group satisfied the strategy
             } else {
-              allGroupsMatched = false
               // For OR groups, show all options as missing if none found
               allMissingInGroups.push(...groupAlerts.map(g => g.trigger))
             }
@@ -171,14 +172,14 @@ export function generateScoringData(
 
             if (allFoundInGroup) {
               allFoundInGroups.push(...groupFoundAlerts)
+              anyGroupMatched = true // This group satisfied the strategy
             } else {
-              allGroupsMatched = false
               allMissingInGroups.push(...groupMissingAlerts)
             }
           }
         }
 
-        strategyCompleted = allGroupsMatched
+        strategyCompleted = anyGroupMatched
         foundAlerts = allFoundInGroups
         missingAlerts = allMissingInGroups
 

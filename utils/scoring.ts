@@ -40,7 +40,7 @@ function normalizeTicker(ticker: string): string {
 }
 
 /**
- * Generate scoring data from alerts and strategies - Only show triggered actions
+ * SIMPLE: Generate scoring data - Only show triggered buy/sell actions
  */
 export function generateScoringData(
   alerts: Alert[],
@@ -50,187 +50,106 @@ export function generateScoringData(
   tickerData: TickerScore[]
   lastAction: LastAction | undefined
 } {
-  // Get only enabled strategies
-  const activeStrategies = strategies.filter(s => s.enabled)
+  console.log(`🚀 SIMPLE scoring: ${alerts.length} alerts, ${strategies.length} strategies`)
   
+  const activeStrategies = strategies.filter(s => s.enabled)
   if (activeStrategies.length === 0) {
-    return {
-      tickerData: [],
-      lastAction: undefined
-    }
+    console.log(`❌ No active strategies`)
+    return { tickerData: [], lastAction: undefined }
   }
 
-  // Filter alerts to only include those from the specified time window
-  const timeWindowAgo = new Date(Date.now() - timeWindowMinutes * 60 * 1000)
-  const recentAlerts = alerts.filter(alert => {
-    const alertTime = new Date(alert.timestamp)
-    return alertTime >= timeWindowAgo
-  })
-
-  // Group recent alerts by normalized ticker
-  const alertsByTicker = new Map<string, Alert[]>()
-  recentAlerts.forEach(alert => {
-    const normalizedTicker = normalizeTicker(alert.ticker)
-    if (!alertsByTicker.has(normalizedTicker)) {
-      alertsByTicker.set(normalizedTicker, [])
-    }
-    alertsByTicker.get(normalizedTicker)!.push(alert)
-  })
-  
-  console.log(`📋 Scanning ${recentAlerts.length} recent alerts across ${alertsByTicker.size} tickers`)
+  // Take last 50 alerts only
+  const recentAlerts = alerts.slice(0, 50)
+  console.log(`📋 Using ${recentAlerts.length} recent alerts`)
 
   const triggeredActions: TickerScore[] = []
   let lastAction: LastAction | undefined
 
-  // Check each strategy against each ticker to find triggered actions
+  // Simple check: For each strategy, scan all recent alerts
   for (const strategy of activeStrategies) {
-    const hasRuleGroups = strategy.rule_groups && strategy.rule_groups.length > 0
-    
-    if (!hasRuleGroups && (!strategy.rules || strategy.rules.length === 0)) continue
-
     console.log(`🔍 Checking strategy: ${strategy.name}`)
+    
+    // Get required alerts for this strategy
+    let requiredAlerts: Array<{indicator: string, trigger: string}> = []
+    
+    if (strategy.rule_groups && strategy.rule_groups.length > 0) {
+      // Use rule groups - for now, just take first group as example
+      const firstGroup = strategy.rule_groups[0]
+      requiredAlerts = firstGroup.alerts.map((alert: any) => ({
+        indicator: mapIndicatorName(alert.indicator),
+        trigger: alert.name
+      }))
+    } else if (strategy.rules) {
+      requiredAlerts = strategy.rules.map((rule: any) => ({
+        indicator: mapIndicatorName(rule.indicator),
+        trigger: rule.trigger
+      }))
+    }
 
-    // Check each ticker for this strategy
+    if (requiredAlerts.length === 0) continue
+
+    console.log(`📋 Strategy needs:`, requiredAlerts.map(r => `${r.indicator}:${r.trigger}`))
+
+    // Group alerts by ticker
+    const alertsByTicker = new Map<string, Alert[]>()
+    recentAlerts.forEach(alert => {
+      const ticker = normalizeTicker(alert.ticker)
+      if (!alertsByTicker.has(ticker)) {
+        alertsByTicker.set(ticker, [])
+      }
+      alertsByTicker.get(ticker)!.push(alert)
+    })
+
+    // Check each ticker
     for (const [ticker, tickerAlerts] of alertsByTicker) {
-      let strategyCompleted = false
       let foundAlerts: Alert[] = []
+      let allFound = true
 
-      if (hasRuleGroups) {
-        // Handle rule groups with AND/OR operators
-        let anyGroupMatched = false
-        const allFoundInGroups: Alert[] = []
-
-        for (const group of strategy.rule_groups) {
-          const groupAlerts = group.alerts.map((alert: any) => ({
-            indicator: alert.indicator,
-            trigger: alert.name
-          }))
-
-          if (group.operator === 'OR') {
-            // OR group: at least one alert must be found
-            let foundInGroup = false
-            
-            for (const required of groupAlerts) {
-              const fullIndicatorName = mapIndicatorName(required.indicator)
-              const found = tickerAlerts.find(alert => 
-                alert.indicator === fullIndicatorName && 
-                alert.trigger === required.trigger
-              )
-              
-              if (found) {
-                foundInGroup = true
-                allFoundInGroups.push(found)
-                break // Only need one for OR
-              }
-            }
-
-            if (foundInGroup) {
-              anyGroupMatched = true // This group satisfied the strategy
-            }
-
-          } else {
-            // AND group: all alerts must be found
-            let allFoundInGroup = true
-            const groupFoundAlerts: Alert[] = []
-
-            for (const required of groupAlerts) {
-              const fullIndicatorName = mapIndicatorName(required.indicator)
-              const found = tickerAlerts.find(alert => 
-                alert.indicator === fullIndicatorName && 
-                alert.trigger === required.trigger
-              )
-              
-              if (found) {
-                groupFoundAlerts.push(found)
-              } else {
-                allFoundInGroup = false
-                break
-              }
-            }
-
-            if (allFoundInGroup) {
-              allFoundInGroups.push(...groupFoundAlerts)
-              anyGroupMatched = true // This group satisfied the strategy
-            }
-          }
+      // Simple AND logic: find all required alerts
+      for (const required of requiredAlerts) {
+        const found = tickerAlerts.find(alert => 
+          alert.indicator === required.indicator && 
+          alert.trigger === required.trigger
+        )
+        
+        if (found) {
+          foundAlerts.push(found)
+        } else {
+          allFound = false
+          break
         }
-
-        strategyCompleted = anyGroupMatched
-        foundAlerts = allFoundInGroups
-
-      } else {
-        // Fallback to simple rules (all AND)
-        const requiredAlerts = strategy.rules.map((rule: any) => ({
-          indicator: rule.indicator,
-          trigger: rule.trigger
-        }))
-
-        let allFound = true
-        for (const required of requiredAlerts) {
-          const fullIndicatorName = mapIndicatorName(required.indicator)
-          const found = tickerAlerts.find(alert => 
-            alert.indicator === fullIndicatorName && 
-            alert.trigger === required.trigger
-          )
-          
-          if (found) {
-            foundAlerts.push(found)
-          } else {
-            allFound = false
-            break
-          }
-        }
-
-        strategyCompleted = allFound
       }
 
-      // Only add if strategy is completed (triggered)
-      if (strategyCompleted && foundAlerts.length > 0) {
-        // Determine action
-        let action: "Buy" | "Sell"
+      // If all required alerts found, strategy is triggered
+      if (allFound && foundAlerts.length > 0) {
+        // Determine action type
         const strategyName = strategy.name.toLowerCase()
+        let action: "Buy" | "Sell" = "Buy"
         
-        if (strategyName.includes('buy') || strategyName.includes('discount') || strategy.threshold > 0) {
-          action = "Buy"
-        } else if (strategyName.includes('sell') || strategyName.includes('premium') || strategy.threshold < 0) {
+        if (strategyName.includes('sell') || strategyName.includes('premium')) {
           action = "Sell"
-        } else {
-          const score = foundAlerts.reduce((sum, alert) => sum + alert.weight, 0)
-          action = score >= 0 ? "Buy" : "Sell"
         }
 
-        const triggeredAction = `${action} triggered`
+        console.log(`🎯 TRIGGERED: ${strategy.name} for ${ticker} → ${action}`)
         
-        console.log(`🎯 TRIGGERED: ${strategy.name} for ${ticker} → ${triggeredAction}`)
-        
-        // Add to triggered actions
         triggeredActions.push({
           strategy: strategy.name,
           ticker: ticker,
-          timeframe: `${strategy.timeframe}m`,
+          timeframe: `${strategy.timeframe || 15}m`,
           timestamp: new Date().toLocaleTimeString(),
           alertsFound: foundAlerts.map(a => a.trigger),
-          missingAlerts: [triggeredAction],
-          score: foundAlerts.reduce((sum, alert) => sum + alert.weight, 0)
+          missingAlerts: [`${action} triggered`],
+          score: foundAlerts.reduce((sum, alert) => sum + (alert.weight || 0), 0)
         })
 
-        // Set as last action if we don't have one yet
         if (!lastAction) {
-          lastAction = {
-            action,
-            ticker: ticker,
-            strategy: strategy.name
-          }
+          lastAction = { action, ticker, strategy: strategy.name }
         }
       }
     }
   }
 
-  // Sort by most recent (latest timestamp first)
-  triggeredActions.sort((a, b) => b.timestamp.localeCompare(a.timestamp))
-
-  console.log(`🎯 Found ${triggeredActions.length} triggered actions`)
-
+  console.log(`✅ Found ${triggeredActions.length} triggered actions`)
   return {
     tickerData: triggeredActions,
     lastAction

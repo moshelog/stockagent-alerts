@@ -118,15 +118,16 @@ export function CompactLiveScoring({
 
       {/* Ticker Table */}
       <div 
-        className="overflow-x-auto border border-gray-700/30 rounded" 
-        style={{ 
-          minHeight: "250px", 
-          maxHeight: "250px",
-          overflowY: "scroll",
-          scrollbarWidth: "thin",
-          scrollbarColor: "#4B5563 #1F2937"
-        }}
+        className="border border-gray-700/30 rounded relative"
+        style={{ height: "280px" }}
       >
+        <div 
+          className="absolute inset-0 overflow-y-scroll overflow-x-auto"
+          style={{
+            scrollbarWidth: "thin",
+            scrollbarColor: "#4B5563 #1F2937"
+          }}
+        >
         <table className="w-full">
           <thead className="bg-background border-b border-gray-700 sticky top-0">
             <tr>
@@ -154,8 +155,8 @@ export function CompactLiveScoring({
           </thead>
           <tbody>
             {tickerData.length === 0 ? (
-              // Show placeholder rows to maintain height
-              [...Array(4)].map((_, index) => (
+              // Show placeholder rows to maintain height and force scrollbar
+              [...Array(8)].map((_, index) => (
                 <tr key={`placeholder-${index}`} className="border-b border-gray-800/50">
                   <td className="px-3 py-3 text-xs text-gray-500" colSpan={6}>
                     {index === 0 ? "Loading strategies..." : ""}
@@ -163,7 +164,8 @@ export function CompactLiveScoring({
                 </tr>
               ))
             ) : (
-              tickerData.map((item, index) => (
+              [
+                ...tickerData.map((item, index) => (
               <motion.tr
                 key={`${item.strategy}-${item.ticker}`}
                 className="border-b border-gray-800/50 hover:bg-gray-800/30 transition-colors"
@@ -197,10 +199,20 @@ export function CompactLiveScoring({
                   </td>
                 )}
               </motion.tr>
-              ))
+                )),
+                // Add extra rows to ensure scrollbar is always visible
+                ...Array(5).fill(null).map((_, index) => (
+                  <tr key={`spacer-${index}`} className="border-b border-gray-800/50">
+                    <td className="px-3 py-3 text-xs text-transparent" colSpan={6}>
+                      &nbsp;
+                    </td>
+                  </tr>
+                ))
+              ]
             )}
           </tbody>
         </table>
+        </div>
       </div>
 
       {/* Divider */}

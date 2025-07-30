@@ -7,3 +7,4 @@ deployment-trigger-$(date +%s)# Force deployment - Mon Jul 28 22:10:06 +07 2025
 # Fix weight editing and change group logic to OR - Wed Jul 30 08:12:30 PDT 2025
 # Add debugging for weight editing issues - Wed Jul 30 08:18:15 PDT 2025
 # Add inter-group operator control (AND/OR between groups) - Wed Jul 30 08:28:45 PDT 2025
+# Add tooltip for Bullish Peak alert - Wed Jul 30 08:34:20 PDT 2025

@@ -24,6 +24,11 @@ const indicatorOptions = [
   { value: "extreme_zones", label: "Extreme Zones" },
 ]
 
+// Alert explanations for tooltips
+const alertExplanations: { [key: string]: string } = {
+  "Bullish Peak": "Signals a momentum low or exhaustion at the bottom — potential for an upward move (bullish)."
+}
+
 interface AvailableAlertsPanelProps {
   alertConfig?: any
   onUpdateWeight?: (alertId: string, weight: number) => void
@@ -107,7 +112,11 @@ export default function AvailableAlertsPanel({ alertConfig, onUpdateWeight, show
               <div className="flex items-center justify-between gap-3">
                 {/* Alert Name */}
                 <div className="flex-1 min-w-0">
-                  <span className="text-sm font-medium block truncate" style={{ color: "#E0E6ED" }} title={alert.name}>
+                  <span 
+                    className="text-sm font-medium block truncate cursor-help" 
+                    style={{ color: "#E0E6ED" }} 
+                    title={alertExplanations[alert.name] || alert.name}
+                  >
                     {alert.name}
                   </span>
                 </div>

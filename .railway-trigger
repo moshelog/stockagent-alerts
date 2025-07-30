@@ -9,3 +9,4 @@ deployment-trigger-$(date +%s)# Force deployment - Mon Jul 28 22:10:06 +07 2025
 # Add inter-group operator control (AND/OR between groups) - Wed Jul 30 08:28:45 PDT 2025
 # Add tooltip for Bullish Peak alert - Wed Jul 30 08:34:20 PDT 2025
 # Fix tooltip - remove question mark cursor and scope to text only - Wed Jul 30 08:37:15 PDT 2025
+# Add all Oscillator alert tooltips - Wed Jul 30 08:41:30 PDT 2025

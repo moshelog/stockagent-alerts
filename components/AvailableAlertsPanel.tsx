@@ -26,7 +26,21 @@ const indicatorOptions = [
 
 // Alert explanations for tooltips
 const alertExplanations: { [key: string]: string } = {
-  "Bullish Peak": "Signals a momentum low or exhaustion at the bottom — potential for an upward move (bullish)."
+  // Oscillator Alerts
+  "Bullish Peak": "Signals a momentum low or exhaustion at the bottom — potential for an upward move (bullish).",
+  "Bearish Peak": "Signals a momentum high or exhaustion at the top — potential for a downward move (bearish).",
+  "Bullish DipX": "Diamond below oscillator — indicates oversold conditions and a possible bullish reversal (bullish).",
+  "Bearish DipX": "Diamond above oscillator — indicates overbought conditions and a possible bearish reversal (bearish).",
+  "Normal Bullish Divergence": "Oscillator forms higher low while price makes lower low — potential for bullish reversal (bullish).",
+  "Normal Bearish Divergence": "Oscillator forms lower high while price makes higher high — potential for bearish reversal (bearish).",
+  "Hidden Bullish Divergence": "Oscillator makes higher low while price makes higher low — suggests uptrend continuation (bullish).",
+  "Hidden Bearish Divergence": "Oscillator makes lower high while price makes lower high — suggests downtrend continuation (bearish).",
+  "Oscillator Overbought": "Oscillator reaches overbought zone — warns of possible exhaustion or start of a drop (bearish).",
+  "Oscillator Oversold": "Oscillator reaches oversold zone — warns of possible exhaustion or start of a bounce (bullish).",
+  "Buy Signal": "Green triple lines below oscillator — signals potential buying opportunity (bullish).",
+  "Sell Signal": "Red triple lines above oscillator — signals potential selling opportunity (bearish).",
+  "Bullish Volume Cross": "Bullish volume overtakes bearish — shift toward buying pressure (bullish).",
+  "Bearish Volume Cross": "Bearish volume overtakes bullish — shift toward selling pressure (bearish)."
 }
 
 interface AvailableAlertsPanelProps {

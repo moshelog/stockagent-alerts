@@ -81,9 +81,19 @@ export function generateScoringData(
 
     console.log(`🔍 Processing strategy: ${strategy.name}`)
     if (hasRuleGroups) {
-      console.log(`📊 Rule groups:`, strategy.rule_groups)
+      console.log(`📊 Rule groups:`, JSON.stringify(strategy.rule_groups, null, 2))
     } else {
-      console.log(`📊 Rules:`, strategy.rules)
+      console.log(`📊 Rules:`, JSON.stringify(strategy.rules, null, 2))
+    }
+    
+    // Special debugging for the FVG strategy
+    if (strategy.name.toLowerCase().includes('fvg') || strategy.name.toLowerCase().includes('bos')) {
+      console.log(`🚨 FVG/BoS Strategy Debug:`, {
+        name: strategy.name,
+        hasRuleGroups,
+        rule_groups: strategy.rule_groups,
+        rules: strategy.rules
+      })
     }
 
     // Find completed strategies first, then best partial matches

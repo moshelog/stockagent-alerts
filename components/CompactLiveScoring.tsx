@@ -137,7 +137,7 @@ export function CompactLiveScoring({
       <div className="border-t border-gray-700/50" />
 
       {/* Ticker Table */}
-      <div className={`overflow-x-auto ${tickerData.length > 8 ? "max-h-64 overflow-y-auto" : ""}`}>
+      <div className="overflow-x-auto max-h-96 overflow-y-auto">
         <table className="w-full">
           <thead className="bg-background border-b border-gray-700 sticky top-0">
             <tr>
@@ -164,7 +164,7 @@ export function CompactLiveScoring({
             </tr>
           </thead>
           <tbody>
-            {tickerData.slice(0, 20).map((item, index) => (
+            {tickerData.map((item, index) => (
               <motion.tr
                 key={`${item.strategy}-${item.ticker}`}
                 className="border-b border-gray-800/50 hover:bg-gray-800/30 transition-colors"

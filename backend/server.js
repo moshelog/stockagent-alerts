@@ -1604,8 +1604,16 @@ app.get('/test-webhook', asyncHandler(async (req, res) => {
             </div>
 
             <div class="form-group">
-                <label for="trigger">Trigger/Signal:</label>
-                <select id="trigger" name="trigger" required>
+                <label for="triggerMode">Trigger/Signal Source:</label>
+                <select id="triggerMode" name="triggerMode" required>
+                    <option value="database">From Database (Available Alerts)</option>
+                    <option value="custom">Custom Alert (Enter Manually)</option>
+                </select>
+            </div>
+
+            <div class="form-group" id="databaseTriggerGroup">
+                <label for="trigger">Available Triggers:</label>
+                <select id="trigger" name="trigger">
                     ${alertsByIndicator[indicators[0]] ? 
                         alertsByIndicator[indicators[0]].map(trigger => 
                             `<option value="${trigger}">${trigger}</option>`
@@ -1613,6 +1621,14 @@ app.get('/test-webhook', asyncHandler(async (req, res) => {
                         '<option value="Test Signal">Test Signal</option>'
                     }
                 </select>
+            </div>
+
+            <div class="form-group" id="customTriggerGroup" style="display: none;">
+                <label for="customTrigger">Custom Trigger/Signal:</label>
+                <input type="text" id="customTrigger" name="customTrigger" placeholder="Enter custom alert trigger (e.g., Premium Zone Reversed)">
+                <small style="color: #A3A9B8; font-size: 0.85rem; margin-top: 5px; display: block;">
+                    💡 Use this to test new alerts not yet in the database
+                </small>
             </div>
 
             <button type="submit">🚀 Send Alert to Webhook</button>
@@ -1629,11 +1645,21 @@ app.get('/test-webhook', asyncHandler(async (req, res) => {
             e.preventDefault();
             
             const formData = new FormData(e.target);
+            const triggerMode = formData.get('triggerMode');
+            const finalTrigger = triggerMode === 'custom' ? 
+                formData.get('customTrigger') : 
+                formData.get('trigger');
+            
+            if (!finalTrigger || finalTrigger.trim() === '') {
+                alert('Please enter a trigger/signal');
+                return;
+            }
+            
             const data = {
                 ticker: formData.get('ticker').toUpperCase(),
                 timeframe: formData.get('timeframe'),
                 indicator: formData.get('indicator'),
-                trigger: formData.get('trigger'),
+                trigger: finalTrigger.trim(),
                 time: new Date().toISOString()
             };
 
@@ -1671,6 +1697,26 @@ app.get('/test-webhook', asyncHandler(async (req, res) => {
             } catch (error) {
                 resultDiv.className = 'result error';
                 resultDiv.innerHTML = '<strong>❌ Network Error:</strong><br>' + error.message;
+            }
+        });
+
+        // Handle trigger mode switching
+        document.getElementById('triggerMode').addEventListener('change', function() {
+            const databaseGroup = document.getElementById('databaseTriggerGroup');
+            const customGroup = document.getElementById('customTriggerGroup');
+            const triggerSelect = document.getElementById('trigger');
+            const customInput = document.getElementById('customTrigger');
+            
+            if (this.value === 'custom') {
+                databaseGroup.style.display = 'none';
+                customGroup.style.display = 'block';
+                triggerSelect.removeAttribute('required');
+                customInput.setAttribute('required', 'required');
+            } else {
+                databaseGroup.style.display = 'block';
+                customGroup.style.display = 'none';
+                triggerSelect.setAttribute('required', 'required');
+                customInput.removeAttribute('required');
             }
         });
 

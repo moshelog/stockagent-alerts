@@ -4,13 +4,29 @@
 -- Enable UUID extension if not already enabled
 CREATE EXTENSION IF NOT EXISTS "uuid-ossp";
 
+-- Add HTF column if it doesn't exist (for existing databases)
+DO $$ 
+BEGIN
+    IF NOT EXISTS (SELECT 1 FROM information_schema.columns 
+                   WHERE table_name='alerts' AND column_name='htf') THEN
+        ALTER TABLE alerts ADD COLUMN htf text;
+    END IF;
+    
+    IF NOT EXISTS (SELECT 1 FROM information_schema.columns 
+                   WHERE table_name='alerts' AND column_name='timeframe') THEN
+        ALTER TABLE alerts ADD COLUMN timeframe text;
+    END IF;
+END $$;
+
 -- Incoming alerts from TradingView webhooks
 CREATE TABLE IF NOT EXISTS alerts (
   id uuid PRIMARY KEY DEFAULT uuid_generate_v4(),
   ticker text NOT NULL,
+  timeframe text,
   timestamp timestamptz NOT NULL DEFAULT now(),
   indicator text NOT NULL,
   trigger text NOT NULL,
+  htf text,
   created_at timestamptz NOT NULL DEFAULT now()
 );
 

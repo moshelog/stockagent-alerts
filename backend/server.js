@@ -85,15 +85,16 @@ const validateAlertPayload = (req, res, next) => {
 
 /**
  * POST /webhook-json - Receive TradingView alerts (JSON format)
- * Expected payload: { ticker, time?, indicator, trigger }
+ * Expected payload: { ticker, time?, indicator, trigger, htf? }
  */
 app.post('/webhook-json', validateAlertPayload, asyncHandler(async (req, res) => {
-  const { ticker, time, indicator, trigger } = req.body;
+  const { ticker, time, indicator, trigger, htf } = req.body;
   
   logger.info('Webhook received', {
     ticker,
     indicator,
     trigger,
+    htf,
     timestamp: time || new Date().toISOString()
   });
   
@@ -103,6 +104,7 @@ app.post('/webhook-json', validateAlertPayload, asyncHandler(async (req, res) =>
       ticker: ticker.toUpperCase(),
       indicator,
       trigger,
+      htf: htf || null,
       timestamp: time ? 
         (typeof time === 'string' && time.length === 13 ? 
           new Date(parseInt(time)).toISOString() : 
@@ -163,6 +165,7 @@ app.post('/webhook-json', validateAlertPayload, asyncHandler(async (req, res) =>
 /**
  * POST /webhook - Receive TradingView alerts (Primary endpoint)
  * Expected payload: "TICKER|TIMEFRAME|INDICATOR|TRIGGER" or "TICKER|TIMEFRAME|INDICATOR|TRIGGER|TIME"
+ * New structure: "TICKER|INTERVAL|Extreme|TRIGGER|HTF" or "TICKER|INTERVAL|Extreme|TRIGGER|HTF|TIME"
  */
 app.post('/webhook', express.text({ type: '*/*' }), asyncHandler(async (req, res) => {
   const body = req.body.toString().trim();
@@ -173,6 +176,7 @@ app.post('/webhook', express.text({ type: '*/*' }), asyncHandler(async (req, res
   });
 
   // Parse text format: "TICKER|TIMEFRAME|INDICATOR|TRIGGER" or "TICKER|TIMEFRAME|INDICATOR|TRIGGER|TIME"
+  // New structure: "TICKER|INTERVAL|Extreme|TRIGGER|HTF" or "TICKER|INTERVAL|Extreme|TRIGGER|HTF|TIME"
   const parts = body.split('|');
   
   if (parts.length < 4) {
@@ -186,7 +190,24 @@ app.post('/webhook', express.text({ type: '*/*' }), asyncHandler(async (req, res
   const timeframe = parts[1].trim();
   const indicator = parts[2].trim();
   const trigger = parts[3].trim();
-  const time = parts[4] ? parts[4].trim() : null;
+  
+  // Detect new structure vs old structure
+  let htf = null;
+  let time = null;
+  
+  if (parts.length >= 5) {
+    const fifthPart = parts[4].trim();
+    const sixthPart = parts[5] ? parts[5].trim() : null;
+    
+    // If indicator is "Extreme" and we have 5+ parts, likely new structure
+    if (indicator.toLowerCase() === 'extreme' && fifthPart) {
+      htf = fifthPart;
+      time = sixthPart; // Time might be in 6th position for new structure
+    } else {
+      // Old structure: 5th part is time
+      time = fifthPart;
+    }
+  }
 
   // Validate required fields
   if (!ticker || !timeframe || !indicator || !trigger) {
@@ -202,6 +223,7 @@ app.post('/webhook', express.text({ type: '*/*' }), asyncHandler(async (req, res
     timeframe,
     indicator,
     trigger,
+    htf,
     timestamp: time || new Date().toISOString()
   });
 
@@ -212,6 +234,7 @@ app.post('/webhook', express.text({ type: '*/*' }), asyncHandler(async (req, res
       timeframe,
       indicator,
       trigger,
+      htf: htf || null,
       timestamp: time ? 
         (typeof time === 'string' && time.length === 13 ? 
           new Date(parseInt(time)).toISOString() : 

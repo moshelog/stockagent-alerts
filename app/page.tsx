@@ -568,7 +568,7 @@ export default function Dashboard() {
         <MobileAlertsAccordion alertConfig={alertConfig} onUpdateWeight={updateWeight} showWeights={config.ui.showWeights} />
 
         {/* Desktop Grid Layout */}
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 min-h-[800px]">
+        <div className="grid grid-cols-1 lg:grid-cols-[55%_45%] gap-6 min-h-[800px]">
           {/* Left Column */}
           <div className="flex flex-col h-full space-y-4">
             {/* Top Left - Recent Alerts (Flexible height) */}

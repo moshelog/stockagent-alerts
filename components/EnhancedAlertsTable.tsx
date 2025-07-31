@@ -13,6 +13,7 @@ interface Alert {
   indicator: string
   trigger: string
   weight: number
+  htf?: string
 }
 
 interface EnhancedAlertsTableProps {
@@ -22,7 +23,7 @@ interface EnhancedAlertsTableProps {
   showWeights?: boolean
 }
 
-type SortField = 'time' | 'ticker' | 'timeframe' | 'indicator' | 'trigger' | 'weight'
+type SortField = 'time' | 'ticker' | 'timeframe' | 'indicator' | 'trigger' | 'weight' | 'htf'
 type SortDirection = 'asc' | 'desc'
 
 export function EnhancedAlertsTable({ alerts, loading, onClearAlerts, showWeights = true }: EnhancedAlertsTableProps) {
@@ -202,6 +203,16 @@ export function EnhancedAlertsTable({ alerts, loading, onClearAlerts, showWeight
                   </div>
                 </th>
               )}
+              <th 
+                className="px-4 py-3 text-left text-sm font-medium cursor-pointer hover:bg-gray-800/50 transition-colors group"
+                style={{ color: "#A3A9B8" }}
+                onClick={() => handleSort('htf')}
+              >
+                <div className="flex items-center justify-between">
+                  HTF
+                  {getSortIcon('htf')}
+                </div>
+              </th>
             </tr>
           </thead>
           <tbody>
@@ -247,6 +258,15 @@ export function EnhancedAlertsTable({ alerts, loading, onClearAlerts, showWeight
                     </div>
                   </td>
                 )}
+                <td className="px-4 py-3 text-sm" style={{ color: "#A3A9B8" }}>
+                  {alert.htf ? (
+                    <span className="bg-purple-900/30 px-2 py-1 rounded text-xs font-mono text-purple-300">
+                      {alert.htf}
+                    </span>
+                  ) : (
+                    <span className="text-gray-500 text-xs">-</span>
+                  )}
+                </td>
               </motion.tr>
             ))}
           </tbody>

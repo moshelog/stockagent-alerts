@@ -36,8 +36,8 @@ export default function Dashboard() {
   const [timeWindowMinutes, setTimeWindowMinutes] = useState(60)
   
   const { config, loading: configLoading, error: configError, updateConfig } = useConfig()
-  const { alerts, score, strategies: apiStrategies, loading: tradingDataLoading } = useTradingData(timeWindowMinutes)
   const { alertConfig, loading: alertsLoading, updateWeight } = useAvailableAlerts()
+  const { alerts, score, strategies: apiStrategies, loading: tradingDataLoading } = useTradingData(timeWindowMinutes, alertConfig)
   const { totalCount: totalAlertsCount, loading: totalAlertsLoading } = useTotalAlerts()
   const { clearAlerts } = useClearAlerts()
 
@@ -568,12 +568,19 @@ export default function Dashboard() {
         <MobileAlertsAccordion alertConfig={alertConfig} onUpdateWeight={updateWeight} showWeights={config.ui.showWeights} />
 
         {/* Desktop Grid Layout */}
-        <div className="grid grid-cols-1 lg:grid-cols-4 gap-6">
-          {/* Left Column - Recent Alerts and Strategy Manager (2/3 width) */}
-          <div className="lg:col-span-2 space-y-6">
-            {config.ui.showAlertsTable && <EnhancedAlertsTable alerts={alerts} onClearAlerts={handleClearAlerts} showWeights={config.ui.showWeights} />}
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 min-h-[800px]">
+          {/* Left Column */}
+          <div className="flex flex-col h-full space-y-4">
+            {/* Top Left - Recent Alerts (Flexible height) */}
+            {config.ui.showAlertsTable && (
+              <div className="flex-1 min-h-[400px]">
+                <EnhancedAlertsTable alerts={alerts} onClearAlerts={handleClearAlerts} showWeights={config.ui.showWeights} />
+              </div>
+            )}
 
+            {/* Bottom Left - Strategy Manager (Fixed height) */}
             {config.ui.showStrategyPanel && (
+              <div className="flex-shrink-0">
               <StrategyManagerPanel
                 strategies={dbStrategies}
                 alertConfig={alertConfig}
@@ -644,30 +651,32 @@ export default function Dashboard() {
                 }}
                 enabledAlerts={enabledAlerts}
               />
+              </div>
             )}
           </div>
 
-          {/* Right Column - Live Scoring and Available Alerts (1/3 width) */}
-          <div className="lg:col-span-2 space-y-6">
-            {/* Scoring System Title */}
-            <div className="mb-4">
-              <h2 className="text-lg font-semibold text-white">Scoring System</h2>
-            </div>
-
+          {/* Right Column */}
+          <div className="flex flex-col h-full space-y-4">
+            {/* Top Right - Scoring System */}
             {config.ui.showScoreMeter && (
-              <CompactLiveScoring
-                lastAction={lastAction}
-                tickerData={tickerData}
-                totalAlerts={totalAlertsCount}
-                activeStrategies={dbStrategies.filter((s) => s.enabled).length}
-                timeWindowMinutes={timeWindowMinutes}
-                onTimeWindowChange={setTimeWindowMinutes}
-                showWeights={config.ui.showWeights}
-              />
+              <div className="flex-shrink-0">
+                <div className="mb-4">
+                  <h2 className="text-lg font-semibold text-white">Scoring System</h2>
+                </div>
+                <CompactLiveScoring
+                  lastAction={lastAction}
+                  tickerData={tickerData}
+                  totalAlerts={totalAlertsCount}
+                  activeStrategies={dbStrategies.filter((s) => s.enabled).length}
+                  timeWindowMinutes={timeWindowMinutes}
+                  onTimeWindowChange={setTimeWindowMinutes}
+                  showWeights={config.ui.showWeights}
+                />
+              </div>
             )}
 
-            {/* Available Alerts Panel - Desktop Only */}
-            <div className="hidden lg:block">
+            {/* Bottom Right - Available Alerts Panel (Expanded) */}
+            <div className="hidden lg:block flex-1 min-h-0">
               <AvailableAlertsPanel alertConfig={alertConfig} onUpdateWeight={updateWeight} showWeights={config.ui.showWeights} />
             </div>
           </div>

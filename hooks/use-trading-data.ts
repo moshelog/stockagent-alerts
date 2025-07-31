@@ -30,7 +30,7 @@ export interface Strategy {
   }
 }
 
-export function useTradingData(timeWindowMinutes: number = 60) {
+export function useTradingData(timeWindowMinutes: number = 60, alertConfig?: any) {
   const { config } = useConfig()
   const [alerts, setAlerts] = useState<Alert[]>([])
   const [score, setScore] = useState<Score>({ score: 0, status: "NEUTRAL" })
@@ -44,23 +44,115 @@ export function useTradingData(timeWindowMinutes: number = 60) {
       try {
         // Fetch real alerts from backend API
         const alertsResponse = await fetch(`${config.apiBase}/alerts`)
+        if (!alertsResponse.ok) {
+          throw new Error(`Failed to fetch alerts: ${alertsResponse.status}`)
+        }
         const alertsData = await alertsResponse.json()
-        
-        // Fetch available alerts to get weights
-        const availableAlertsResponse = await fetch(`${config.apiBase}/available-alerts`)
-        const availableAlertsData = await availableAlertsResponse.json()
         
         // Create a lookup map for weights
         const weightMap = new Map<string, number>()
-        availableAlertsData.forEach((availableAlert: any) => {
-          const key = `${availableAlert.indicator}|${availableAlert.trigger}`
-          weightMap.set(key, availableAlert.weight)
-        })
+        
+        if (alertConfig && typeof alertConfig === 'object' && Object.keys(alertConfig).length > 0) {
+          // Use current alertConfig if provided (real-time weights)
+          try {
+            Object.entries(alertConfig).forEach(([indicator, alerts]: [string, any]) => {
+              if (Array.isArray(alerts) && alerts.length > 0) {
+                const indicatorName = {
+                  'nautilus': 'Nautilus™',
+                  'market_core': 'Market Core Pro™', 
+                  'market_waves': 'Market Waves Pro™',
+                  'extreme_zones': 'Extreme Zones'
+                }[indicator] || indicator
+                
+                alerts.forEach((alert: any) => {
+                  if (alert && alert.name && typeof alert.weight === 'number') {
+                    const key = `${indicatorName}|${alert.name}`
+                    weightMap.set(key, alert.weight)
+                  }
+                })
+              }
+            })
+          } catch (error) {
+            console.warn('Error processing alertConfig, falling back to API:', error)
+          }
+        }
+        
+        // Always fallback to API if alertConfig is not available or failed to process
+        if (weightMap.size === 0) {
+          try {
+            const availableAlertsResponse = await fetch(`${config.apiBase}/available-alerts`)
+            const availableAlertsData = await availableAlertsResponse.json()
+            
+            availableAlertsData.forEach((availableAlert: any) => {
+              if (availableAlert && availableAlert.indicator && availableAlert.trigger) {
+                const key = `${availableAlert.indicator}|${availableAlert.trigger}`
+                weightMap.set(key, availableAlert.weight || 0)
+              }
+            })
+          } catch (error) {
+            console.error('Failed to fetch available alerts for weights:', error)
+          }
+        }
 
         // Transform backend data to frontend format with real weights
         const transformedAlerts: Alert[] = alertsData.map((alert: any) => {
-          const key = `${alert.indicator}|${alert.trigger}`
+          // Handle indicator name variations (both directions)
+          const normalizeIndicator = (indicator: string) => {
+            const mapping: { [key: string]: string } = {
+              // From alerts table to available_alerts table format
+              'SMC': 'Market Core Pro™',
+              'Oscillator': 'Nautilus™',
+              'Trend': 'Market Waves Pro™',
+              'Zones': 'Extreme Zones',
+              // Direct matches
+              'Market Core Pro™': 'Market Core Pro™',
+              'Nautilus™': 'Nautilus™',
+              'Market Waves Pro™': 'Market Waves Pro™',
+              'Extreme Zones': 'Extreme Zones'
+            }
+            return mapping[indicator] || indicator
+          }
+          
+          const normalizedIndicator = normalizeIndicator(alert.indicator)
+          
+          // Handle trigger name variations
+          const normalizeTrigger = (trigger: string) => {
+            const mapping: { [key: string]: string } = {
+              // Common variations
+              'Bullish OB Touch': 'Touching Bullish OB',
+              'Bearish OB Touch': 'Touching Bearish OB',
+              'Bullish OB Breakout': 'Bullish OB Break',
+              'Bearish OB Breakout': 'Bearish OB Break',
+              'Bullish Liquidity Grab Crossed': 'Bullish Liquidity Crossed',
+              'Bearish Liquidity Grab Crossed': 'Bearish Liquidity Crossed',
+              'Bearish Liquidity Grab Created': 'Bearish Liquidity Created',
+              'Bullish Liquidity Grab Created': 'Bullish Liquidity Created',
+              // Direct matches (most common)
+              'Bullish BoS': 'Bullish BoS',
+              'Bearish BoS': 'Bearish BoS',
+              'Bullish ChoCH': 'Bullish ChoCH',
+              'Bearish ChoCH': 'Bearish ChoCH',
+              'Bullish FVG Break': 'Bullish FVG Break',
+              'Bearish FVG Break': 'Bearish FVG Break',
+              'Bullish DipX': 'Bullish DipX',
+              'Bearish DipX': 'Bearish DipX'
+            }
+            return mapping[trigger] || trigger
+          }
+          
+          const normalizedTrigger = normalizeTrigger(alert.trigger)
+          const key = `${normalizedIndicator}|${normalizedTrigger}`
           const weight = weightMap.get(key) || 0
+          
+          console.log(`🔍 Weight lookup for alert:`, {
+            originalIndicator: alert.indicator,
+            normalizedIndicator,
+            originalTrigger: alert.trigger,
+            normalizedTrigger,
+            lookupKey: key,
+            foundWeight: weight,
+            availableKeys: Array.from(weightMap.keys()).slice(0, 10)
+          })
           
           return {
             id: alert.id,
@@ -116,7 +208,7 @@ export function useTradingData(timeWindowMinutes: number = 60) {
     const interval = setInterval(fetchData, config.pollIntervalMs)
 
     return () => clearInterval(interval)
-  }, [config, timeWindowMinutes])
+  }, [config, timeWindowMinutes, alertConfig])
 
   return { alerts, score, strategies, loading }
 }

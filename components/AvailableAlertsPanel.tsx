@@ -4,6 +4,7 @@ import { useState } from "react"
 import { motion } from "framer-motion"
 import { Bell } from "lucide-react"
 import { Input } from "@/components/ui/input"
+import { Button } from "@/components/ui/button"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Label } from "@/components/ui/label"
 
@@ -23,6 +24,22 @@ const indicatorOptions = [
   { value: "market_waves", label: "Waves" },
   { value: "extreme_zones", label: "Extreme Zones" },
 ]
+
+// Function to get default weight based on alert name
+const getDefaultWeight = (alertName: string): number => {
+  const bearishKeywords = ['bearish', 'sell', 'overbought', 'premium', 'breakdown', 'down']
+  const bullishKeywords = ['bullish', 'buy', 'oversold', 'discount', 'breakout', 'up']
+  
+  const lowerName = alertName.toLowerCase()
+  
+  if (bearishKeywords.some(keyword => lowerName.includes(keyword))) {
+    return -1
+  } else if (bullishKeywords.some(keyword => lowerName.includes(keyword))) {
+    return 1
+  }
+  
+  return 0 // Neutral for alerts that don't clearly indicate direction
+}
 
 // Alert explanations for tooltips
 const alertExplanations: { [key: string]: string } = {
@@ -87,9 +104,16 @@ export default function AvailableAlertsPanel({ alertConfig, onUpdateWeight, show
   const currentAlerts = alerts[selectedIndicator] || []
 
   const handleWeightChange = (alertId: string, weight: number) => {
-    // Clamp weight between 0 and 10
-    const clampedWeight = Math.max(0, Math.min(10, Math.round(weight)))
+    // Clamp weight between -10 and +10
+    const clampedWeight = Math.max(-10, Math.min(10, Math.round(weight)))
     onUpdateWeight?.(alertId, clampedWeight)
+  }
+
+  const setDefaultWeights = () => {
+    currentAlerts.forEach(alert => {
+      const defaultWeight = getDefaultWeight(alert.name)
+      handleWeightChange(alert.id, defaultWeight)
+    })
   }
 
   return (
@@ -133,6 +157,23 @@ export default function AvailableAlertsPanel({ alertConfig, onUpdateWeight, show
         </Select>
       </div>
 
+      {/* Set Defaults Button */}
+      {showWeights && currentAlerts.length > 0 && (
+        <div className="mb-4">
+          <Button
+            onClick={setDefaultWeights}
+            variant="outline"
+            size="sm"
+            className="bg-background border-gray-700 hover:border-gray-600 text-accent-neutral hover:text-white transition-colors"
+          >
+            Set Defaults
+          </Button>
+          <p className="text-xs text-accent-neutral mt-1">
+            Sets bearish alerts to -1 and bullish alerts to 1
+          </p>
+        </div>
+      )}
+
       {/* Dynamic Alert List */}
       <div className="space-y-3 max-h-80 overflow-y-auto pr-2">
         <motion.div
@@ -175,13 +216,15 @@ export default function AvailableAlertsPanel({ alertConfig, onUpdateWeight, show
                         const value = Number.parseInt(e.target.value) || 0
                         handleWeightChange(alert.id, value)
                       }}
-                      min={0}
+                      min={-10}
                       max={10}
                       step={1}
                       className={`w-16 h-8 text-xs bg-background border-gray-700 text-center font-medium ${
                         alert.weight > 0
                           ? "text-green-400 border-green-400/30"
-                          : "text-accent-neutral border-gray-700"
+                          : alert.weight < 0
+                            ? "text-red-400 border-red-400/30"
+                            : "text-accent-neutral border-gray-700"
                       }`}
                       placeholder="0"
                     />

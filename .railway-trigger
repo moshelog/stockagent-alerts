@@ -12,3 +12,21 @@ deployment-trigger-$(date +%s)# Force deployment - Mon Jul 28 22:10:06 +07 2025
 # Add all Oscillator alert tooltips - Wed Jul 30 08:41:30 PDT 2025
 # Add all SMC alert tooltips - Wed Jul 30 08:45:45 PDT 2025
 # Change weight input to integer values 0-10 with step 1 - Wed Jul 30 08:49:30 PDT 2025
+# Add Set Defaults button and change range to -10/+10 - Wed Jul 30 08:52:45 PDT 2025
+# Reorganize layout: scoring top-left, recent alerts below (2x height), available alerts top-right, strategy manager below - Wed Jul 30 08:56:30 PDT 2025
+# Fix weight synchronization between Recent Alerts and Available Alerts - Wed Jul 30 09:02:15 PDT 2025
+# Fix initialization error with proper hook ordering and null checks - Wed Jul 30 09:06:45 PDT 2025
+# Add admin panel with indicators and alerts management APIs - Wed Jul 30 09:15:30 PDT 2025
+# Fix admin panel error handling and add API status indicator - Wed Jul 30 09:22:15 PDT 2025
+# Fix test webhook to use correct JSON endpoint - Wed Jul 30 09:26:45 PDT 2025
+# Fix weight mapping with indicator and trigger name normalization - Wed Jul 30 09:32:15 PDT 2025
+# Fix admin panel 404 error handling and add SQL fallback - Wed Jul 30 09:38:30 PDT 2025
+# Force backend deployment with admin API endpoints - Wed Jul 30 21:07:04 +07 2025
+# Force admin API deployment - Wed Jul 30 21:09:14 +07 2025
+# Reorganize dashboard layout - Recent alerts top-left, Scoring top-right, Available alerts bottom-right, Strategy manager bottom-left - Wed Jul 30 21:24:53 +07 2025
+# Fix vertical spacing in right column - remove large gap between Scoring System and Available Alerts - Wed Jul 30 21:33:55 +07 2025
+# Fix left column spacing - reduce gap between Recent Alerts and Strategy Manager using flex layout - Wed Jul 30 21:42:55 +07 2025
+# Align Available Alerts panel height with Strategy Manager panel using flex proportions (60/40 split) - Wed Jul 30 21:50:18 +07 2025
+# Revert height alignment changes - restore flexible layout with optimal space usage - Wed Jul 30 21:51:47 +07 2025
+# Increase Available Alerts panel height by 30% using flex-[3] vs flex-[2] for Scoring System - Wed Jul 30 22:05:28 +07 2025
+# Revert Available Alerts height increase - restore original flex layout (flex-shrink-0 + flex-1) - Wed Jul 30 22:20:57 +07 2025

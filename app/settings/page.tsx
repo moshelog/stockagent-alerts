@@ -418,13 +418,18 @@ export default function SettingsPage() {
                 </div>
                 <div className="flex items-center gap-2 mt-2">
                   <p className="text-xs" style={{ color: "#A3A9B8" }}>
-                    This is your unique webhook endpoint for receiving alerts
+                    This is your unique webhook endpoint for receiving alerts.
+                    <br />
+                    <span className="text-xs opacity-75">
+                      For JSON payloads, append: <code className="bg-gray-800 px-1 rounded text-blue-300">/webhook-json</code>
+                    </span>
                   </p>
                   <button
                     onClick={async () => {
                       try {
-                        // Use the webhook URL from config to send test webhook
-                        const response = await fetch(config.webhookUrl, {
+                        // Use the JSON webhook endpoint for testing
+                        const jsonWebhookUrl = config.webhookUrl.replace('/webhook', '/webhook-json')
+                        const response = await fetch(jsonWebhookUrl, {
                           method: "POST",
                           headers: { "Content-Type": "application/json" },
                           body: JSON.stringify({ 

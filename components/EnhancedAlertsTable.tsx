@@ -136,7 +136,7 @@ export function EnhancedAlertsTable({ alerts, loading, onClearAlerts, showWeight
         )}
       </div>
 
-      <div className="overflow-x-auto max-h-80 overflow-y-auto">
+      <div className="overflow-x-auto max-h-[600px] overflow-y-auto">
         <table className="w-full">
           <thead className="bg-background border-b border-gray-700">
             <tr>

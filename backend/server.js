@@ -11,6 +11,8 @@ const { logger, requestLogger, errorLogger } = require('./middleware/logger');
 const app = express();
 const PORT = process.env.PORT || 3001;
 
+// Admin API endpoints deployment fix - 2025-07-30T21:08:00
+
 // Middleware
 app.use(helmet({
   contentSecurityPolicy: {
@@ -932,6 +934,205 @@ app.put('/api/available-alerts/:id', asyncHandler(async (req, res) => {
   }
   
   res.json(data);
+}));
+
+// ============================================================================
+// INDICATORS MANAGEMENT API
+// ============================================================================
+
+/**
+ * GET /api/indicators - Get all indicators
+ */
+app.get('/api/indicators', asyncHandler(async (req, res) => {
+  const { data, error } = await supabase
+    .from('indicators')
+    .select('*')
+    .order('name');
+  
+  if (error) {
+    return res.status(500).json({ error: error.message });
+  }
+  
+  res.json(data);
+}));
+
+/**
+ * POST /api/indicators - Create new indicator
+ */
+app.post('/api/indicators', asyncHandler(async (req, res) => {
+  const { name, display_name, description, category } = req.body;
+  
+  if (!name || !display_name) {
+    return res.status(400).json({ 
+      error: 'Missing required fields', 
+      required: ['name', 'display_name'] 
+    });
+  }
+  
+  const { data, error } = await supabase
+    .from('indicators')
+    .insert({
+      name: name.toLowerCase(),
+      display_name,
+      description,
+      category: category || 'general',
+      enabled: true
+    })
+    .select()
+    .single();
+  
+  if (error) {
+    return res.status(500).json({ error: error.message });
+  }
+  
+  res.json(data);
+}));
+
+/**
+ * PUT /api/indicators/:id - Update indicator
+ */
+app.put('/api/indicators/:id', asyncHandler(async (req, res) => {
+  const { id } = req.params;
+  const { name, display_name, description, category, enabled } = req.body;
+  
+  const updateData = {};
+  if (name !== undefined) updateData.name = name.toLowerCase();
+  if (display_name !== undefined) updateData.display_name = display_name;
+  if (description !== undefined) updateData.description = description;
+  if (category !== undefined) updateData.category = category;
+  if (enabled !== undefined) updateData.enabled = enabled;
+  
+  const { data, error } = await supabase
+    .from('indicators')
+    .update(updateData)
+    .eq('id', id)
+    .select()
+    .single();
+  
+  if (error) {
+    return res.status(500).json({ error: error.message });
+  }
+  
+  res.json(data);
+}));
+
+/**
+ * DELETE /api/indicators/:id - Delete indicator
+ */
+app.delete('/api/indicators/:id', asyncHandler(async (req, res) => {
+  const { id } = req.params;
+  
+  // Check if indicator has associated alerts
+  const { data: alerts, error: alertsError } = await supabase
+    .from('available_alerts')
+    .select('id')
+    .eq('indicator_id', id);
+  
+  if (alertsError) {
+    return res.status(500).json({ error: alertsError.message });
+  }
+  
+  if (alerts && alerts.length > 0) {
+    return res.status(400).json({ 
+      error: 'Cannot delete indicator with associated alerts',
+      alertCount: alerts.length
+    });
+  }
+  
+  const { error } = await supabase
+    .from('indicators')
+    .delete()
+    .eq('id', id);
+  
+  if (error) {
+    return res.status(500).json({ error: error.message });
+  }
+  
+  res.json({ success: true });
+}));
+
+// ============================================================================
+// ENHANCED ALERTS MANAGEMENT API
+// ============================================================================
+
+/**
+ * POST /api/available-alerts - Create new alert (Admin Panel)
+ */
+app.post('/api/available-alerts', asyncHandler(async (req, res) => {
+  const { indicator, trigger, weight, enabled, tooltip, indicator_id } = req.body;
+  
+  if (!indicator || !trigger) {
+    return res.status(400).json({ 
+      error: 'Missing required fields', 
+      required: ['indicator', 'trigger'] 
+    });
+  }
+  
+  const { data, error } = await supabase
+    .from('available_alerts')
+    .insert({
+      indicator,
+      trigger,
+      weight: parseFloat(weight) || 0,
+      enabled: enabled !== undefined ? enabled : true,
+      tooltip: tooltip || null,
+      indicator_id: indicator_id || null
+    })
+    .select()
+    .single();
+  
+  if (error) {
+    return res.status(500).json({ error: error.message });
+  }
+  
+  res.json(data);
+}));
+
+/**
+ * PUT /api/available-alerts/:id - Enhanced update for available alerts
+ */
+app.put('/api/available-alerts/:id', asyncHandler(async (req, res) => {
+  const { id } = req.params;
+  const { weight, enabled, tooltip, trigger, indicator, indicator_id } = req.body;
+  
+  const updateData = {};
+  if (weight !== undefined) updateData.weight = parseFloat(weight);
+  if (enabled !== undefined) updateData.enabled = enabled;
+  if (tooltip !== undefined) updateData.tooltip = tooltip;
+  if (trigger !== undefined) updateData.trigger = trigger;
+  if (indicator !== undefined) updateData.indicator = indicator;
+  if (indicator_id !== undefined) updateData.indicator_id = indicator_id;
+  
+  const { data, error } = await supabase
+    .from('available_alerts')
+    .update(updateData)
+    .eq('id', id)
+    .select()
+    .single();
+  
+  if (error) {
+    return res.status(500).json({ error: error.message });
+  }
+  
+  res.json(data);
+}));
+
+/**
+ * DELETE /api/available-alerts/:id - Delete alert
+ */
+app.delete('/api/available-alerts/:id', asyncHandler(async (req, res) => {
+  const { id } = req.params;
+  
+  const { error } = await supabase
+    .from('available_alerts')
+    .delete()
+    .eq('id', id);
+  
+  if (error) {
+    return res.status(500).json({ error: error.message });
+  }
+  
+  res.json({ success: true });
 }));
 
 // ============================================================================

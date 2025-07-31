@@ -248,14 +248,14 @@ export default function ManualStrategyModal({ isOpen, onClose, onSave, editingSt
                 case 'extreme zones':
                   return 'extreme_zones'
                 default:
-                  return dbIndicator.toLowerCase()
+                  return dbIndicator.toLowerCase().replace(/[^a-z0-9]/g, '_')
               }
             }
 
             const indicatorKey = mapIndicatorKey(rule.indicator)
             foundIndicator = indicatorKey
 
-            // Find the alert in our local data
+            // Find the alert in our current data (API or fallback)
             const alertsForIndicator = indicatorAlerts[indicatorKey] || []
             foundAlert = alertsForIndicator.find((a) => 
               a.name.toLowerCase() === rule.trigger.toLowerCase()
@@ -265,7 +265,7 @@ export default function ManualStrategyModal({ isOpen, onClose, onSave, editingSt
               id: foundAlert?.id || rule.trigger.toLowerCase().replace(/[^a-z0-9]/g, '_'),
               indicator: foundIndicator,
               name: rule.trigger,
-              weight: foundAlert?.weight || 0,
+              weight: foundAlert?.weight || rule.weight || 0,
             }
           })
 
@@ -283,7 +283,7 @@ export default function ManualStrategyModal({ isOpen, onClose, onSave, editingSt
         } else if (editingStrategy.components && Object.keys(editingStrategy.components).length > 0) {
           // Convert legacy components to rule groups format (fallback)
           const alerts = Object.keys(editingStrategy.components).map((alertId) => {
-            // Find the alert in our data to get its details
+            // Find the alert in our current data (API or fallback)
             let foundAlert: Alert | null = null
             let foundIndicator = ""
 
@@ -300,7 +300,7 @@ export default function ManualStrategyModal({ isOpen, onClose, onSave, editingSt
               id: alertId,
               indicator: foundIndicator,
               name: foundAlert?.name || alertId.replace(/_/g, " "),
-              weight: editingStrategy.components[alertId],
+              weight: foundAlert?.weight || editingStrategy.components[alertId] || 0,
             }
           })
 
@@ -547,7 +547,13 @@ export default function ManualStrategyModal({ isOpen, onClose, onSave, editingSt
           </DialogTitle>
         </DialogHeader>
 
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 overflow-y-auto max-h-[65vh] pr-2">
+        {loadingData ? (
+          <div className="p-8 text-center">
+            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-400 mx-auto mb-4" />
+            <p style={{ color: "#A3A9B8" }}>Loading alerts...</p>
+          </div>
+        ) : (
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 overflow-y-auto max-h-[65vh] pr-2">
           {/* Left Column - Strategy Configuration */}
           <div className="space-y-6">
             {/* Strategy Name */}
@@ -846,6 +852,7 @@ export default function ManualStrategyModal({ isOpen, onClose, onSave, editingSt
             </div>
           </div>
         </div>
+        )}
 
         {/* Actions */}
         <div className="flex justify-end gap-3 pt-4 border-t border-gray-700">

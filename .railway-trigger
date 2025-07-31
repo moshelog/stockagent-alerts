@@ -32,3 +32,4 @@ deployment-trigger-$(date +%s)# Force deployment - Mon Jul 28 22:10:06 +07 2025
 # Revert Available Alerts height increase - restore original flex layout (flex-shrink-0 + flex-1) - Wed Jul 30 22:20:57 +07 2025
 # Add HTF column support and new webhook structure parsing - Thu Jul 31 00:00:00 PST 2025
 # Move HTF column to last position and increase alerts table width by 10% - Thu Jul 31 09:00:00 PST 2025
+# Force rebuild with HTF column positioning fix - Fri Aug 01 01:00:00 PST 2025

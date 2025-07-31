@@ -203,6 +203,7 @@ export function EnhancedAlertsTable({ alerts, loading, onClearAlerts, showWeight
                   </div>
                 </th>
               )}
+              {/* HTF Column - positioned last after Weight */}
               <th 
                 className="px-4 py-3 text-left text-sm font-medium cursor-pointer hover:bg-gray-800/50 transition-colors group"
                 style={{ color: "#A3A9B8" }}

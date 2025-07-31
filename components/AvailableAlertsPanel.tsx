@@ -25,7 +25,7 @@ const indicatorOptions = [
   { value: "extreme_zones", label: "Extreme Zones" },
 ]
 
-// Function to get default weight based on alert name
+// Function to get default weight based on alert name (0-10 range)
 const getDefaultWeight = (alertName: string): number => {
   const bearishKeywords = ['bearish', 'sell', 'overbought', 'premium', 'breakdown', 'down']
   const bullishKeywords = ['bullish', 'buy', 'oversold', 'discount', 'breakout', 'up']
@@ -33,12 +33,12 @@ const getDefaultWeight = (alertName: string): number => {
   const lowerName = alertName.toLowerCase()
   
   if (bearishKeywords.some(keyword => lowerName.includes(keyword))) {
-    return -1
+    return 2 // Bearish signals get low positive weight
   } else if (bullishKeywords.some(keyword => lowerName.includes(keyword))) {
-    return 1
+    return 8 // Bullish signals get high positive weight
   }
   
-  return 0 // Neutral for alerts that don't clearly indicate direction
+  return 5 // Neutral weight for alerts that don't clearly indicate direction
 }
 
 // Alert explanations for tooltips
@@ -104,8 +104,8 @@ export default function AvailableAlertsPanel({ alertConfig, onUpdateWeight, show
   const currentAlerts = alerts[selectedIndicator] || []
 
   const handleWeightChange = (alertId: string, weight: number) => {
-    // Clamp weight between -10 and +10
-    const clampedWeight = Math.max(-10, Math.min(10, Math.round(weight)))
+    // Clamp weight between 0 and 10 (integer values only)
+    const clampedWeight = Math.max(0, Math.min(10, Math.round(weight)))
     onUpdateWeight?.(alertId, clampedWeight)
   }
 
@@ -216,15 +216,15 @@ export default function AvailableAlertsPanel({ alertConfig, onUpdateWeight, show
                         const value = Number.parseInt(e.target.value) || 0
                         handleWeightChange(alert.id, value)
                       }}
-                      min={-10}
+                      min={0}
                       max={10}
                       step={1}
                       className={`w-16 h-8 text-xs bg-background border-gray-700 text-center font-medium ${
-                        alert.weight > 0
-                          ? "text-green-400 border-green-400/30"
-                          : alert.weight < 0
-                            ? "text-red-400 border-red-400/30"
-                            : "text-accent-neutral border-gray-700"
+                        alert.weight > 5
+                          ? "text-green-400 border-green-400/30" // High values = bullish = green
+                          : alert.weight < 5
+                            ? "text-yellow-400 border-yellow-400/30" // Low values = bearish = yellow
+                            : "text-accent-neutral border-gray-700" // Neutral = 5
                       }`}
                       placeholder="0"
                     />

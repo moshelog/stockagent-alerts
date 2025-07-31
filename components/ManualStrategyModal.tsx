@@ -12,6 +12,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog"
 import { Badge } from "@/components/ui/badge"
 import type { Strategy } from "@/hooks/use-strategies"
+import { useConfig } from "@/hooks/useConfig"
 
 interface Alert {
   id: string
@@ -23,14 +24,32 @@ interface IndicatorAlerts {
   [key: string]: Alert[]
 }
 
+interface Indicator {
+  id: string
+  name: string
+  display_name: string
+  description?: string
+  category: string
+  enabled: boolean
+}
+
+interface AvailableAlert {
+  id: string
+  indicator: string
+  trigger: string
+  weight: number
+  enabled: boolean
+  tooltip?: string
+}
+
 interface RuleGroup {
   id: string
   operator: "AND" | "OR"
   alerts: Array<{ id: string; indicator: string; name: string; weight: number }>
 }
 
-// Updated alert data with corrected positive/negative values
-const indicatorAlerts: IndicatorAlerts = {
+// Fallback alert data with corrected positive/negative values (used when API is unavailable)
+const fallbackIndicatorAlerts: IndicatorAlerts = {
   nautilus: [
     // Divergence Alerts - Bullish = positive (green), Bearish = negative (red)
     { id: "normal_bearish_divergence", name: "Normal Bearish Divergence", weight: -2.5 },
@@ -158,7 +177,7 @@ const indicatorAlerts: IndicatorAlerts = {
   ],
 }
 
-const indicatorOptions = [
+const fallbackIndicatorOptions = [
   { value: "nautilus", label: "Oscillator" },
   { value: "market_core", label: "SMC" },
   { value: "market_waves", label: "Waves" },
@@ -180,6 +199,7 @@ interface ManualStrategyModalProps {
 }
 
 export default function ManualStrategyModal({ isOpen, onClose, onSave, editingStrategy, showWeights = true }: ManualStrategyModalProps) {
+  const { config } = useConfig()
   const [strategyName, setStrategyName] = useState("")
   const [selectedIndicator, setSelectedIndicator] = useState("nautilus")
   const [ruleGroups, setRuleGroups] = useState<RuleGroup[]>([
@@ -192,6 +212,13 @@ export default function ManualStrategyModal({ isOpen, onClose, onSave, editingSt
   const [threshold, setThreshold] = useState(0)
   const [timeframe, setTimeframe] = useState("15m")
   const [interGroupOperator, setInterGroupOperator] = useState<"AND" | "OR">("OR")
+  
+  // Dynamic data loading states
+  const [indicators, setIndicators] = useState<Indicator[]>([])
+  const [availableAlerts, setAvailableAlerts] = useState<AvailableAlert[]>([])
+  const [loadingData, setLoadingData] = useState(true)
+  const [dynamicIndicatorAlerts, setDynamicIndicatorAlerts] = useState<IndicatorAlerts>({})
+  const [dynamicIndicatorOptions, setDynamicIndicatorOptions] = useState<Array<{value: string, label: string}>>([])
 
   const timeframeOptions = [
     { value: "1m", label: "1 Minute" },
@@ -202,6 +229,97 @@ export default function ManualStrategyModal({ isOpen, onClose, onSave, editingSt
     { value: "1D", label: "1 Day" },
   ]
 
+  // Load dynamic data from API
+  const loadAlertsData = async () => {
+    if (!config) return
+    
+    try {
+      setLoadingData(true)
+      
+      // Load indicators
+      const indicatorsResponse = await fetch(`${config.apiBase}/indicators`)
+      let indicatorsData: Indicator[] = []
+      
+      if (indicatorsResponse.ok) {
+        indicatorsData = await indicatorsResponse.json()
+        setIndicators(indicatorsData)
+      } else {
+        console.warn('Indicators API not available, using fallback')
+        // Fallback indicators
+        indicatorsData = [
+          { id: '1', name: 'nautilus', display_name: 'Nautilus™', category: 'oscillator', enabled: true },
+          { id: '2', name: 'market_core', display_name: 'Market Core Pro™', category: 'smc', enabled: true },
+          { id: '3', name: 'market_waves', display_name: 'Market Waves Pro™', category: 'trend', enabled: true },
+          { id: '4', name: 'extreme_zones', display_name: 'Extreme Zones', category: 'zones', enabled: true }
+        ]
+        setIndicators(indicatorsData)
+      }
+      
+      // Load available alerts
+      const alertsResponse = await fetch(`${config.apiBase}/available-alerts`)
+      let alertsData: AvailableAlert[] = []
+      
+      if (alertsResponse.ok) {
+        alertsData = await alertsResponse.json()
+        setAvailableAlerts(alertsData)
+      } else {
+        console.warn('Available alerts API not available, using fallback')
+        setAvailableAlerts([])
+      }
+      
+      // Transform data into component format
+      const newIndicatorAlerts: IndicatorAlerts = {}
+      const newIndicatorOptions: Array<{value: string, label: string}> = []
+      
+      indicatorsData.forEach(indicator => {
+        // Create indicator option
+        newIndicatorOptions.push({
+          value: indicator.name,
+          label: indicator.display_name
+        })
+        
+        // Find alerts for this indicator
+        const indicatorAlerts = alertsData.filter(alert => 
+          alert.indicator === indicator.display_name
+        )
+        
+        // Transform to component format
+        newIndicatorAlerts[indicator.name] = indicatorAlerts.map(alert => ({
+          id: alert.id,
+          name: alert.trigger,
+          weight: alert.weight
+        }))
+      })
+      
+      setDynamicIndicatorAlerts(newIndicatorAlerts)
+      setDynamicIndicatorOptions(newIndicatorOptions)
+      
+      // Set default selected indicator if current selection is not available
+      if (newIndicatorOptions.length > 0 && !newIndicatorOptions.find(opt => opt.value === selectedIndicator)) {
+        setSelectedIndicator(newIndicatorOptions[0].value)
+      }
+      
+    } catch (error) {
+      console.error('Failed to load alerts data:', error)
+      // Use fallback static data on error
+      setDynamicIndicatorAlerts(fallbackIndicatorAlerts)
+      setDynamicIndicatorOptions(fallbackIndicatorOptions)
+    } finally {
+      setLoadingData(false)
+    }
+  }
+  
+  // Load data when modal opens and config is available
+  useEffect(() => {
+    if (isOpen && config) {
+      loadAlertsData()
+    }
+  }, [isOpen, config])
+
+  // Use dynamic data when available, fallback to static
+  const currentIndicatorAlerts = Object.keys(dynamicIndicatorAlerts).length > 0 ? dynamicIndicatorAlerts : fallbackIndicatorAlerts
+  const currentIndicatorOptions = dynamicIndicatorOptions.length > 0 ? dynamicIndicatorOptions : fallbackIndicatorOptions
+  
   // Initialize form when modal opens or editing strategy changes
   useEffect(() => {
     if (isOpen) {
@@ -256,7 +374,7 @@ export default function ManualStrategyModal({ isOpen, onClose, onSave, editingSt
             foundIndicator = indicatorKey
 
             // Find the alert in our current data (API or fallback)
-            const alertsForIndicator = indicatorAlerts[indicatorKey] || []
+            const alertsForIndicator = currentIndicatorAlerts[indicatorKey] || []
             foundAlert = alertsForIndicator.find((a) => 
               a.name.toLowerCase() === rule.trigger.toLowerCase()
             )
@@ -287,7 +405,7 @@ export default function ManualStrategyModal({ isOpen, onClose, onSave, editingSt
             let foundAlert: Alert | null = null
             let foundIndicator = ""
 
-            for (const [indicator, alerts] of Object.entries(indicatorAlerts)) {
+            for (const [indicator, alerts] of Object.entries(currentIndicatorAlerts)) {
               const alert = alerts.find((a) => a.id === alertId)
               if (alert) {
                 foundAlert = alert
@@ -340,7 +458,7 @@ export default function ManualStrategyModal({ isOpen, onClose, onSave, editingSt
     }
   }, [isOpen, editingStrategy])
 
-  const currentAlerts = indicatorAlerts[selectedIndicator] || []
+  const currentAlerts = currentIndicatorAlerts[selectedIndicator] || []
 
   const addRuleGroup = () => {
     const newGroup: RuleGroup = {
@@ -785,7 +903,7 @@ export default function ManualStrategyModal({ isOpen, onClose, onSave, editingSt
                   <ChevronDown className="w-4 h-4 opacity-50" />
                 </SelectTrigger>
                 <SelectContent className="bg-background-surface border-gray-700">
-                  {indicatorOptions.map((option) => (
+                  {currentIndicatorOptions.map((option) => (
                     <SelectItem
                       key={option.value}
                       value={option.value}

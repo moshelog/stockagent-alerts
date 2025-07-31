@@ -311,13 +311,14 @@ export function generateScoringData(
 export function extractLastActionFromScore(scoreData: any): LastAction | undefined {
   console.log('🔍 extractLastActionFromScore called with:', scoreData)
   
+  // Handle the new score structure where lastAction is included directly
   if (scoreData?.lastAction) {
     const extractedAction = {
       action: scoreData.lastAction.action,
       ticker: scoreData.lastAction.ticker,
       strategy: scoreData.lastAction.strategy_name || 'Unknown Strategy'
     }
-    console.log('✅ Extracted action:', extractedAction)
+    console.log('✅ Extracted action from score object:', extractedAction, 'timestamp:', scoreData.lastAction.timestamp)
     return extractedAction
   }
   

@@ -165,7 +165,15 @@ export function CompactLiveScoring({
               ))
             ) : (
               [
-                ...tickerData.map((item, index) => (
+                ...tickerData
+                  .sort((a, b) => {
+                    // Sort by timestamp - newest first (assuming timestamp is a time string like "7:13:55 PM")
+                    // We'll use a simple string comparison, but for more robust sorting we'd parse the time strings
+                    const timeA = new Date(`1970-01-01 ${a.timestamp}`).getTime() || 0
+                    const timeB = new Date(`1970-01-01 ${b.timestamp}`).getTime() || 0
+                    return timeB - timeA // Newest first (descending)
+                  })
+                  .map((item, index) => (
               <motion.tr
                 key={`${item.strategy}-${item.ticker}`}
                 className="border-b border-gray-800/50 hover:bg-gray-800/30 transition-colors"

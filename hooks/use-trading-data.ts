@@ -17,6 +17,12 @@ export interface Alert {
 export interface Score {
   score: number
   status: "BUY" | "SELL" | "NEUTRAL"
+  lastAction?: {
+    action: string
+    ticker: string
+    strategy_name?: string
+    timestamp?: string
+  } | null
 }
 
 export interface Strategy {
@@ -170,13 +176,19 @@ export function useTradingData(timeWindowMinutes: number = 60, alertConfig?: any
         const scoreResponse = await fetch(`${config.apiBase}/score?timeWindow=${timeWindowMinutes}`)
         const scoreData = await scoreResponse.json()
         
-        let currentScore: Score = { score: 0, status: "NEUTRAL" }
+        console.log('🔍 Raw scoreData from API:', scoreData)
+        
+        let currentScore: any = { score: 0, status: "NEUTRAL", lastAction: null }
         if (scoreData.scores && scoreData.scores.length > 0) {
           const latestScore = scoreData.scores[0].score
           currentScore = {
             score: latestScore,
-            status: latestScore > 3 ? "SELL" : latestScore < -3 ? "BUY" : "NEUTRAL"
+            status: latestScore > 3 ? "SELL" : latestScore < -3 ? "BUY" : "NEUTRAL",
+            lastAction: scoreData.lastAction || null // Include lastAction from backend
           }
+        } else {
+          // Even if no scores, include lastAction
+          currentScore.lastAction = scoreData.lastAction || null
         }
 
         // Fetch strategies from backend

@@ -241,6 +241,9 @@ app.post('/webhook', express.text({ type: '*/*' }), asyncHandler(async (req, res
       ticker: newAlert.ticker
     });
 
+    // Evaluate strategies for this ticker
+    await strategyEvaluator.evaluateStrategiesForTicker(ticker.toUpperCase(), newAlert);
+
     res.status(200).json({
       success: true,
       alert: newAlert,
@@ -342,6 +345,9 @@ app.post('/webhook-text', express.text({ type: '*/*' }), asyncHandler(async (req
       id: newAlert.id,
       ticker: newAlert.ticker
     });
+
+    // Evaluate strategies for this ticker
+    await strategyEvaluator.evaluateStrategiesForTicker(ticker.toUpperCase(), newAlert);
 
     res.status(200).json({
       success: true,

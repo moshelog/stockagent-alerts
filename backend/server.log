@@ -37,3 +37,4 @@
   foundRules: 2
 }
 📈 Strategy "Sell on Premium zone" for DEMO: { complete: false, found: 0, missing: 2, timeframe: '15m' }
+🛑 SIGTERM received, shutting down gracefully...

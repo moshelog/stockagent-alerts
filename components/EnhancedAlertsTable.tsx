@@ -121,7 +121,7 @@ export function EnhancedAlertsTable({ alerts, loading, onClearAlerts, showWeight
     >
       <div className="p-4 border-b border-gray-700 flex items-center justify-between">
         <h3 className="text-lg font-semibold" style={{ color: "#E0E6ED" }}>
-          Recent Alerts ({alerts.length})
+          Recent Alerts ({alerts.length}) - HTF Test
         </h3>
         {onClearAlerts && alerts.length > 0 && (
           <Button

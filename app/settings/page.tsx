@@ -427,11 +427,23 @@ export default function SettingsPage() {
                   <button
                     onClick={async () => {
                       try {
-                        // Use the JSON webhook endpoint for testing
-                        const jsonWebhookUrl = config.webhookUrl.replace('/webhook', '/webhook-json')
+                        // Construct the JSON webhook URL properly
+                        let jsonWebhookUrl = config.webhookUrl
+                        if (jsonWebhookUrl.endsWith('/webhook')) {
+                          jsonWebhookUrl = jsonWebhookUrl.replace('/webhook', '/webhook-json')
+                        } else if (!jsonWebhookUrl.includes('/webhook-json')) {
+                          // If URL doesn't end with /webhook, append /webhook-json
+                          jsonWebhookUrl = jsonWebhookUrl.replace(/\/$/, '') + '/webhook-json'
+                        }
+                        
+                        console.log('Testing webhook at:', jsonWebhookUrl)
+                        
                         const response = await fetch(jsonWebhookUrl, {
                           method: "POST",
-                          headers: { "Content-Type": "application/json" },
+                          headers: { 
+                            "Content-Type": "application/json",
+                            "Accept": "application/json"
+                          },
                           body: JSON.stringify({ 
                             ticker: "BTC",
                             indicator: "Extreme Zones", 
@@ -440,6 +452,9 @@ export default function SettingsPage() {
                           }),
                         })
 
+                        const responseText = await response.text()
+                        console.log('Webhook response:', response.status, responseText)
+
                         if (response.ok) {
                           toast({
                             title: "Success",
@@ -447,7 +462,14 @@ export default function SettingsPage() {
                             className: "bg-accent-buy text-white border-accent-buy",
                           })
                         } else {
-                          throw new Error(`Failed to send test webhook: ${response.status} ${response.statusText}`)
+                          let errorMessage = `HTTP ${response.status}`
+                          try {
+                            const errorData = JSON.parse(responseText)
+                            errorMessage = errorData.error || errorData.message || errorMessage
+                          } catch {
+                            errorMessage = responseText || errorMessage
+                          }
+                          throw new Error(`Failed to send test webhook: ${errorMessage}`)
                         }
                       } catch (error) {
                         console.error("Webhook test error:", error)

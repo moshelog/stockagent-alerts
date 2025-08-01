@@ -197,16 +197,17 @@ app.post('/webhook', express.text({ type: '*/*' }), asyncHandler(async (req, res
     const fifthPart = parts[4].trim();
     const sixthPart = parts[5] ? parts[5].trim() : null;
     
-    // If indicator is "Extreme" and we have 5+ parts, likely new structure with HTF
-    if (indicator.toLowerCase().includes('extreme') && fifthPart) {
+    // Check for new structure with HTF
+    if (parts.length === 5 && (indicator.toLowerCase() === 'extreme' || indicator.toLowerCase() === 'indicator')) {
+      // New 5-part structure: TICKER|INTERVAL|Extreme|TRIGGER|HTF
       htf = fifthPart;
-      time = sixthPart; // Time might be in 6th position for new structure
+      time = null; // No time in this structure
     } else if (parts.length === 6) {
       // 6-part structure: TICKER|TIMEFRAME|INDICATOR|TRIGGER|HTF|TIME
       htf = fifthPart;
       time = sixthPart;
-    } else {
-      // Old structure: 5th part is time
+    } else if (parts.length === 5) {
+      // Old 5-part structure: TICKER|TIMEFRAME|INDICATOR|TRIGGER|TIME
       time = fifthPart;
     }
   }

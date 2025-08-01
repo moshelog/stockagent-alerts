@@ -12,6 +12,7 @@ export interface Alert {
   indicator: string
   trigger: string
   weight: number
+  htf?: string // Higher timeframe data
 }
 
 export interface Score {
@@ -168,7 +169,8 @@ export function useTradingData(timeWindowMinutes: number = 60, alertConfig?: any
             timeframe: alert.timeframe || '15m', // Default to 15m if not set
             indicator: alert.indicator,
             trigger: alert.trigger,
-            weight: weight
+            weight: weight,
+            htf: alert.htf // Include HTF field from API
           }
         })
 

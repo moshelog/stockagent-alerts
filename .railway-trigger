@@ -34,3 +34,4 @@ deployment-trigger-$(date +%s)# Force deployment - Mon Jul 28 22:10:06 +07 2025
 # Move HTF column to last position and increase alerts table width by 10% - Thu Jul 31 09:00:00 PST 2025
 # Force rebuild with HTF column positioning fix - Fri Aug 01 01:00:00 PST 2025
 # Fix webhook test functionality with improved error handling - Thu Jul 31 17:00:00 PST 2025
+# Fix database compatibility for HTF column in webhooks - Thu Jul 31 17:30:00 PST 2025

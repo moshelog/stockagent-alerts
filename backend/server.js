@@ -200,21 +200,19 @@ app.post('/webhook', express.text({ type: '*/*' }), asyncHandler(async (req, res
   let time = null;
   
   if (parts.length >= 5) {
-    const fifthPart = parts[4].trim();
-    const sixthPart = parts[5] ? parts[5].trim() : null;
-    
-    // Check for new structure with HTF
-    if (parts.length === 5 && (indicator.toLowerCase() === 'extreme' || indicator.toLowerCase() === 'indicator')) {
-      // New 5-part structure: TICKER|INTERVAL|Extreme|TRIGGER|HTF
-      htf = fifthPart;
+    // Check for new structure with HTF that may contain pipe symbols
+    if (indicator.toLowerCase() === 'extreme' || indicator.toLowerCase() === 'indicator') {
+      // New structure: TICKER|INTERVAL|Extreme|TRIGGER|HTF (HTF may contain pipes)
+      // Join everything from the 5th part onward as HTF field
+      htf = parts.slice(4).join('|').trim();
       time = null; // No time in this structure
-    } else if (parts.length === 6) {
-      // 6-part structure: TICKER|TIMEFRAME|INDICATOR|TRIGGER|HTF|TIME
-      htf = fifthPart;
-      time = sixthPart;
     } else if (parts.length === 5) {
       // Old 5-part structure: TICKER|TIMEFRAME|INDICATOR|TRIGGER|TIME
-      time = fifthPart;
+      time = parts[4].trim();
+    } else if (parts.length === 6) {
+      // 6-part structure: TICKER|TIMEFRAME|INDICATOR|TRIGGER|HTF|TIME
+      htf = parts[4].trim();
+      time = parts[5].trim();
     }
   }
 

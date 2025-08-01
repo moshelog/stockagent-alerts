@@ -88,12 +88,13 @@ const validateAlertPayload = (req, res, next) => {
  * Expected payload: { ticker, time?, indicator, trigger, htf? }
  */
 app.post('/webhook-json', validateAlertPayload, asyncHandler(async (req, res) => {
-  const { ticker, time, indicator, trigger } = req.body;
+  const { ticker, time, indicator, trigger, htf } = req.body;
   
   logger.info('Webhook received', {
     ticker,
     indicator,
     trigger,
+    htf: htf || 'none',
     timestamp: time || new Date().toISOString()
   });
   

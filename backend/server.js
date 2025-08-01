@@ -88,13 +88,12 @@ const validateAlertPayload = (req, res, next) => {
  * Expected payload: { ticker, time?, indicator, trigger, htf? }
  */
 app.post('/webhook-json', validateAlertPayload, asyncHandler(async (req, res) => {
-  const { ticker, time, indicator, trigger, htf } = req.body;
+  const { ticker, time, indicator, trigger } = req.body;
   
   logger.info('Webhook received', {
     ticker,
     indicator,
     trigger,
-    htf,
     timestamp: time || new Date().toISOString()
   });
   
@@ -109,11 +108,6 @@ app.post('/webhook-json', validateAlertPayload, asyncHandler(async (req, res) =>
           new Date(parseInt(time)).toISOString() : 
           new Date(time).toISOString()) : 
         new Date().toISOString()
-    };
-    
-    // Only add htf if it's provided (for backwards compatibility)
-    if (htf) {
-      alertData.htf = htf;
     }
     
     const { data: newAlert, error: insertError } = await supabase
@@ -195,22 +189,13 @@ app.post('/webhook', express.text({ type: '*/*' }), asyncHandler(async (req, res
   const indicator = parts[2].trim();
   const trigger = parts[3].trim();
   
-  // Detect new structure vs old structure
-  let htf = null;
+  // Handle optional time parameter
   let time = null;
   
   if (parts.length >= 5) {
     const fifthPart = parts[4].trim();
-    const sixthPart = parts[5] ? parts[5].trim() : null;
-    
-    // If indicator is "Extreme" and we have 5+ parts, likely new structure
-    if (indicator.toLowerCase() === 'extreme' && fifthPart) {
-      htf = fifthPart;
-      time = sixthPart; // Time might be in 6th position for new structure
-    } else {
-      // Old structure: 5th part is time
-      time = fifthPart;
-    }
+    // For now, treat 5th part as time (ignore HTF until database is updated)
+    time = fifthPart;
   }
 
   // Validate required fields
@@ -227,7 +212,6 @@ app.post('/webhook', express.text({ type: '*/*' }), asyncHandler(async (req, res
     timeframe,
     indicator,
     trigger,
-    htf,
     timestamp: time || new Date().toISOString()
   });
 
@@ -243,11 +227,6 @@ app.post('/webhook', express.text({ type: '*/*' }), asyncHandler(async (req, res
           new Date(parseInt(time)).toISOString() : 
           new Date(time).toISOString()) : 
         new Date().toISOString()
-    };
-    
-    // Only add htf if it's provided (for backwards compatibility)
-    if (htf) {
-      alertData.htf = htf;
     }
     
     const { data: newAlert, error: insertError } = await supabase

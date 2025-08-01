@@ -261,11 +261,28 @@ export function EnhancedAlertsTable({ alerts, loading, onClearAlerts, showWeight
                 )}
                 <td className="px-4 py-3 text-sm" style={{ color: "#A3A9B8" }}>
                   {alert.htf ? (
-                    <span className="bg-purple-900/30 px-3 py-2 rounded text-base font-mono text-purple-200 font-semibold tracking-wide leading-relaxed">
-                      {alert.htf.replace(/↑/g, '🔺').replace(/↓/g, '🔻')}
-                    </span>
+                    <div className="group relative">
+                      {/* Show only percentage normally */}
+                      <span className="bg-purple-900/40 px-3 py-1.5 rounded-lg text-lg font-bold text-purple-100 cursor-help transition-all duration-200 group-hover:bg-purple-800/60">
+                        {(() => {
+                          const match = alert.htf.match(/=\s*(\d+%)/);
+                          return match ? match[1] : '-%';
+                        })()}
+                      </span>
+                      
+                      {/* Hover tooltip with full details */}
+                      <div className="invisible group-hover:visible absolute bottom-full left-1/2 transform -translate-x-1/2 mb-2 z-50">
+                        <div className="bg-gray-900 border border-purple-500/30 rounded-lg px-4 py-3 shadow-xl min-w-max">
+                          <div className="text-sm font-mono text-purple-200 whitespace-nowrap">
+                            {alert.htf.replace(/↑/g, '⬆️').replace(/↓/g, '⬇️')}
+                          </div>
+                          {/* Arrow pointing down */}
+                          <div className="absolute top-full left-1/2 transform -translate-x-1/2 w-0 h-0 border-l-4 border-r-4 border-t-4 border-transparent border-t-gray-900"></div>
+                        </div>
+                      </div>
+                    </div>
                   ) : (
-                    <span className="text-gray-500 text-xs">-</span>
+                    <span className="text-gray-500 text-sm">-</span>
                   )}
                 </td>
               </motion.tr>

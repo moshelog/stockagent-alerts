@@ -261,8 +261,8 @@ export function EnhancedAlertsTable({ alerts, loading, onClearAlerts, showWeight
                 )}
                 <td className="px-4 py-3 text-sm" style={{ color: "#A3A9B8" }}>
                   {alert.htf ? (
-                    <span className="bg-purple-900/30 px-2 py-1 rounded text-xs font-mono text-purple-300">
-                      {alert.htf}
+                    <span className="bg-purple-900/30 px-3 py-2 rounded text-base font-mono text-purple-200 font-semibold tracking-wide leading-relaxed">
+                      {alert.htf.replace(/↑/g, '🔺').replace(/↓/g, '🔻')}
                     </span>
                   ) : (
                     <span className="text-gray-500 text-xs">-</span>

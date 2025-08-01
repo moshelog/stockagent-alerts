@@ -263,7 +263,7 @@ export function EnhancedAlertsTable({ alerts, loading, onClearAlerts, showWeight
                   {alert.htf ? (
                     <div className="group relative">
                       {/* Show only percentage normally */}
-                      <span className="bg-purple-900/40 px-3 py-1.5 rounded-lg text-lg font-bold text-purple-100 cursor-help transition-all duration-200 group-hover:bg-purple-800/60">
+                      <span className="bg-purple-900/40 px-2 py-1 rounded text-sm cursor-help transition-all duration-200 group-hover:bg-purple-800/60" style={{ color: "#A3A9B8" }}>
                         {(() => {
                           const match = alert.htf.match(/=\s*(\d+%)/);
                           return match ? match[1] : '-%';

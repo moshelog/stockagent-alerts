@@ -1180,7 +1180,7 @@ app.delete('/api/available-alerts/:id', asyncHandler(async (req, res) => {
 // ============================================================================
 
 /**
- * GET /api/health - Health check
+ * GET /api/health - Health check (Backend Restore Fix)
  */
 app.get('/api/health', asyncHandler(async (req, res) => {
   const dbConnected = await testConnection();

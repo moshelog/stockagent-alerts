@@ -104,13 +104,17 @@ app.post('/webhook-json', validateAlertPayload, asyncHandler(async (req, res) =>
       ticker: ticker.toUpperCase(),
       indicator,
       trigger,
-      htf: htf || null,
       timestamp: time ? 
         (typeof time === 'string' && time.length === 13 ? 
           new Date(parseInt(time)).toISOString() : 
           new Date(time).toISOString()) : 
         new Date().toISOString()
     };
+    
+    // Only add htf if it's provided (for backwards compatibility)
+    if (htf) {
+      alertData.htf = htf;
+    }
     
     const { data: newAlert, error: insertError } = await supabase
       .from('alerts')
@@ -234,13 +238,17 @@ app.post('/webhook', express.text({ type: '*/*' }), asyncHandler(async (req, res
       timeframe,
       indicator,
       trigger,
-      htf: htf || null,
       timestamp: time ? 
         (typeof time === 'string' && time.length === 13 ? 
           new Date(parseInt(time)).toISOString() : 
           new Date(time).toISOString()) : 
         new Date().toISOString()
     };
+    
+    // Only add htf if it's provided (for backwards compatibility)
+    if (htf) {
+      alertData.htf = htf;
+    }
     
     const { data: newAlert, error: insertError } = await supabase
       .from('alerts')

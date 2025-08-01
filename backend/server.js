@@ -108,6 +108,11 @@ app.post('/webhook-json', validateAlertPayload, asyncHandler(async (req, res) =>
           new Date(parseInt(time)).toISOString() : 
           new Date(time).toISOString()) : 
         new Date().toISOString()
+    };
+    
+    // Add HTF field if it exists (after database migration)
+    if (htf) {
+      alertData.htf = htf;
     }
     
     const { data: newAlert, error: insertError } = await supabase
@@ -242,6 +247,11 @@ app.post('/webhook', express.text({ type: '*/*' }), asyncHandler(async (req, res
           new Date(parseInt(time)).toISOString() : 
           new Date(time).toISOString()) : 
         new Date().toISOString()
+    };
+    
+    // Add HTF field if it exists (after database migration)
+    if (htf) {
+      alertData.htf = htf;
     }
     
     const { data: newAlert, error: insertError } = await supabase

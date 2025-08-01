@@ -203,11 +203,14 @@ class StrategyEvaluator {
   }
 
   /**
-   * Get the latest action across all strategies
+   * Get the latest action across all strategies (within last 24 hours)
    * @returns {Object|null} Latest action or null
    */
   async getLatestAction() {
     try {
+      // Only consider actions from the last 24 hours as "recent"
+      const twentyFourHoursAgo = new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString();
+      
       const { data, error } = await supabase
         .from('actions')
         .select(`
@@ -217,6 +220,7 @@ class StrategyEvaluator {
             timeframe
           )
         `)
+        .gte('timestamp', twentyFourHoursAgo)  // Only recent actions
         .order('timestamp', { ascending: false })
         .limit(1);
 

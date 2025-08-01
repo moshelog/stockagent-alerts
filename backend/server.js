@@ -189,13 +189,26 @@ app.post('/webhook', express.text({ type: '*/*' }), asyncHandler(async (req, res
   const indicator = parts[2].trim();
   const trigger = parts[3].trim();
   
-  // Handle optional time parameter
+  // Handle HTF and time parameters
+  let htf = null;
   let time = null;
   
   if (parts.length >= 5) {
     const fifthPart = parts[4].trim();
-    // For now, treat 5th part as time (ignore HTF until database is updated)
-    time = fifthPart;
+    const sixthPart = parts[5] ? parts[5].trim() : null;
+    
+    // If indicator is "Extreme" and we have 5+ parts, likely new structure with HTF
+    if (indicator.toLowerCase().includes('extreme') && fifthPart) {
+      htf = fifthPart;
+      time = sixthPart; // Time might be in 6th position for new structure
+    } else if (parts.length === 6) {
+      // 6-part structure: TICKER|TIMEFRAME|INDICATOR|TRIGGER|HTF|TIME
+      htf = fifthPart;
+      time = sixthPart;
+    } else {
+      // Old structure: 5th part is time
+      time = fifthPart;
+    }
   }
 
   // Validate required fields
@@ -212,6 +225,7 @@ app.post('/webhook', express.text({ type: '*/*' }), asyncHandler(async (req, res
     timeframe,
     indicator,
     trigger,
+    htf: htf || 'none',
     timestamp: time || new Date().toISOString()
   });
 

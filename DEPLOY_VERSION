@@ -1,3 +1,4 @@
 v5-weight-fix-$(date +%Y%m%d-%H%M%S)
 Latest deployment with alert weight matching fix
 Deployed: $(date)Deployment trigger: Fri Aug  1 10:38:02 +07 2025
+Restore deployment: Fri Aug  1 10:59:23 +07 2025

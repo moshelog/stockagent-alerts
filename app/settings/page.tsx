@@ -448,6 +448,7 @@ export default function SettingsPage() {
                             ticker: "BTC",
                             indicator: "Extreme Zones", 
                             trigger: "Discount Zone",
+                            htf: "↑15m↑4H↓=85%",
                             time: new Date().toISOString()
                           }),
                         })
@@ -458,7 +459,7 @@ export default function SettingsPage() {
                         if (response.ok) {
                           toast({
                             title: "Success",
-                            description: "Test webhook sent successfully! Check your dashboard for the alert.",
+                            description: "Test webhook sent successfully with HTF field! Check your dashboard for the alert with purple HTF badge.",
                             className: "bg-accent-buy text-white border-accent-buy",
                           })
                         } else {

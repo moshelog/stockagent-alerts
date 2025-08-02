@@ -225,10 +225,23 @@ app.post('/webhook', express.text({ type: '*/*' }), asyncHandler(async (req, res
     });
   }
 
+  // Map TradingView indicator names to database names
+  const indicatorMapping = {
+    'SMC': 'Market Core Pro™',
+    'Extreme': 'Extreme Zones',
+    'Oscillator': 'Nautilus™',
+    'Wave': 'Market Waves Pro™'
+  };
+  
+  // Normalize indicator name (case-insensitive)
+  const normalizedIndicator = indicatorMapping[indicator] || 
+    indicatorMapping[indicator.charAt(0).toUpperCase() + indicator.slice(1).toLowerCase()] || 
+    indicator;
+
   logger.info('Webhook parsed', {
     ticker,
     timeframe,
-    indicator,
+    indicator: normalizedIndicator,
     trigger,
     htf: htf || 'none',
     timestamp: time || new Date().toISOString()
@@ -239,7 +252,7 @@ app.post('/webhook', express.text({ type: '*/*' }), asyncHandler(async (req, res
     const alertData = {
       ticker: ticker.toUpperCase(),
       timeframe,
-      indicator,
+      indicator: normalizedIndicator,
       trigger,
       timestamp: time ? 
         (typeof time === 'string' && time.length === 13 ? 

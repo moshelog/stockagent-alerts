@@ -13,7 +13,6 @@ interface Alert {
   indicator: string
   trigger: string
   weight: number
-  htf?: string
 }
 
 interface EnhancedAlertsTableProps {
@@ -23,7 +22,7 @@ interface EnhancedAlertsTableProps {
   showWeights?: boolean
 }
 
-type SortField = 'time' | 'ticker' | 'timeframe' | 'indicator' | 'trigger' | 'weight' | 'htf'
+type SortField = 'time' | 'ticker' | 'timeframe' | 'indicator' | 'trigger' | 'weight'
 type SortDirection = 'asc' | 'desc'
 
 export function EnhancedAlertsTable({ alerts, loading, onClearAlerts, showWeights = true }: EnhancedAlertsTableProps) {
@@ -121,7 +120,7 @@ export function EnhancedAlertsTable({ alerts, loading, onClearAlerts, showWeight
     >
       <div className="p-4 border-b border-gray-700 flex items-center justify-between">
         <h3 className="text-lg font-semibold" style={{ color: "#E0E6ED" }}>
-          Recent Alerts ({alerts.length}) - HTF Test
+          Recent Alerts ({alerts.length})
         </h3>
         {onClearAlerts && alerts.length > 0 && (
           <Button
@@ -203,17 +202,6 @@ export function EnhancedAlertsTable({ alerts, loading, onClearAlerts, showWeight
                   </div>
                 </th>
               )}
-              {/* HTF Column - positioned last after Weight */}
-              <th 
-                className="px-4 py-3 text-left text-sm font-medium cursor-pointer hover:bg-gray-800/50 transition-colors group"
-                style={{ color: "#A3A9B8" }}
-                onClick={() => handleSort('htf')}
-              >
-                <div className="flex items-center justify-between">
-                  HTF
-                  {getSortIcon('htf')}
-                </div>
-              </th>
             </tr>
           </thead>
           <tbody>
@@ -259,32 +247,6 @@ export function EnhancedAlertsTable({ alerts, loading, onClearAlerts, showWeight
                     </div>
                   </td>
                 )}
-                <td className="px-4 py-3 text-sm" style={{ color: "#A3A9B8" }}>
-                  {alert.htf ? (
-                    <div className="group relative">
-                      {/* Show only percentage normally */}
-                      <span className="bg-purple-900/40 px-2 py-1 rounded text-sm cursor-help transition-all duration-200 group-hover:bg-purple-800/60" style={{ color: "#A3A9B8" }}>
-                        {(() => {
-                          const match = alert.htf.match(/=\s*(\d+%)/);
-                          return match ? match[1] : '-%';
-                        })()}
-                      </span>
-                      
-                      {/* Hover tooltip with full details */}
-                      <div className="invisible group-hover:visible absolute bottom-full left-1/2 transform -translate-x-1/2 mb-2 z-50">
-                        <div className="bg-gray-900 border border-purple-500/30 rounded-lg px-4 py-3 shadow-xl min-w-max">
-                          <div className="text-sm font-mono text-purple-200 whitespace-nowrap">
-                            {alert.htf.replace(/↑/g, '⬆️').replace(/↓/g, '⬇️')}
-                          </div>
-                          {/* Arrow pointing down */}
-                          <div className="absolute top-full left-1/2 transform -translate-x-1/2 w-0 h-0 border-l-4 border-r-4 border-t-4 border-transparent border-t-gray-900"></div>
-                        </div>
-                      </div>
-                    </div>
-                  ) : (
-                    <span className="text-gray-500 text-sm">-</span>
-                  )}
-                </td>
               </motion.tr>
             ))}
           </tbody>

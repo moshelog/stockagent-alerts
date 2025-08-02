@@ -13,6 +13,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/u
 import { Badge } from "@/components/ui/badge"
 import type { Strategy } from "@/hooks/use-strategies"
 import { useConfig } from "@/hooks/useConfig"
+import { useAvailableAlerts } from "@/hooks/use-available-alerts"
 
 interface Alert {
   id: string
@@ -200,6 +201,7 @@ interface ManualStrategyModalProps {
 
 export default function ManualStrategyModal({ isOpen, onClose, onSave, editingStrategy, showWeights = true }: ManualStrategyModalProps) {
   const { config } = useConfig()
+  const { alertConfig, loading: alertsLoading } = useAvailableAlerts()
   const [strategyName, setStrategyName] = useState("")
   const [selectedIndicator, setSelectedIndicator] = useState("nautilus")
   const [ruleGroups, setRuleGroups] = useState<RuleGroup[]>([
@@ -212,13 +214,6 @@ export default function ManualStrategyModal({ isOpen, onClose, onSave, editingSt
   const [threshold, setThreshold] = useState(0)
   const [timeframe, setTimeframe] = useState("15m")
   const [interGroupOperator, setInterGroupOperator] = useState<"AND" | "OR">("OR")
-  
-  // Dynamic data loading states
-  const [indicators, setIndicators] = useState<Indicator[]>([])
-  const [availableAlerts, setAvailableAlerts] = useState<AvailableAlert[]>([])
-  const [loadingData, setLoadingData] = useState(true)
-  const [dynamicIndicatorAlerts, setDynamicIndicatorAlerts] = useState<IndicatorAlerts>({})
-  const [dynamicIndicatorOptions, setDynamicIndicatorOptions] = useState<Array<{value: string, label: string}>>([])
 
   const timeframeOptions = [
     { value: "1m", label: "1 Minute" },
@@ -229,96 +224,16 @@ export default function ManualStrategyModal({ isOpen, onClose, onSave, editingSt
     { value: "1D", label: "1 Day" },
   ]
 
-  // Load dynamic data from API
-  const loadAlertsData = async () => {
-    if (!config) return
-    
-    try {
-      setLoadingData(true)
-      
-      // Load indicators
-      const indicatorsResponse = await fetch(`${config.apiBase}/indicators`)
-      let indicatorsData: Indicator[] = []
-      
-      if (indicatorsResponse.ok) {
-        indicatorsData = await indicatorsResponse.json()
-        setIndicators(indicatorsData)
-      } else {
-        console.warn('Indicators API not available, using fallback')
-        // Fallback indicators
-        indicatorsData = [
-          { id: '1', name: 'nautilus', display_name: 'Nautilus™', category: 'oscillator', enabled: true },
-          { id: '2', name: 'market_core', display_name: 'Market Core Pro™', category: 'smc', enabled: true },
-          { id: '3', name: 'market_waves', display_name: 'Market Waves Pro™', category: 'trend', enabled: true },
-          { id: '4', name: 'extreme_zones', display_name: 'Extreme Zones', category: 'zones', enabled: true }
-        ]
-        setIndicators(indicatorsData)
-      }
-      
-      // Load available alerts
-      const alertsResponse = await fetch(`${config.apiBase}/available-alerts`)
-      let alertsData: AvailableAlert[] = []
-      
-      if (alertsResponse.ok) {
-        alertsData = await alertsResponse.json()
-        setAvailableAlerts(alertsData)
-      } else {
-        console.warn('Available alerts API not available, using fallback')
-        setAvailableAlerts([])
-      }
-      
-      // Transform data into component format
-      const newIndicatorAlerts: IndicatorAlerts = {}
-      const newIndicatorOptions: Array<{value: string, label: string}> = []
-      
-      indicatorsData.forEach(indicator => {
-        // Create indicator option
-        newIndicatorOptions.push({
-          value: indicator.name,
-          label: indicator.display_name
-        })
-        
-        // Find alerts for this indicator
-        const indicatorAlerts = alertsData.filter(alert => 
-          alert.indicator === indicator.display_name
-        )
-        
-        // Transform to component format
-        newIndicatorAlerts[indicator.name] = indicatorAlerts.map(alert => ({
-          id: alert.id,
-          name: alert.trigger,
-          weight: alert.weight
-        }))
-      })
-      
-      setDynamicIndicatorAlerts(newIndicatorAlerts)
-      setDynamicIndicatorOptions(newIndicatorOptions)
-      
-      // Set default selected indicator if current selection is not available
-      if (newIndicatorOptions.length > 0 && !newIndicatorOptions.find(opt => opt.value === selectedIndicator)) {
-        setSelectedIndicator(newIndicatorOptions[0].value)
-      }
-      
-    } catch (error) {
-      console.error('Failed to load alerts data:', error)
-      // Use fallback static data on error
-      setDynamicIndicatorAlerts(fallbackIndicatorAlerts)
-      setDynamicIndicatorOptions(fallbackIndicatorOptions)
-    } finally {
-      setLoadingData(false)
-    }
-  }
-  
-  // Load data when modal opens and config is available
-  useEffect(() => {
-    if (isOpen && config) {
-      loadAlertsData()
-    }
-  }, [isOpen, config])
+  // Indicator options - now using data from useAvailableAlerts hook
+  const currentIndicatorOptions = [
+    { value: "nautilus", label: "Nautilus™" },
+    { value: "market_core", label: "Market Core Pro™" },
+    { value: "market_waves", label: "Market Waves Pro™" },
+    { value: "extreme_zones", label: "Extreme Zones" },
+  ]
 
-  // Use dynamic data when available, fallback to static
-  const currentIndicatorAlerts = Object.keys(dynamicIndicatorAlerts).length > 0 ? dynamicIndicatorAlerts : fallbackIndicatorAlerts
-  const currentIndicatorOptions = dynamicIndicatorOptions.length > 0 ? dynamicIndicatorOptions : fallbackIndicatorOptions
+  // Use data from useAvailableAlerts hook (handles Extreme Zones naming correctly)
+  const currentIndicatorAlerts = Object.keys(alertConfig).length > 0 ? alertConfig : fallbackIndicatorAlerts
   
   // Initialize form when modal opens or editing strategy changes
   useEffect(() => {
@@ -665,7 +580,7 @@ export default function ManualStrategyModal({ isOpen, onClose, onSave, editingSt
           </DialogTitle>
         </DialogHeader>
 
-        {loadingData ? (
+        {alertsLoading ? (
           <div className="p-8 text-center">
             <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-400 mx-auto mb-4" />
             <p style={{ color: "#A3A9B8" }}>Loading alerts...</p>

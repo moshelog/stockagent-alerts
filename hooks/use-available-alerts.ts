@@ -73,6 +73,7 @@ export function useAvailableAlerts() {
               transformed.market_waves.push(alertObj)
               break
             case "Extreme Zones":
+            case "Extreme_Zones":
               transformed.extreme_zones.push(alertObj)
               break
           }
@@ -144,7 +145,8 @@ export function useAvailableAlerts() {
       console.log(`📋 Available alerts from API:`, availableAlerts.slice(0, 3))
       
       const dbAlert = availableAlerts.find((a: any) => 
-        a.indicator === indicatorName && a.trigger === foundAlert.name
+        (a.indicator === indicatorName || (indicatorName === "Extreme Zones" && a.indicator === "Extreme_Zones")) && 
+        a.trigger === foundAlert.name
       )
 
       console.log(`🎯 Database alert match:`, dbAlert)

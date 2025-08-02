@@ -30,6 +30,17 @@ export function EnhancedAlertsTable({ alerts, loading, onClearAlerts, showWeight
   const [sortField, setSortField] = useState<SortField>('time')
   const [sortDirection, setSortDirection] = useState<SortDirection>('desc')
 
+  // Map display names back to webhook names
+  const getWebhookIndicatorName = (indicatorName: string) => {
+    const reverseMap: Record<string, string> = {
+      'Market Core Pro™': 'SMC',
+      'Extreme Zones': 'Extreme',
+      'Nautilus™': 'Oscillator',
+      'Market Waves Pro™': 'Wave'
+    }
+    return reverseMap[indicatorName] || indicatorName
+  }
+
   const handleSort = (field: SortField) => {
     if (sortField === field) {
       setSortDirection(sortDirection === 'asc' ? 'desc' : 'asc')
@@ -227,7 +238,7 @@ export function EnhancedAlertsTable({ alerts, loading, onClearAlerts, showWeight
                   </span>
                 </td>
                 <td className="px-4 py-3 text-sm" style={{ color: "#A3A9B8" }}>
-                  {alert.indicator}
+                  {getWebhookIndicatorName(alert.indicator)}
                 </td>
                 <td className="px-4 py-3 text-sm" style={{ color: "#A3A9B8" }}>
                   {alert.trigger}

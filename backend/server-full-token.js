@@ -609,19 +609,39 @@ app.post('/api/strategies', requireAuth, async (req, res) => {
       return res.status(503).json({ error: 'Database not configured' });
     }
 
-    const strategy = req.body;
+    const { name, timeframe, rules, threshold, enabled = true, ruleGroups } = req.body;
     
-    // Validate required fields
-    if (!strategy.name || !strategy.rules || !Array.isArray(strategy.rules)) {
-      return res.status(400).json({ error: 'Invalid strategy format' });
+    // Validation
+    if (!name || !timeframe || !rules) {
+      return res.status(400).json({
+        error: 'Missing required fields',
+        required: ['name', 'timeframe', 'rules']
+      });
+    }
+    
+    if (!Array.isArray(rules) || rules.length < 1) {
+      return res.status(400).json({
+        error: 'Rules must be an array with at least 1 element'
+      });
+    }
+    
+    const strategyData = {
+      name,
+      timeframe: parseInt(timeframe),
+      rules: JSON.stringify(rules),
+      threshold: parseFloat(threshold) || 0,
+      enabled,
+      is_manual: true
+    };
+    
+    // Add rule_groups if provided (preserves UI group structure)
+    if (ruleGroups && Array.isArray(ruleGroups)) {
+      strategyData.rule_groups = JSON.stringify(ruleGroups);
     }
 
     const { data, error } = await supabase
       .from('strategies')
-      .insert([{
-        ...strategy,
-        created_at: new Date().toISOString()
-      }])
+      .insert(strategyData)
       .select();
 
     if (error) {
@@ -887,6 +907,33 @@ app.post('/api/settings', requireAuth, async (req, res) => {
   } catch (error) {
     if (logger && logger.error) {
       logger.error('Save settings error', { error: error.message });
+    }
+    res.status(500).json({ error: 'Internal server error' });
+  }
+});
+
+// Get total count of all alerts
+app.get('/api/alerts/count', requireAuth, async (req, res) => {
+  try {
+    if (!supabase) {
+      return res.json({ count: 0 });
+    }
+    
+    const { count, error } = await supabase
+      .from('alerts')
+      .select('id', { count: 'exact' });
+    
+    if (error) {
+      if (logger && logger.error) {
+        logger.error('Failed to get alerts count', { error: error.message });
+      }
+      return res.status(500).json({ error: error.message });
+    }
+    
+    res.json({ count: count || 0 });
+  } catch (error) {
+    if (logger && logger.error) {
+      logger.error('Alerts count endpoint error', { error: error.message });
     }
     res.status(500).json({ error: 'Internal server error' });
   }

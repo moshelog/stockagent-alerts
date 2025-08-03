@@ -156,3 +156,29 @@ $$ language 'plpgsql';
 -- Trigger to auto-update updated_at on strategies
 CREATE TRIGGER update_strategies_updated_at BEFORE UPDATE ON strategies
     FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
+
+-- User Settings Table
+CREATE TABLE IF NOT EXISTS user_settings (
+  id INTEGER PRIMARY KEY DEFAULT 1, -- Single row for settings
+  ui JSONB DEFAULT '{"showAlertsTable": true, "showScoreMeter": true, "showStrategyPanel": true, "showWeights": true}'::jsonb,
+  scoring JSONB DEFAULT '{"timeWindowMinutes": 60}'::jsonb,
+  created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+  updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+);
+
+-- Trigger to auto-update updated_at on user_settings
+CREATE TRIGGER update_user_settings_updated_at BEFORE UPDATE
+    ON user_settings FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
+
+-- Insert default settings if not exists
+INSERT INTO user_settings (id, ui, scoring)
+VALUES (
+  1,
+  '{"showAlertsTable": true, "showScoreMeter": true, "showStrategyPanel": true, "showWeights": true}'::jsonb,
+  '{"timeWindowMinutes": 60}'::jsonb
+)
+ON CONFLICT (id) DO NOTHING;
+
+-- Grant permissions
+GRANT ALL ON user_settings TO authenticated;
+GRANT ALL ON user_settings TO anon;

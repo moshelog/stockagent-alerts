@@ -29,6 +29,20 @@ try {
   console.error('Strategy evaluator load error:', err.message);
 }
 
+// Import notification services
+let telegramNotifier, discordNotifier;
+try {
+  telegramNotifier = require('./services/telegramNotifier');
+} catch (err) {
+  console.error('Telegram notifier load error:', err.message);
+}
+
+try {
+  discordNotifier = require('./services/discordNotifier');
+} catch (err) {
+  console.error('Discord notifier load error:', err.message);
+}
+
 try {
   const loggerModule = require('./middleware/logger');
   logger = loggerModule.logger || console;
@@ -40,6 +54,11 @@ try {
   requestLogger = (req, res, next) => next();
   errorLogger = (err, req, res, next) => next(err);
 }
+
+// Async handler utility
+const asyncHandler = (fn) => (req, res, next) => {
+  Promise.resolve(fn(req, res, next)).catch(next);
+};
 
 // Health check endpoint (must be before other middleware for Railway)
 app.get('/', (req, res) => {
@@ -967,38 +986,289 @@ app.delete('/api/alerts', requireAuth, async (req, res) => {
   }
 });
 
-// Notification endpoints (stubs for now)
-app.get('/api/telegram/settings', requireAuth, (req, res) => {
-  res.json({ configured: false });
-});
+// ============================================================================
+// TELEGRAM NOTIFICATION ENDPOINTS
+// ============================================================================
 
-app.get('/api/discord/settings', requireAuth, (req, res) => {
-  res.json({ configured: false });
-});
+/**
+ * GET /api/telegram/settings - Get current Telegram settings
+ */
+app.get('/api/telegram/settings', requireAuth, asyncHandler(async (req, res) => {
+  if (!telegramNotifier) {
+    return res.json({ configured: false });
+  }
+  
+  const config = await telegramNotifier.getTelegramConfig('default');
+  
+  // Check if actually configured (has both token and chat ID)
+  const isConfigured = !!(config.botToken && config.botToken.length > 0 && config.chatId && config.chatId.length > 0);
+  
+  res.json({
+    configured: isConfigured,
+    botToken: isConfigured ? '***' : null, // Don't return the actual token for security
+    chatId: config.chatId || null,
+    messageTemplate: config.messageTemplate
+  });
+}));
 
-app.post('/api/telegram/settings', requireAuth, (req, res) => {
-  res.json({ success: true, message: 'Telegram notifications not implemented yet' });
-});
+/**
+ * POST /api/telegram/settings - Save Telegram settings
+ */
+app.post('/api/telegram/settings', requireAuth, asyncHandler(async (req, res) => {
+  if (!telegramNotifier) {
+    return res.status(500).json({ error: 'Telegram service not available' });
+  }
+  
+  const { botToken, chatId, messageTemplate } = req.body;
+  
+  if (!chatId) {
+    return res.status(400).json({ error: 'Chat ID is required' });
+  }
+  
+  // botToken can be null if user is not updating it
+  if (botToken !== null && !botToken) {
+    return res.status(400).json({ error: 'Bot token cannot be empty' });
+  }
+  
+  // Save to database
+  const result = await telegramNotifier.saveTelegramConfig('default', {
+    botToken,
+    chatId,
+    messageTemplate
+  });
+  
+  if (result.success) {
+    res.json({ 
+      success: true, 
+      message: 'Telegram settings saved successfully',
+      settings: {
+        chatId,
+        messageTemplate
+      }
+    });
+  } else {
+    res.status(500).json({ 
+      error: 'Failed to save settings',
+      message: result.error
+    });
+  }
+}));
 
-app.post('/api/discord/settings', requireAuth, (req, res) => {
-  res.json({ success: true, message: 'Discord notifications not implemented yet' });
-});
+/**
+ * POST /api/telegram/test - Test Telegram bot connection
+ */
+app.post('/api/telegram/test', requireAuth, asyncHandler(async (req, res) => {
+  if (!telegramNotifier) {
+    return res.status(500).json({ error: 'Telegram service not available' });
+  }
+  
+  let { botToken, chatId } = req.body;
+  
+  // If no credentials provided, try to use the saved ones
+  if (!botToken || !chatId) {
+    const savedConfig = await telegramNotifier.getTelegramConfig('default');
+    botToken = botToken || savedConfig.botToken;
+    chatId = chatId || savedConfig.chatId;
+    
+    if (!botToken || !chatId) {
+      return res.status(400).json({ error: 'Bot token and chat ID are required' });
+    }
+  }
+  
+  const result = await telegramNotifier.testConnection(botToken, chatId);
+  
+  if (result.success) {
+    res.json(result);
+  } else {
+    res.status(400).json(result);
+  }
+}));
 
-app.post('/api/telegram/test', requireAuth, (req, res) => {
-  res.json({ success: true, message: 'Telegram test not implemented yet' });
-});
+/**
+ * POST /api/telegram/test-alert - Send a test trading alert to Telegram
+ */
+app.post('/api/telegram/test-alert', requireAuth, asyncHandler(async (req, res) => {
+  if (!telegramNotifier) {
+    return res.status(500).json({ error: 'Telegram service not available' });
+  }
+  
+  const { action = 'BUY', botToken, chatId } = req.body;
+  
+  // Get saved Telegram config
+  const telegramConfig = await telegramNotifier.getTelegramConfig('default');
+  
+  const finalBotToken = botToken || telegramConfig.botToken;
+  const finalChatId = chatId || telegramConfig.chatId;
+  
+  if (!finalBotToken || !finalChatId) {
+    return res.status(400).json({ 
+      error: 'Telegram not configured. Please save your bot token and chat ID first.' 
+    });
+  }
+  
+  // Test alert data
+  const alertData = {
+    action,
+    ticker: action === 'BUY' ? 'BTC' : 'ETH',
+    strategy: action === 'BUY' ? 'Buy on discount zone' : 'Sell on premium zone',
+    score: action === 'BUY' ? 4.2 : -4.3,
+    triggers: action === 'BUY' 
+      ? ['Discount Zone', 'Normal Bullish Divergence', 'Bullish OB Break']
+      : ['Premium Zone', 'Normal Bearish Divergence', 'Bearish OB Break'],
+    timestamp: new Date().toISOString()
+  };
+  
+  const result = await telegramNotifier.sendTestAlert(finalBotToken, finalChatId, alertData, telegramConfig.messageTemplate);
+  
+  if (result.success) {
+    res.json({ 
+      success: true, 
+      message: `Test ${action} alert sent successfully!` 
+    });
+  } else {
+    res.status(400).json({ 
+      error: 'Failed to send test alert', 
+      message: result.message 
+    });
+  }
+}));
 
-app.post('/api/discord/test', requireAuth, (req, res) => {
-  res.json({ success: true, message: 'Discord test not implemented yet' });
-});
+// ============================================================================
+// DISCORD NOTIFICATION ENDPOINTS
+// ============================================================================
 
-app.post('/api/telegram/test-alert', requireAuth, (req, res) => {
-  res.json({ success: true, message: 'Telegram test alert not implemented yet' });
-});
+/**
+ * GET /api/discord/settings - Get current Discord settings
+ */
+app.get('/api/discord/settings', requireAuth, asyncHandler(async (req, res) => {
+  if (!discordNotifier) {
+    return res.json({ configured: false });
+  }
+  
+  const config = await discordNotifier.getDiscordConfig('default');
+  
+  // Check if actually configured (has webhook URL)
+  const isConfigured = !!(config.webhookUrl && config.webhookUrl.length > 0);
+  
+  res.json({
+    configured: isConfigured,
+    webhookUrl: isConfigured ? '***' : null, // Don't return the actual URL for security
+    messageTemplate: config.messageTemplate
+  });
+}));
 
-app.post('/api/discord/test-alert', requireAuth, (req, res) => {
-  res.json({ success: true, message: 'Discord test alert not implemented yet' });
-});
+/**
+ * POST /api/discord/settings - Save Discord settings
+ */
+app.post('/api/discord/settings', requireAuth, asyncHandler(async (req, res) => {
+  if (!discordNotifier) {
+    return res.status(500).json({ error: 'Discord service not available' });
+  }
+  
+  const { webhookUrl, messageTemplate } = req.body;
+  
+  if (!webhookUrl) {
+    return res.status(400).json({ error: 'Webhook URL is required' });
+  }
+  
+  // Save to database
+  const result = await discordNotifier.saveDiscordConfig('default', {
+    webhookUrl,
+    messageTemplate
+  });
+  
+  if (result.success) {
+    res.json({ 
+      success: true, 
+      message: 'Discord settings saved successfully',
+      settings: {
+        messageTemplate
+      }
+    });
+  } else {
+    res.status(500).json({ 
+      error: 'Failed to save settings',
+      message: result.error
+    });
+  }
+}));
+
+/**
+ * POST /api/discord/test - Test Discord webhook connection
+ */
+app.post('/api/discord/test', requireAuth, asyncHandler(async (req, res) => {
+  if (!discordNotifier) {
+    return res.status(500).json({ error: 'Discord service not available' });
+  }
+  
+  let { webhookUrl } = req.body;
+  
+  // If no webhook URL provided, try to use the saved one
+  if (!webhookUrl) {
+    const savedConfig = await discordNotifier.getDiscordConfig('default');
+    webhookUrl = savedConfig.webhookUrl;
+    
+    if (!webhookUrl) {
+      return res.status(400).json({ error: 'Webhook URL is required' });
+    }
+  }
+  
+  const result = await discordNotifier.testConnection(webhookUrl);
+  
+  if (result.success) {
+    res.json(result);
+  } else {
+    res.status(400).json(result);
+  }
+}));
+
+/**
+ * POST /api/discord/test-alert - Send a test trading alert to Discord
+ */
+app.post('/api/discord/test-alert', requireAuth, asyncHandler(async (req, res) => {
+  if (!discordNotifier) {
+    return res.status(500).json({ error: 'Discord service not available' });
+  }
+  
+  const { action = 'BUY', webhookUrl } = req.body;
+  
+  // Get saved Discord config
+  const discordConfig = await discordNotifier.getDiscordConfig('default');
+  
+  const finalWebhookUrl = webhookUrl || discordConfig.webhookUrl;
+  
+  if (!finalWebhookUrl) {
+    return res.status(400).json({ 
+      error: 'Discord not configured. Please save your webhook URL first.' 
+    });
+  }
+  
+  // Test alert data
+  const alertData = {
+    action,
+    ticker: action === 'BUY' ? 'BTC' : 'ETH',
+    strategy: action === 'BUY' ? 'Buy on discount zone' : 'Sell on premium zone',
+    score: action === 'BUY' ? 4.2 : -4.3,
+    triggers: action === 'BUY' 
+      ? ['Discount Zone', 'Normal Bullish Divergence', 'Bullish OB Break']
+      : ['Premium Zone', 'Normal Bearish Divergence', 'Bearish OB Break'],
+    timestamp: new Date().toISOString()
+  };
+  
+  const result = await discordNotifier.sendTestAlert(finalWebhookUrl, alertData, discordConfig.messageTemplate);
+  
+  if (result.success) {
+    res.json({ 
+      success: true, 
+      message: `Test ${action} alert sent successfully!` 
+    });
+  } else {
+    res.status(400).json({ 
+      error: 'Failed to send test alert', 
+      message: result.message 
+    });
+  }
+}));
 
 // Admin endpoints for indicators management
 app.get('/api/indicators', requireAuth, async (req, res) => {

@@ -236,33 +236,108 @@ app.use('/api', (req, res, next) => {
 });
 
 // Webhook endpoint - receives alerts from TradingView
-app.post('/webhook', webhookLimiter, async (req, res) => {
+app.post('/webhook', webhookLimiter, express.text({ type: '*/*' }), async (req, res) => {
   try {
-    const alert = req.body;
+    const body = req.body.toString().trim();
     
     if (logger && logger.info) {
-      logger.info('Webhook received', { alert });
+      logger.info('Webhook received', {
+        contentType: req.get('Content-Type'),
+        body: body
+      });
     }
 
-    // Basic validation
-    if (!alert.ticker || !alert.indicator || !alert.trigger) {
+    // Parse text format: "TICKER|TIMEFRAME|INDICATOR|TRIGGER" or "TICKER|TIMEFRAME|INDICATOR|TRIGGER|TIME"
+    // New structure: "TICKER|INTERVAL|Extreme|TRIGGER|HTF" or "TICKER|INTERVAL|Extreme|TRIGGER|HTF|TIME"
+    const parts = body.split('|');
+    
+    if (parts.length < 4) {
       return res.status(400).json({ 
-        error: 'Missing required fields: ticker, indicator, trigger' 
+        error: 'Invalid text format. Expected: TICKER|TIMEFRAME|INDICATOR|TRIGGER or TICKER|TIMEFRAME|INDICATOR|TRIGGER|TIME',
+        received: body 
+      });
+    }
+
+    const ticker = parts[0].trim();
+    const timeframe = parts[1].trim();
+    const indicator = parts[2].trim();
+    const trigger = parts[3].trim();
+    
+    // Handle HTF and time parameters
+    let htf = null;
+    let time = null;
+    
+    if (parts.length >= 5) {
+      // Check for new structure with HTF that may contain pipe symbols
+      if (indicator.toLowerCase() === 'extreme' || indicator.toLowerCase() === 'indicator') {
+        // New structure: TICKER|INTERVAL|Extreme|TRIGGER|HTF (HTF may contain pipes)
+        // Join everything from the 5th part onward as HTF field
+        htf = parts.slice(4).join('|').trim();
+        time = null; // No time in this structure
+      } else if (parts.length === 5) {
+        // Old 5-part structure: TICKER|TIMEFRAME|INDICATOR|TRIGGER|TIME
+        time = parts[4].trim();
+      } else if (parts.length === 6) {
+        // 6-part structure: TICKER|TIMEFRAME|INDICATOR|TRIGGER|HTF|TIME
+        htf = parts[4].trim();
+        time = parts[5].trim();
+      }
+    }
+
+    // Validate required fields
+    if (!ticker || !timeframe || !indicator || !trigger) {
+      return res.status(400).json({
+        error: 'Missing required fields after parsing',
+        required: ['ticker', 'timeframe', 'indicator', 'trigger'],
+        parsed: { ticker, timeframe, indicator, trigger }
+      });
+    }
+
+    // Map TradingView indicator names to database names (case-insensitive)
+    const indicatorMapping = {
+      'smc': 'Market Core Pro™',
+      'extreme': 'Extreme Zones',
+      'oscillator': 'Nautilus™',
+      'wave': 'Market Waves Pro™'
+    };
+    
+    // Normalize indicator name - convert to lowercase for matching
+    const indicatorLower = indicator.toLowerCase();
+    const normalizedIndicator = indicatorMapping[indicatorLower] || indicator;
+
+    if (logger && logger.info) {
+      logger.info('Webhook parsed', {
+        ticker,
+        timeframe,
+        indicator: normalizedIndicator,
+        trigger,
+        htf: htf || 'none',
+        timestamp: time || new Date().toISOString()
       });
     }
 
     // Save alert to database
     if (supabase) {
+      const alertData = {
+        ticker: ticker.toUpperCase(),
+        timeframe: timeframe,
+        indicator: normalizedIndicator,
+        trigger: trigger,
+        timestamp: time ? 
+          (typeof time === 'string' && time.length === 13 ? 
+            new Date(parseInt(time)).toISOString() : 
+            new Date(time).toISOString()) : 
+          new Date().toISOString()
+      };
+      
+      // Add HTF field if it exists
+      if (htf) {
+        alertData.htf = htf;
+      }
+      
       const { data, error } = await supabase
         .from('alerts')
-        .insert([{
-          ticker: alert.ticker,
-          timeframe: alert.timeframe || '15m',
-          indicator: alert.indicator,
-          trigger: alert.trigger,
-          timestamp: new Date().toISOString(),
-          htf: alert.htf || null // Include HTF field
-        }]);
+        .insert([alertData]);
 
       if (error) {
         if (logger && logger.error) {

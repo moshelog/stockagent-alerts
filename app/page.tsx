@@ -1,6 +1,6 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import { motion } from "framer-motion"
 import { Settings, Activity, LogOut } from "lucide-react"
 import { Button } from "@/components/ui/button"
@@ -18,6 +18,7 @@ import MobileAlertsAccordion from "@/components/MobileAlertsAccordion"
 import { ErrorBoundary } from "@/components/ErrorBoundary"
 import { generateScoringData, extractLastActionFromScore } from "@/utils/scoring"
 import { useAuth } from "@/contexts/AuthContext"
+import { useRouter } from "next/navigation"
 import Link from "next/link"
 
 // Add this function to calculate total alerts from available alerts data
@@ -33,15 +34,24 @@ const calculateTotalAlerts = () => {
 }
 
 export default function Dashboard() {
+  const router = useRouter()
+  
   // Time window state for scoring system
   const [timeWindowMinutes, setTimeWindowMinutes] = useState(60)
   
+  const { user, isLoading: authLoading, logout } = useAuth()
   const { config, loading: configLoading, error: configError, updateConfig } = useConfig()
   const { alertConfig, loading: alertsLoading, updateWeight } = useAvailableAlerts()
   const { alerts, score, strategies: apiStrategies, loading: tradingDataLoading } = useTradingData(timeWindowMinutes, alertConfig)
   const { totalCount: totalAlertsCount, loading: totalAlertsLoading } = useTotalAlerts()
   const { clearAlerts } = useClearAlerts()
-  const { logout } = useAuth()
+  
+  // Redirect to login if not authenticated
+  useEffect(() => {
+    if (!authLoading && !user) {
+      router.push('/login')
+    }
+  }, [authLoading, user, router])
 
   const handleClearAlerts = async () => {
     try {
@@ -91,7 +101,7 @@ export default function Dashboard() {
 
   // DEPRECATED: Legacy strategy creation - now using database via createStrategy hook
 
-  if (configLoading || tradingDataLoading || alertsLoading || strategiesLoading || totalAlertsLoading) {
+  if (authLoading || configLoading || tradingDataLoading || alertsLoading || strategiesLoading || totalAlertsLoading) {
     return (
       <div className="min-h-screen bg-background flex items-center justify-center">
         <div className="text-center">

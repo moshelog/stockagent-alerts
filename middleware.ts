@@ -5,27 +5,15 @@ export function middleware(request: NextRequest) {
   // Get the pathname of the request (e.g. /login, /dashboard)
   const path = request.nextUrl.pathname
 
-  // Define public paths that don't require authentication
-  const isPublicPath = path === '/login'
-
-  // Get the token from the cookies
-  const token = request.cookies.get('authToken')?.value || ''
-
-  // If trying to access login while authenticated, redirect to dashboard
-  if (isPublicPath && token) {
-    return NextResponse.redirect(new URL('/', request.nextUrl))
-  }
-
-  // If trying to access protected route without token, redirect to login
-  if (!isPublicPath && !token) {
-    return NextResponse.redirect(new URL('/login', request.nextUrl))
-  }
-
   // Skip middleware for API routes (they're handled by backend)
   if (path.startsWith('/api/')) {
     return NextResponse.next()
   }
 
+  // Since we're using localStorage for tokens (client-side only),
+  // we can't check authentication in middleware.
+  // Authentication checks will be handled client-side by AuthContext
+  
   return NextResponse.next()
 }
 

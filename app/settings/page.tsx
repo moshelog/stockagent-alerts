@@ -2,7 +2,7 @@
 
 import type React from "react"
 
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import { motion } from "framer-motion"
 import {
   ChevronDown,
@@ -25,8 +25,9 @@ import Link from "next/link"
 import { useToast } from "@/hooks/use-toast"
 import { Switch } from "@/components/ui/switch"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
-import { useEffect } from "react"
 import { NotificationsPanel } from "@/components/notifications-panel"
+import { useAuth } from "@/contexts/AuthContext"
+import { useRouter } from "next/navigation"
 
 interface CollapsiblePanelProps {
   title: string
@@ -70,6 +71,8 @@ function CollapsiblePanel({ title, icon, children, defaultOpen = false }: Collap
 }
 
 export default function SettingsPage() {
+  const router = useRouter()
+  const { user, isLoading: authLoading } = useAuth()
   const { config, loading, error, saving, reload, updateConfig } = useConfig()
   const [isReloading, setIsReloading] = useState(false)
   const [localConfig, setLocalConfig] = useState(config)
@@ -146,6 +149,13 @@ export default function SettingsPage() {
   })
 
   const { toast } = useToast()
+
+  // Redirect to login if not authenticated
+  useEffect(() => {
+    if (!authLoading && !user) {
+      router.push('/login')
+    }
+  }, [authLoading, user, router])
 
   // Load notification settings on mount
   useEffect(() => {
@@ -609,7 +619,7 @@ export default function SettingsPage() {
     }
   }
 
-  if (loading) {
+  if (authLoading || loading) {
     return (
       <div className="min-h-screen bg-background flex items-center justify-center">
         <div className="text-center">

@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from "react"
 import { useConfig } from "./use-config"
+import { authenticatedFetch, getAuthHeaders } from "@/utils/api"
 
 export interface Strategy {
   id: string
@@ -68,7 +69,7 @@ export function useStrategies() {
     const fetchStrategies = async () => {
       try {
         setLoading(true)
-        const response = await fetch(`${config.apiBase}/strategies`)
+        const response = await authenticatedFetch(`${config.apiBase}/strategies`)
         const data = await response.json()
 
         // Transform API data to include frontend compatibility fields
@@ -145,11 +146,8 @@ export function useStrategies() {
       console.log('🔄 Creating strategy with data:', strategyData)
       console.log('🌐 API endpoint:', `${config.apiBase}/strategies`)
       
-      const response = await fetch(`${config.apiBase}/strategies`, {
+      const response = await authenticatedFetch(`${config.apiBase}/strategies`, {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json'
-        },
         body: JSON.stringify({
           name: strategyData.name,
           timeframe: strategyData.timeframe,
@@ -236,11 +234,8 @@ export function useStrategies() {
     if (!config) return false
 
     try {
-      const response = await fetch(`${config.apiBase}/strategies/${id}`, {
+      const response = await authenticatedFetch(`${config.apiBase}/strategies/${id}`, {
         method: 'PUT',
-        headers: {
-          'Content-Type': 'application/json'
-        },
         body: JSON.stringify(updates)
       })
 
@@ -296,7 +291,7 @@ export function useStrategies() {
     if (!config) return false
 
     try {
-      const response = await fetch(`${config.apiBase}/strategies/${id}`, {
+      const response = await authenticatedFetch(`${config.apiBase}/strategies/${id}`, {
         method: 'DELETE'
       })
 

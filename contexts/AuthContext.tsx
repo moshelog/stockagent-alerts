@@ -34,9 +34,18 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   const checkAuth = async () => {
     try {
+      const token = localStorage.getItem('authToken')
+      if (!token) {
+        setUser(null)
+        setIsLoading(false)
+        return
+      }
+
       const apiBase = 'https://stockagent-backend-production.up.railway.app/api'
       const response = await fetch(`${apiBase}/auth/verify`, {
-        credentials: 'include',
+        headers: {
+          'Authorization': `Bearer ${token}`
+        }
       })
 
       if (response.ok) {
@@ -45,13 +54,16 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           setUser(data.user)
         } else {
           setUser(null)
+          localStorage.removeItem('authToken')
         }
       } else {
         setUser(null)
+        localStorage.removeItem('authToken')
       }
     } catch (error) {
       console.error('Auth check failed:', error)
       setUser(null)
+      localStorage.removeItem('authToken')
     } finally {
       setIsLoading(false)
     }
@@ -62,7 +74,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     const response = await fetch(`${apiBase}/auth/login`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      credentials: 'include',
       body: JSON.stringify({ username, password }),
     })
 
@@ -70,6 +81,11 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
     if (!response.ok) {
       throw new Error(data.error || 'Login failed')
+    }
+
+    // Store token for token-based auth
+    if (data.token) {
+      localStorage.setItem('authToken', data.token)
     }
 
     // Check auth status after login
@@ -86,12 +102,20 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   const logout = async () => {
     try {
+      const token = localStorage.getItem('authToken')
       const apiBase = 'https://stockagent-backend-production.up.railway.app/api'
-      await fetch(`${apiBase}/auth/logout`, {
-        method: 'POST',
-        credentials: 'include',
-      })
+      
+      if (token) {
+        await fetch(`${apiBase}/auth/logout`, {
+          method: 'POST',
+          headers: {
+            'Authorization': `Bearer ${token}`
+          }
+        })
+      }
 
+      // Clear token
+      localStorage.removeItem('authToken')
       setUser(null)
       
       toast({
@@ -103,6 +127,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       router.push('/login')
     } catch (error) {
       console.error('Logout failed:', error)
+      // Even if logout fails, clear local state
+      localStorage.removeItem('authToken')
+      setUser(null)
+      router.push('/login')
     }
   }
 

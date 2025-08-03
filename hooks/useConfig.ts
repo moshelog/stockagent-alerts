@@ -1,6 +1,7 @@
 "use client"
 
 import { useState, useEffect } from "react"
+import { authenticatedFetch } from "@/utils/api"
 
 export interface AlertType {
   indicator: string
@@ -94,7 +95,7 @@ export function useConfig() {
       try {
         const settingsUrl = constructApiUrl(baseConfig.apiBase, '/api/settings')
         console.log('📥 Loading settings from URL:', settingsUrl)
-        const settingsResponse = await fetch(settingsUrl)
+        const settingsResponse = await authenticatedFetch(settingsUrl)
         if (settingsResponse.ok) {
           const userSettings = await settingsResponse.json()
           // Merge base config with user settings
@@ -130,11 +131,8 @@ export function useConfig() {
       console.log('🔄 Saving settings to URL:', settingsUrl)
       console.log('🔄 Settings data:', { ui: newConfig.ui, scoring: newConfig.scoring })
       
-      const response = await fetch(settingsUrl, {
+      const response = await authenticatedFetch(settingsUrl, {
         method: "POST",
-        headers: {
-          "Content-Type": "application/json"
-        },
         body: JSON.stringify({
           ui: newConfig.ui,
           scoring: newConfig.scoring || { timeWindowMinutes: 60 }

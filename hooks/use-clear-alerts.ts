@@ -2,6 +2,7 @@
 
 import { useState } from "react"
 import { useConfig } from "./useConfig"
+import { authenticatedFetch } from "@/utils/api"
 
 export function useClearAlerts() {
   const { config } = useConfig()
@@ -17,7 +18,7 @@ export function useClearAlerts() {
     setError(null)
 
     try {
-      const response = await fetch(`${config.apiBase}/alerts`, {
+      const response = await authenticatedFetch(`${config.apiBase}/alerts`, {
         method: 'DELETE',
       })
 

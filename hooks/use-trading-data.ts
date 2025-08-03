@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from "react"
 import { useConfig } from "./use-config"
+import { authenticatedFetch } from "@/utils/api"
 
 export interface Alert {
   id: string
@@ -50,7 +51,7 @@ export function useTradingData(timeWindowMinutes: number = 60, alertConfig?: any
     const fetchData = async () => {
       try {
         // Fetch real alerts from backend API
-        const alertsResponse = await fetch(`${config.apiBase}/alerts`)
+        const alertsResponse = await authenticatedFetch(`${config.apiBase}/alerts`)
         if (!alertsResponse.ok) {
           throw new Error(`Failed to fetch alerts: ${alertsResponse.status}`)
         }
@@ -87,7 +88,7 @@ export function useTradingData(timeWindowMinutes: number = 60, alertConfig?: any
         // Always fallback to API if alertConfig is not available or failed to process
         if (weightMap.size === 0) {
           try {
-            const availableAlertsResponse = await fetch(`${config.apiBase}/available-alerts`)
+            const availableAlertsResponse = await authenticatedFetch(`${config.apiBase}/available-alerts`)
             const availableAlertsData = await availableAlertsResponse.json()
             
             availableAlertsData.forEach((availableAlert: any) => {
@@ -175,7 +176,7 @@ export function useTradingData(timeWindowMinutes: number = 60, alertConfig?: any
         })
 
         // Fetch score data from backend with time window parameter
-        const scoreResponse = await fetch(`${config.apiBase}/score?timeWindow=${timeWindowMinutes}`)
+        const scoreResponse = await authenticatedFetch(`${config.apiBase}/score?timeWindow=${timeWindowMinutes}`)
         const scoreData = await scoreResponse.json()
         
         console.log('🔍 Raw scoreData from API:', scoreData)
@@ -194,7 +195,7 @@ export function useTradingData(timeWindowMinutes: number = 60, alertConfig?: any
         }
 
         // Fetch strategies from backend
-        const strategiesResponse = await fetch(`${config.apiBase}/strategies`)
+        const strategiesResponse = await authenticatedFetch(`${config.apiBase}/strategies`)
         const strategiesData = await strategiesResponse.json()
         
         const transformedStrategies: Strategy[] = strategiesData.map((strategy: any) => ({

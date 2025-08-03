@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from "react"
 import { useConfig } from "./use-config"
+import { authenticatedFetch } from "@/utils/api"
 
 interface SystemHealth {
   status: 'healthy' | 'degraded' | 'down'
@@ -40,7 +41,7 @@ export function useMonitoring() {
     if (!config) return
 
     try {
-      const response = await fetch(`${config.apiBase}/health`)
+      const response = await authenticatedFetch(`${config.apiBase}/health`)
       const data = await response.json()
       
       setHealth(data)
@@ -64,7 +65,7 @@ export function useMonitoring() {
     if (!config || process.env.NODE_ENV !== 'production') return
 
     try {
-      await fetch(`${config.apiBase}/client-metrics`, {
+      await authenticatedFetch(`${config.apiBase}/client-metrics`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -90,7 +91,7 @@ export function useMonitoring() {
     if (!config || process.env.NODE_ENV !== 'production') return
 
     try {
-      await fetch(`${config.apiBase}/user-actions`, {
+      await authenticatedFetch(`${config.apiBase}/user-actions`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',

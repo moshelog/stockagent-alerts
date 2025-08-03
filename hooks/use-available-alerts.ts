@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from "react"
 import { useConfig } from "./use-config"
+import { authenticatedFetch } from "@/utils/api"
 
 interface Alert {
   id: string
@@ -34,7 +35,7 @@ export function useAvailableAlerts() {
       try {
         setLoading(true)
         console.log(`📡 Fetching available alerts from: ${config.apiBase}/available-alerts`)
-        const response = await fetch(`${config.apiBase}/available-alerts`)
+        const response = await authenticatedFetch(`${config.apiBase}/available-alerts`)
         const data = await response.json()
 
         console.log(`📋 Raw API data (first 3):`, data.slice(0, 3))
@@ -140,7 +141,7 @@ export function useAvailableAlerts() {
 
       // Find the database ID by matching indicator + trigger
       console.log(`📡 Fetching available alerts from API...`)
-      const availableAlertsResponse = await fetch(`${config.apiBase}/available-alerts`)
+      const availableAlertsResponse = await authenticatedFetch(`${config.apiBase}/available-alerts`)
       const availableAlerts = await availableAlertsResponse.json()
       console.log(`📋 Available alerts from API:`, availableAlerts.slice(0, 3))
       
@@ -154,11 +155,8 @@ export function useAvailableAlerts() {
       if (dbAlert) {
         console.log(`📤 Updating database with weight: ${weight}`)
         // Update in database
-        const updateResponse = await fetch(`${config.apiBase}/available-alerts/${dbAlert.id}`, {
+        const updateResponse = await authenticatedFetch(`${config.apiBase}/available-alerts/${dbAlert.id}`, {
           method: 'PUT',
-          headers: {
-            'Content-Type': 'application/json'
-          },
           body: JSON.stringify({ weight })
         })
 

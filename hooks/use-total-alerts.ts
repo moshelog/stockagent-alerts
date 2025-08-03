@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from "react"
 import { useConfig } from "./use-config"
+import { authenticatedFetch } from "@/utils/api"
 
 export function useTotalAlerts() {
   const { config } = useConfig()
@@ -13,7 +14,7 @@ export function useTotalAlerts() {
 
     const fetchTotalCount = async () => {
       try {
-        const response = await fetch(`${config.apiBase}/alerts/count`)
+        const response = await authenticatedFetch(`${config.apiBase}/alerts/count`)
         const data = await response.json()
         setTotalCount(data.count || 0)
         setLoading(false)

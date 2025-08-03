@@ -4,9 +4,10 @@
   "description": "StockAgent backend service for TradingView webhook processing and strategy evaluation",
   "main": "server.js",
   "scripts": {
-    "start": "node server-basic.js",
+    "start": "node server-token.js",
     "start-minimal": "node server-minimal.js",
     "start-full": "node server.js",
+    "start-basic": "node server-basic.js",
     "dev": "nodemon server.js",
     "setup": "node setup.js",
     "init-db": "echo 'Please run the SQL from scripts/init-schema.sql in your Supabase SQL editor'",

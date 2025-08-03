@@ -33,13 +33,17 @@ export default function LoginPage() {
       const data = await response.json()
 
       if (response.ok) {
+        // For token-based auth, store the token in localStorage
+        if (data.token) {
+          localStorage.setItem('authToken', data.token)
+        }
+        
         toast({
           title: "Success",
           description: "Login successful. Redirecting...",
           className: "bg-accent-buy text-white border-accent-buy",
         })
         
-        // Store the token in httpOnly cookie is handled by the backend
         // Redirect to dashboard
         router.push("/")
       } else {

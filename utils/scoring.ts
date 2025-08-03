@@ -200,7 +200,7 @@ export function generateScoringData(
           triggeredActions.push({
             strategy: strategy.name,
             ticker: ticker,
-            timeframe: `${strategy.timeframe || 15}m`,
+            timeframe: `${strategy.timeframe || 15}`,
             timestamp: mostRecentAlert.time, // Use the actual alert time instead of current time
             alertsFound: allFoundAlerts.map(a => a.trigger),
             missingAlerts: [action], // Simplified action text (just "Buy" or "Sell")
@@ -284,7 +284,7 @@ export function generateScoringData(
         triggeredActions.push({
           strategy: strategy.name,
           ticker: ticker,
-          timeframe: `${strategy.timeframe || 15}m`,
+          timeframe: `${strategy.timeframe || 15}`,
           timestamp: mostRecentAlert.time, // Use the actual alert time instead of current time
           alertsFound: foundAlerts.map(a => a.trigger),
           missingAlerts: [action], // Simplified action text (just "Buy" or "Sell")

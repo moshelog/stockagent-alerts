@@ -234,7 +234,7 @@ export function EnhancedAlertsTable({ alerts, loading, onClearAlerts, showWeight
                 </td>
                 <td className="px-4 py-3 text-sm" style={{ color: "#A3A9B8" }}>
                   <span className="bg-blue-900/30 px-2 py-1 rounded text-xs font-mono text-blue-300">
-                    {alert.timeframe}
+                    {String(alert.timeframe).replace('m', '')}
                   </span>
                 </td>
                 <td className="px-4 py-3 text-sm" style={{ color: "#A3A9B8" }}>

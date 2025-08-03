@@ -89,7 +89,7 @@ export function useStrategies() {
             rule_groups: parsedRuleGroups, // Database field
             ruleGroups: parsedRuleGroups, // Frontend alias for compatibility
             // Add frontend compatibility fields
-            summary: `${parsedRules.length} alerts • ${strategy.timeframe}m • ${strategy.threshold > 0 ? 'SELL' : 'BUY'} threshold`,
+            summary: `${parsedRules.length} alerts • ${strategy.timeframe} • ${strategy.threshold > 0 ? 'SELL' : 'BUY'} threshold`,
             rule: `IF ${parsedRules.map((r: any) => `${r.indicator}: ${r.trigger}`).join(' + ')} THEN ${strategy.threshold > 0 ? 'SELL' : 'BUY'}`,
             components: {},
             alertDetails: parsedRules.map((r: any, index: number) => ({

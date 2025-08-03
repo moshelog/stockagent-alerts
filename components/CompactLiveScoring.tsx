@@ -189,7 +189,7 @@ export function CompactLiveScoring({
                 </td>
                 <td className="px-3 py-2 text-xs" style={{ color: "#A3A9B8" }}>
                   <span className="bg-blue-900/30 px-2 py-1 rounded text-xs font-mono text-blue-300">
-                    {item.timeframe}
+                    {String(item.timeframe).replace('m', '')}
                   </span>
                 </td>
                 <td className="px-3 py-2 text-xs" style={{ color: "#E0E6ED" }}>

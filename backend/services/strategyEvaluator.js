@@ -178,22 +178,41 @@ class StrategyEvaluator {
       // Send Telegram notification
       try {
         const telegramConfig = await telegramNotifier.getTelegramConfig();
+        console.log('🔔 Telegram config check:', {
+          enabled: telegramConfig.enabled,
+          hasBotToken: !!telegramConfig.botToken,
+          hasChatId: !!telegramConfig.chatId
+        });
+        
         if (telegramConfig.enabled && telegramConfig.botToken && telegramConfig.chatId) {
-          await telegramNotifier.sendNotification(notificationData, telegramConfig);
+          console.log('📤 Sending Telegram notification for:', notificationData.action, notificationData.ticker);
+          const result = await telegramNotifier.sendNotification(notificationData, telegramConfig);
+          console.log('✅ Telegram notification result:', result.success ? 'SUCCESS' : 'FAILED', result.message);
+        } else {
+          console.log('⚠️ Telegram notification skipped - config incomplete');
         }
       } catch (notificationError) {
-        console.error('Failed to send Telegram notification:', notificationError.message);
+        console.error('❌ Failed to send Telegram notification:', notificationError.message);
         // Continue even if notification fails
       }
 
       // Send Discord notification
       try {
         const discordConfig = await discordNotifier.getDiscordConfig();
+        console.log('🔔 Discord config check:', {
+          enabled: discordConfig.enabled,
+          hasWebhookUrl: !!discordConfig.webhookUrl
+        });
+        
         if (discordConfig.enabled && discordConfig.webhookUrl) {
-          await discordNotifier.sendNotification(notificationData, discordConfig);
+          console.log('📤 Sending Discord notification for:', notificationData.action, notificationData.ticker);
+          const result = await discordNotifier.sendNotification(notificationData, discordConfig);
+          console.log('✅ Discord notification result:', result.success ? 'SUCCESS' : 'FAILED', result.message);
+        } else {
+          console.log('⚠️ Discord notification skipped - config incomplete');
         }
       } catch (notificationError) {
-        console.error('Failed to send Discord notification:', notificationError.message);
+        console.error('❌ Failed to send Discord notification:', notificationError.message);
         // Continue even if notification fails
       }
 

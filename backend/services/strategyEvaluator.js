@@ -1,5 +1,6 @@
 const { supabase } = require('../config/database');
 const telegramNotifier = require('./telegramNotifier');
+const discordNotifier = require('./discordNotifier');
 
 /**
  * Strategy Evaluation Service
@@ -164,20 +165,35 @@ class StrategyEvaluator {
         foundRules: foundRules.length
       });
 
+      // Send notifications
+      const triggers = foundRules.map(rule => rule.trigger);
+      const notificationData = {
+        action,
+        ticker,
+        strategy: strategy.name,
+        triggers,
+        score
+      };
+
       // Send Telegram notification
       try {
         const telegramConfig = await telegramNotifier.getTelegramConfig();
-        const triggers = foundRules.map(rule => rule.trigger);
-        
-        await telegramNotifier.sendNotification({
-          action,
-          ticker,
-          strategy: strategy.name,
-          triggers,
-          score
-        }, telegramConfig);
+        if (telegramConfig.enabled && telegramConfig.botToken && telegramConfig.chatId) {
+          await telegramNotifier.sendNotification(notificationData, telegramConfig);
+        }
       } catch (notificationError) {
         console.error('Failed to send Telegram notification:', notificationError.message);
+        // Continue even if notification fails
+      }
+
+      // Send Discord notification
+      try {
+        const discordConfig = await discordNotifier.getDiscordConfig();
+        if (discordConfig.enabled && discordConfig.webhookUrl) {
+          await discordNotifier.sendNotification(notificationData, discordConfig);
+        }
+      } catch (notificationError) {
+        console.error('Failed to send Discord notification:', notificationError.message);
         // Continue even if notification fails
       }
 

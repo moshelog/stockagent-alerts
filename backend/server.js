@@ -1192,6 +1192,7 @@ app.delete('/api/available-alerts/:id', asyncHandler(async (req, res) => {
 // ============================================================================
 
 const telegramNotifier = require('./services/telegramNotifier');
+const discordNotifier = require('./services/discordNotifier');
 
 /**
  * POST /api/telegram/test - Test Telegram connection
@@ -1305,6 +1306,114 @@ app.get('/api/telegram/settings', asyncHandler(async (req, res) => {
     configured: !!(config.botToken && config.chatId),
     botToken: config.botToken ? '***' + config.botToken.slice(-4) : null, // Only show last 4 chars
     chatId: config.chatId || null,
+    messageTemplate: config.messageTemplate
+  });
+}));
+
+// ============================================================================
+// DISCORD NOTIFICATION ENDPOINTS
+// ============================================================================
+
+/**
+ * POST /api/discord/test - Test Discord webhook connection
+ */
+app.post('/api/discord/test', asyncHandler(async (req, res) => {
+  const { webhookUrl } = req.body;
+  
+  if (!webhookUrl) {
+    return res.status(400).json({ error: 'Webhook URL is required' });
+  }
+  
+  const result = await discordNotifier.testConnection(webhookUrl);
+  
+  if (result.success) {
+    res.json(result);
+  } else {
+    res.status(400).json(result);
+  }
+}));
+
+/**
+ * POST /api/discord/test-alert - Send a test trading alert to Discord
+ */
+app.post('/api/discord/test-alert', asyncHandler(async (req, res) => {
+  const { action = 'BUY' } = req.body;
+  
+  // Get saved Discord config
+  const discordConfig = await discordNotifier.getDiscordConfig('default');
+  
+  if (!discordConfig.webhookUrl) {
+    return res.status(400).json({ 
+      error: 'Discord not configured', 
+      message: 'Please save your Discord webhook URL first' 
+    });
+  }
+  
+  // Create realistic test data (same as Telegram)
+  const testData = {
+    action: action,
+    ticker: action === 'BUY' ? 'BTC' : 'ETH',
+    strategy: action === 'BUY' ? 'Buy on discount zone' : 'Sell on premium zone',
+    triggers: action === 'BUY' 
+      ? ['Discount Zone', 'Normal Bullish Divergence', 'Bullish OB Break'] 
+      : ['Premium Zone', 'Normal Bearish Divergence', 'Bearish OB Break'],
+    score: action === 'BUY' ? 4.2 : -4.3
+  };
+  
+  // Send test notification
+  const result = await discordNotifier.sendNotification(testData, discordConfig);
+  
+  if (result.success) {
+    res.json({ 
+      success: true, 
+      message: `Test ${action} alert sent to Discord!` 
+    });
+  } else {
+    res.status(400).json({ 
+      error: 'Failed to send test alert', 
+      message: result.message 
+    });
+  }
+}));
+
+/**
+ * POST /api/discord/settings - Save Discord settings
+ */
+app.post('/api/discord/settings', asyncHandler(async (req, res) => {
+  const { webhookUrl, messageTemplate } = req.body;
+  
+  if (!webhookUrl) {
+    return res.status(400).json({ error: 'Webhook URL is required' });
+  }
+  
+  // Save to database
+  const result = await discordNotifier.saveDiscordConfig('default', {
+    webhookUrl,
+    messageTemplate
+  });
+  
+  if (result.success) {
+    res.json({ 
+      success: true, 
+      message: 'Discord settings saved successfully' 
+    });
+  } else {
+    res.status(500).json({ 
+      error: 'Failed to save settings', 
+      message: result.error 
+    });
+  }
+}));
+
+/**
+ * GET /api/discord/settings - Get current Discord settings
+ */
+app.get('/api/discord/settings', asyncHandler(async (req, res) => {
+  const config = await discordNotifier.getDiscordConfig('default');
+  
+  res.json({
+    configured: !!config.webhookUrl,
+    webhookUrl: config.webhookUrl ? config.webhookUrl.replace(/\/[\w-]+$/, '/***') : null, // Hide token part
     messageTemplate: config.messageTemplate
   });
 }));

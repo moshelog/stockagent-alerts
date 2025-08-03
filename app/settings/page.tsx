@@ -26,6 +26,7 @@ import { useToast } from "@/hooks/use-toast"
 import { Switch } from "@/components/ui/switch"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { useEffect } from "react"
+import { NotificationsPanel } from "@/components/notifications-panel"
 
 interface CollapsiblePanelProps {
   title: string
@@ -85,8 +86,27 @@ export default function SettingsPage() {
   })
   const [loadingTelegramSettings, setLoadingTelegramSettings] = useState(true)
   
-  // Message template states
-  const [messageTemplate, setMessageTemplate] = useState({
+  // Discord states
+  const [discordWebhookUrl, setDiscordWebhookUrl] = useState("")
+  const [testingDiscord, setTestingDiscord] = useState(false)
+  const [sendingDiscordTestAlert, setSendingDiscordTestAlert] = useState(false)
+  const [discordStatus, setDiscordStatus] = useState<{ type: "success" | "error" | null; message: string }>({
+    type: null,
+    message: "",
+  })
+  const [loadingDiscordSettings, setLoadingDiscordSettings] = useState(true)
+  
+  // Message template states (shared between Telegram and Discord)
+  const [telegramMessageTemplate, setTelegramMessageTemplate] = useState({
+    showTimestamp: true,
+    showTicker: true,
+    showStrategy: true,
+    showTriggers: true,
+    showScore: true,
+    format: 'detailed' as 'detailed' | 'compact' | 'minimal'
+  })
+  
+  const [discordMessageTemplate, setDiscordMessageTemplate] = useState({
     showTimestamp: true,
     showTicker: true,
     showStrategy: true,
@@ -125,30 +145,43 @@ export default function SettingsPage() {
 
   const { toast } = useToast()
 
-  // Load Telegram settings on mount
+  // Load notification settings on mount
   useEffect(() => {
-    const loadTelegramSettings = async () => {
+    const loadNotificationSettings = async () => {
       try {
-        const response = await fetch(`${config?.apiBase}/telegram/settings`)
-        const data = await response.json()
+        // Load Telegram settings
+        const telegramResponse = await fetch(`${config?.apiBase}/telegram/settings`)
+        const telegramData = await telegramResponse.json()
         
-        if (data.configured) {
+        if (telegramData.configured) {
           // Don't show the actual bot token for security
-          setTelegramBotToken(data.botToken || '')
-          setTelegramChatId(data.chatId || '')
-          if (data.messageTemplate) {
-            setMessageTemplate(data.messageTemplate)
+          setTelegramBotToken(telegramData.botToken || '')
+          setTelegramChatId(telegramData.chatId || '')
+          if (telegramData.messageTemplate) {
+            setTelegramMessageTemplate(telegramData.messageTemplate)
+          }
+        }
+        
+        // Load Discord settings
+        const discordResponse = await fetch(`${config?.apiBase}/discord/settings`)
+        const discordData = await discordResponse.json()
+        
+        if (discordData.configured) {
+          setDiscordWebhookUrl(discordData.webhookUrl || '')
+          if (discordData.messageTemplate) {
+            setDiscordMessageTemplate(discordData.messageTemplate)
           }
         }
       } catch (error) {
-        console.error('Failed to load Telegram settings:', error)
+        console.error('Failed to load notification settings:', error)
       } finally {
         setLoadingTelegramSettings(false)
+        setLoadingDiscordSettings(false)
       }
     }
 
     if (config?.apiBase) {
-      loadTelegramSettings()
+      loadNotificationSettings()
     }
   }, [config])
 
@@ -261,6 +294,124 @@ export default function SettingsPage() {
     }
   }
 
+  const handleTestDiscord = async () => {
+    if (!discordWebhookUrl) {
+      setDiscordStatus({ type: "error", message: "Please enter a webhook URL" })
+      return
+    }
+
+    setTestingDiscord(true)
+    setDiscordStatus({ type: null, message: "" })
+
+    try {
+      const response = await fetch(`${config.apiBase}/discord/test`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          webhookUrl: discordWebhookUrl
+        })
+      })
+
+      const result = await response.json()
+
+      if (response.ok && result.success) {
+        setDiscordStatus({ type: "success", message: "Test message sent successfully!" })
+        toast({
+          title: "Success",
+          description: "Discord connection test successful",
+          className: "bg-accent-buy text-white border-accent-buy",
+        })
+      } else {
+        throw new Error(result.message || "Invalid webhook URL")
+      }
+    } catch (error) {
+      const errorMessage = error instanceof Error ? error.message : "Failed to send test message"
+      setDiscordStatus({ type: "error", message: errorMessage })
+      toast({
+        title: "Error",
+        description: "Discord connection test failed",
+        className: "bg-accent-sell text-white border-accent-sell",
+      })
+    } finally {
+      setTestingDiscord(false)
+    }
+  }
+
+  const handleSendDiscordTestAlert = async (action: 'BUY' | 'SELL') => {
+    setSendingDiscordTestAlert(true)
+    setDiscordStatus({ type: null, message: "" })
+
+    try {
+      const response = await fetch(`${config.apiBase}/discord/test-alert`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ action })
+      })
+
+      const result = await response.json()
+
+      if (response.ok && result.success) {
+        setDiscordStatus({ type: "success", message: result.message })
+        toast({
+          title: "Success",
+          description: `Test ${action} alert sent to Discord!`,
+          className: "bg-accent-buy text-white border-accent-buy",
+        })
+      } else {
+        throw new Error(result.message || "Failed to send test alert")
+      }
+    } catch (error) {
+      const errorMessage = error instanceof Error ? error.message : "Failed to send test alert"
+      setDiscordStatus({ type: "error", message: errorMessage })
+      toast({
+        title: "Error",
+        description: errorMessage,
+        className: "bg-accent-sell text-white border-accent-sell",
+      })
+    } finally {
+      setSendingDiscordTestAlert(false)
+    }
+  }
+
+  const handleSaveDiscord = async () => {
+    if (!discordWebhookUrl) {
+      setDiscordStatus({ type: "error", message: "Please enter a webhook URL" })
+      return
+    }
+
+    try {
+      const response = await fetch(`${config.apiBase}/discord/settings`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          webhookUrl: discordWebhookUrl,
+          messageTemplate: discordMessageTemplate
+        })
+      })
+
+      const result = await response.json()
+
+      if (response.ok && result.success) {
+        setDiscordStatus({ type: "success", message: "Discord settings saved successfully!" })
+        toast({
+          title: "Saved",
+          description: "Discord notification settings updated",
+          className: "bg-accent-buy text-white border-accent-buy",
+        })
+      } else {
+        throw new Error(result.message || "Failed to save settings")
+      }
+    } catch (error) {
+      const errorMessage = error instanceof Error ? error.message : "Failed to save settings"
+      setDiscordStatus({ type: "error", message: errorMessage })
+      toast({
+        title: "Error",
+        description: errorMessage,
+        className: "bg-accent-sell text-white border-accent-sell",
+      })
+    }
+  }
+
   const handleSaveTelegram = async () => {
     // Check if we have a chat ID (bot token might be masked)
     if (!telegramChatId) {
@@ -283,7 +434,7 @@ export default function SettingsPage() {
         body: JSON.stringify({
           botToken: tokenToSave, // null means don't update
           chatId: telegramChatId,
-          messageTemplate
+          messageTemplate: telegramMessageTemplate
         })
       })
 
@@ -754,323 +905,33 @@ export default function SettingsPage() {
 
           {/* Notifications */}
           <CollapsiblePanel title="Notifications" icon={<Bell className="w-5 h-5 text-accent-neutral" />}>
-            <div className="space-y-6">
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                <div>
-                  <Label htmlFor="telegramBotToken" className="text-sm font-medium" style={{ color: "#E0E6ED" }}>
-                    Bot Token
-                  </Label>
-                  <Input
-                    id="telegramBotToken"
-                    type="password"
-                    value={telegramBotToken}
-                    onChange={(e) => setTelegramBotToken(e.target.value)}
-                    placeholder={telegramBotToken.startsWith('***') ? "Token saved (enter new to change)" : "Enter your Telegram bot token..."}
-                    className="mt-1 bg-background border-gray-700 focus:border-accent-buy focus:ring-accent-buy"
-                  />
-                  <p className="text-xs mt-1" style={{ color: "#A3A9B8" }}>
-                    Get this from @BotFather on Telegram
-                  </p>
-                </div>
-                <div>
-                  <Label htmlFor="telegramChatId" className="text-sm font-medium" style={{ color: "#E0E6ED" }}>
-                    Chat ID
-                  </Label>
-                  <Input
-                    id="telegramChatId"
-                    type="text"
-                    value={telegramChatId}
-                    onChange={(e) => setTelegramChatId(e.target.value)}
-                    placeholder="Enter chat or channel ID..."
-                    className="mt-1 bg-background border-gray-700 focus:border-accent-buy focus:ring-accent-buy"
-                  />
-                  <p className="text-xs mt-1" style={{ color: "#A3A9B8" }}>
-                    Your personal chat ID or channel ID
-                  </p>
-                </div>
-              </div>
-
-              <div className="flex gap-3">
-                <Button
-                  onClick={handleTestTelegram}
-                  disabled={testingTelegram}
-                  variant="outline"
-                  className="bg-transparent border-accent-neutral text-accent-neutral hover:bg-accent-neutral/10 focus:ring-accent-neutral"
-                >
-                  {testingTelegram ? <RefreshCw className="w-4 h-4 mr-2 animate-spin" /> : null}
-                  Test Connection
-                </Button>
-                <Button
-                  onClick={handleSaveTelegram}
-                  className="bg-accent-buy hover:bg-accent-buy/80 text-white focus:ring-accent-buy"
-                >
-                  Save
-                </Button>
-              </div>
-
-              {telegramStatus.message && (
-                <div
-                  className={`text-sm p-3 rounded-lg ${
-                    telegramStatus.type === "success"
-                      ? "bg-accent-buy/20 text-accent-buy border border-accent-buy/30"
-                      : "bg-accent-sell/20 text-accent-sell border border-accent-sell/30"
-                  }`}
-                >
-                  {telegramStatus.message}
-                </div>
-              )}
+            <NotificationsPanel
+              // Telegram props
+              telegramBotToken={telegramBotToken}
+              setTelegramBotToken={setTelegramBotToken}
+              telegramChatId={telegramChatId}
+              setTelegramChatId={setTelegramChatId}
+              telegramMessageTemplate={telegramMessageTemplate}
+              setTelegramMessageTemplate={setTelegramMessageTemplate}
+              handleTestTelegram={handleTestTelegram}
+              handleSaveTelegram={handleSaveTelegram}
+              handleSendTestAlert={handleSendTestAlert}
+              testingTelegram={testingTelegram}
+              sendingTestAlert={sendingTestAlert}
+              telegramStatus={telegramStatus}
               
-              {/* Message Customization */}
-              <div className="mt-8 pt-6 border-t border-gray-700">
-                <h4 className="text-lg font-semibold mb-4" style={{ color: "#E0E6ED" }}>
-                  ✏️ Customize Message Format
-                </h4>
-                
-                <div className="space-y-4">
-                  {/* Format Selection */}
-                  <div>
-                    <Label className="text-sm font-medium" style={{ color: "#E0E6ED" }}>
-                      Message Format
-                    </Label>
-                    <Select
-                      value={messageTemplate.format}
-                      onValueChange={(value: 'detailed' | 'compact' | 'minimal') => 
-                        setMessageTemplate({ ...messageTemplate, format: value })
-                      }
-                    >
-                      <SelectTrigger className="mt-1 bg-background border-gray-700">
-                        <SelectValue />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="detailed">Detailed - Full information</SelectItem>
-                        <SelectItem value="compact">Compact - One line summary</SelectItem>
-                        <SelectItem value="minimal">Minimal - Just action and ticker</SelectItem>
-                      </SelectContent>
-                    </Select>
-                  </div>
-
-                  {/* Toggle Options */}
-                  <div className="space-y-3">
-                    <div className="flex items-center justify-between">
-                      <Label htmlFor="showTimestamp" className="text-sm" style={{ color: "#E0E6ED" }}>
-                        Show Timestamp
-                      </Label>
-                      <Switch
-                        id="showTimestamp"
-                        checked={messageTemplate.showTimestamp}
-                        onCheckedChange={(checked) => 
-                          setMessageTemplate({ ...messageTemplate, showTimestamp: checked })
-                        }
-                      />
-                    </div>
-                    
-                    <div className="flex items-center justify-between">
-                      <Label htmlFor="showTicker" className="text-sm" style={{ color: "#E0E6ED" }}>
-                        Show Ticker
-                      </Label>
-                      <Switch
-                        id="showTicker"
-                        checked={messageTemplate.showTicker}
-                        onCheckedChange={(checked) => 
-                          setMessageTemplate({ ...messageTemplate, showTicker: checked })
-                        }
-                      />
-                    </div>
-                    
-                    <div className="flex items-center justify-between">
-                      <Label htmlFor="showStrategy" className="text-sm" style={{ color: "#E0E6ED" }}>
-                        Show Strategy
-                      </Label>
-                      <Switch
-                        id="showStrategy"
-                        checked={messageTemplate.showStrategy}
-                        onCheckedChange={(checked) => 
-                          setMessageTemplate({ ...messageTemplate, showStrategy: checked })
-                        }
-                      />
-                    </div>
-                    
-                    <div className="flex items-center justify-between">
-                      <Label htmlFor="showTriggers" className="text-sm" style={{ color: "#E0E6ED" }}>
-                        Show Triggers
-                      </Label>
-                      <Switch
-                        id="showTriggers"
-                        checked={messageTemplate.showTriggers}
-                        onCheckedChange={(checked) => 
-                          setMessageTemplate({ ...messageTemplate, showTriggers: checked })
-                        }
-                      />
-                    </div>
-                    
-                    <div className="flex items-center justify-between">
-                      <Label htmlFor="showScore" className="text-sm" style={{ color: "#E0E6ED" }}>
-                        Show Score
-                      </Label>
-                      <Switch
-                        id="showScore"
-                        checked={messageTemplate.showScore}
-                        onCheckedChange={(checked) => 
-                          setMessageTemplate({ ...messageTemplate, showScore: checked })
-                        }
-                      />
-                    </div>
-                  </div>
-                </div>
-              </div>
-              
-              {/* Notification Preview */}
-              <div className="mt-8 pt-6 border-t border-gray-700">
-                <h4 className="text-lg font-semibold mb-4 flex items-center gap-2" style={{ color: "#E0E6ED" }}>
-                  📱 Notification Preview
-                </h4>
-                <p className="text-sm mb-4" style={{ color: "#A3A9B8" }}>
-                  This is how your notifications will appear when a strategy triggers an action:
-                </p>
-
-                {/* Dynamic Preview based on message format */}
-                <div className="space-y-4">
-                  {/* Buy Signal Preview */}
-                  <div className="bg-green-500/10 border border-green-500/20 rounded-lg p-4">
-                    {messageTemplate.format === 'minimal' ? (
-                      <p className="text-sm">
-                        <span className="text-green-400">🟢 BUY BTC</span>
-                        {messageTemplate.showScore && <span className="text-green-400"> (+4.2)</span>}
-                      </p>
-                    ) : messageTemplate.format === 'compact' ? (
-                      <p className="text-sm">
-                        <span className="text-green-400 font-bold">🟢 BUY BTC</span>
-                        {messageTemplate.showStrategy && <span style={{ color: "#E0E6ED" }}> | Buy on discount zone</span>}
-                        {messageTemplate.showScore && <span className="text-green-400"> | Score: +4.2</span>}
-                      </p>
-                    ) : (
-                      <>
-                        <div className="text-sm">
-                          <span className="text-green-400 font-bold">🟢 BUY SIGNAL</span>
-                          <div className="mt-2" style={{ borderTop: '1px solid #374151' }}>
-                            <div className="space-y-1 mt-2">
-                              {messageTemplate.showTimestamp && (
-                                <div>📅 <strong>Time:</strong> {new Date().toLocaleString()}</div>
-                              )}
-                              {messageTemplate.showTicker && (
-                                <div>📈 <strong>Ticker:</strong> BTC</div>
-                              )}
-                              {messageTemplate.showStrategy && (
-                                <div>📊 <strong>Strategy:</strong> Buy on discount zone</div>
-                              )}
-                              {messageTemplate.showTriggers && (
-                                <div>🎯 <strong>Triggers:</strong> Discount Zone, Normal Bullish Divergence</div>
-                              )}
-                              {messageTemplate.showScore && (
-                                <div>📈 <strong>Score:</strong> +4.2</div>
-                              )}
-                            </div>
-                          </div>
-                        </div>
-                      </>
-                    )}
-                  </div>
-
-                  {/* Sell Signal Preview */}
-                  <div className="bg-red-500/10 border border-red-500/20 rounded-lg p-4">
-                    {messageTemplate.format === 'minimal' ? (
-                      <p className="text-sm">
-                        <span className="text-red-400">🔴 SELL ETH</span>
-                        {messageTemplate.showScore && <span className="text-red-400"> (-4.3)</span>}
-                      </p>
-                    ) : messageTemplate.format === 'compact' ? (
-                      <p className="text-sm">
-                        <span className="text-red-400 font-bold">🔴 SELL ETH</span>
-                        {messageTemplate.showStrategy && <span style={{ color: "#E0E6ED" }}> | Sell on Premium zone</span>}
-                        {messageTemplate.showScore && <span className="text-red-400"> | Score: -4.3</span>}
-                      </p>
-                    ) : (
-                      <>
-                        <div className="text-sm">
-                          <span className="text-red-400 font-bold">🔴 SELL SIGNAL</span>
-                          <div className="mt-2" style={{ borderTop: '1px solid #374151' }}>
-                            <div className="space-y-1 mt-2">
-                              {messageTemplate.showTimestamp && (
-                                <div>📅 <strong>Time:</strong> {new Date(Date.now() - 300000).toLocaleString()}</div>
-                              )}
-                              {messageTemplate.showTicker && (
-                                <div>📈 <strong>Ticker:</strong> ETH</div>
-                              )}
-                              {messageTemplate.showStrategy && (
-                                <div>📊 <strong>Strategy:</strong> Sell on Premium zone</div>
-                              )}
-                              {messageTemplate.showTriggers && (
-                                <div>🎯 <strong>Triggers:</strong> Premium Zone, Normal Bearish Divergence</div>
-                              )}
-                              {messageTemplate.showScore && (
-                                <div>📉 <strong>Score:</strong> -4.3</div>
-                              )}
-                            </div>
-                          </div>
-                        </div>
-                      </>
-                    )}
-                  </div>
-                </div>
-
-                <div className="mt-4 p-3 bg-blue-500/10 border border-blue-500/20 rounded-lg">
-                  <p className="text-xs" style={{ color: "#A3A9B8" }}>
-                    💡 <strong>Tip:</strong> Notifications are sent instantly when a strategy's conditions are met and
-                    the total score crosses your defined threshold.
-                  </p>
-                </div>
-              </div>
-
-              {/* Send Test Alert Section */}
-              <div className="mt-8 pt-6 border-t border-gray-700">
-                <h4 className="text-lg font-semibold mb-4" style={{ color: "#E0E6ED" }}>
-                  🚀 Send Test Alert
-                </h4>
-                <p className="text-sm mb-4" style={{ color: "#A3A9B8" }}>
-                  Send a realistic test alert to your Telegram to verify your configuration is working properly.
-                </p>
-                
-                <div className="flex gap-3">
-                  <Button
-                    onClick={() => handleSendTestAlert('BUY')}
-                    disabled={sendingTestAlert || !telegramChatId || !telegramBotToken || telegramBotToken === ''}
-                    variant="outline"
-                    className="flex-1 border-emerald-600/50 text-emerald-600 hover:bg-emerald-600/10 disabled:opacity-50 disabled:cursor-not-allowed"
-                  >
-                    {sendingTestAlert ? (
-                      <RefreshCw className="w-4 h-4 mr-2 animate-spin" />
-                    ) : (
-                      <span className="flex items-center justify-center gap-2">
-                        <span>🟢</span>
-                        <span>Send Test BUY Alert</span>
-                      </span>
-                    )}
-                  </Button>
-                  
-                  <Button
-                    onClick={() => handleSendTestAlert('SELL')}
-                    disabled={sendingTestAlert || !telegramChatId || !telegramBotToken || telegramBotToken === ''}
-                    variant="outline"
-                    className="flex-1 border-rose-600/50 text-rose-600 hover:bg-rose-600/10 disabled:opacity-50 disabled:cursor-not-allowed"
-                  >
-                    {sendingTestAlert ? (
-                      <RefreshCw className="w-4 h-4 mr-2 animate-spin" />
-                    ) : (
-                      <span className="flex items-center justify-center gap-2">
-                        <span>🔴</span>
-                        <span>Send Test SELL Alert</span>
-                      </span>
-                    )}
-                  </Button>
-                </div>
-                
-                {(!telegramChatId || !telegramBotToken || telegramBotToken === '') && (
-                  <p className="text-xs mt-2 text-amber-500">
-                    ⚠️ Please configure and save your Telegram Bot Token and Chat ID first
-                  </p>
-                )}
-              </div>
-            </div>
+              // Discord props
+              discordWebhookUrl={discordWebhookUrl}
+              setDiscordWebhookUrl={setDiscordWebhookUrl}
+              discordMessageTemplate={discordMessageTemplate}
+              setDiscordMessageTemplate={setDiscordMessageTemplate}
+              handleTestDiscord={handleTestDiscord}
+              handleSaveDiscord={handleSaveDiscord}
+              handleSendDiscordTestAlert={handleSendDiscordTestAlert}
+              testingDiscord={testingDiscord}
+              sendingDiscordTestAlert={sendingDiscordTestAlert}
+              discordStatus={discordStatus}
+            />
           </CollapsiblePanel>
 
           {/* Exchange Credentials */}

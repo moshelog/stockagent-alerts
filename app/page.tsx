@@ -69,7 +69,9 @@ export default function Dashboard() {
     try {
       await clearAlerts()
       // Force refresh of trading data to update the alerts list
-      window.location.reload()
+      if (typeof window !== 'undefined') {
+        window.location.reload()
+      }
     } catch (error) {
       console.error('Failed to clear alerts:', error)
       alert('Failed to clear alerts. Please try again.')

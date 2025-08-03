@@ -34,6 +34,13 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   const checkAuth = async () => {
     try {
+      // Check if we're on the client side before accessing localStorage
+      if (typeof window === 'undefined') {
+        setUser(null)
+        setIsLoading(false)
+        return
+      }
+      
       const token = localStorage.getItem('authToken')
       if (!token) {
         setUser(null)
@@ -54,16 +61,22 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           setUser(data.user)
         } else {
           setUser(null)
-          localStorage.removeItem('authToken')
+          if (typeof window !== 'undefined') {
+            localStorage.removeItem('authToken')
+          }
         }
       } else {
         setUser(null)
-        localStorage.removeItem('authToken')
+        if (typeof window !== 'undefined') {
+          localStorage.removeItem('authToken')
+        }
       }
     } catch (error) {
       console.error('Auth check failed:', error)
       setUser(null)
-      localStorage.removeItem('authToken')
+      if (typeof window !== 'undefined') {
+        localStorage.removeItem('authToken')
+      }
     } finally {
       setIsLoading(false)
     }
@@ -84,7 +97,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     }
 
     // Store token for token-based auth
-    if (data.token) {
+    if (data.token && typeof window !== 'undefined') {
       localStorage.setItem('authToken', data.token)
     }
 
@@ -102,7 +115,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   const logout = async () => {
     try {
-      const token = localStorage.getItem('authToken')
+      const token = typeof window !== 'undefined' ? localStorage.getItem('authToken') : null
       const apiBase = 'https://stockagent-backend-production.up.railway.app/api'
       
       if (token) {
@@ -115,7 +128,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       }
 
       // Clear token
-      localStorage.removeItem('authToken')
+      if (typeof window !== 'undefined') {
+        localStorage.removeItem('authToken')
+      }
       setUser(null)
       
       toast({
@@ -128,7 +143,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     } catch (error) {
       console.error('Logout failed:', error)
       // Even if logout fails, clear local state
-      localStorage.removeItem('authToken')
+      if (typeof window !== 'undefined') {
+        localStorage.removeItem('authToken')
+      }
       setUser(null)
       router.push('/login')
     }

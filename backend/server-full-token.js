@@ -322,9 +322,9 @@ app.post('/webhook-json', webhookLimiter, validateAlertPayload, async (req, res)
       }
 
       // After saving alert, evaluate strategies
-      if (strategyEvaluator && strategyEvaluator.evaluateStrategies) {
+      if (strategyEvaluator && strategyEvaluator.evaluateStrategiesForTicker) {
         try {
-          const evaluationResult = await strategyEvaluator.evaluateStrategies({ 
+          const evaluationResult = await strategyEvaluator.evaluateStrategiesForTicker(parsedAlert.ticker, { 
             ticker: ticker.toUpperCase(), 
             timeframe: timeframe || '15m',
             indicator,
@@ -466,9 +466,9 @@ app.post('/webhook', webhookLimiter, express.text({ type: '*/*' }), async (req, 
       }
 
       // After saving alert, evaluate strategies
-      if (strategyEvaluator && strategyEvaluator.evaluateStrategies) {
+      if (strategyEvaluator && strategyEvaluator.evaluateStrategiesForTicker) {
         try {
-          const evaluationResult = await strategyEvaluator.evaluateStrategies(alert);
+          const evaluationResult = await strategyEvaluator.evaluateStrategiesForTicker(alert.ticker, alert);
           if (logger && logger.info) {
             logger.info('Strategy evaluation result', evaluationResult);
           }

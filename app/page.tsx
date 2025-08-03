@@ -2,7 +2,7 @@
 
 import { useState } from "react"
 import { motion } from "framer-motion"
-import { Settings, Activity } from "lucide-react"
+import { Settings, Activity, LogOut } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { useConfig } from "@/hooks/useConfig"
 import { useTradingData } from "@/hooks/use-trading-data"
@@ -17,6 +17,7 @@ import AvailableAlertsPanel from "@/components/AvailableAlertsPanel"
 import MobileAlertsAccordion from "@/components/MobileAlertsAccordion"
 import { ErrorBoundary } from "@/components/ErrorBoundary"
 import { generateScoringData, extractLastActionFromScore } from "@/utils/scoring"
+import { useAuth } from "@/contexts/AuthContext"
 import Link from "next/link"
 
 // Add this function to calculate total alerts from available alerts data
@@ -40,6 +41,7 @@ export default function Dashboard() {
   const { alerts, score, strategies: apiStrategies, loading: tradingDataLoading } = useTradingData(timeWindowMinutes, alertConfig)
   const { totalCount: totalAlertsCount, loading: totalAlertsLoading } = useTotalAlerts()
   const { clearAlerts } = useClearAlerts()
+  const { logout } = useAuth()
 
   const handleClearAlerts = async () => {
     try {
@@ -557,6 +559,15 @@ export default function Dashboard() {
                   Settings
                 </Button>
               </Link>
+              <Button 
+                variant="outline" 
+                size="sm" 
+                className="bg-transparent"
+                onClick={logout}
+              >
+                <LogOut className="w-4 h-4 mr-2" />
+                Logout
+              </Button>
             </div>
           </div>
         </div>

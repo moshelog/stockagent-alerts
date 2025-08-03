@@ -2,11 +2,13 @@ const express = require('express');
 const cors = require('cors');
 const helmet = require('helmet');
 const rateLimit = require('express-rate-limit');
+const cookieParser = require('cookie-parser');
 require('dotenv').config();
 
 const { supabase, testConnection } = require('./config/database');
 const strategyEvaluator = require('./services/strategyEvaluator');
 const { logger, requestLogger, errorLogger } = require('./middleware/logger');
+const authService = require('./services/authService');
 
 const app = express();
 const PORT = process.env.PORT || 3001;
@@ -22,8 +24,32 @@ app.use(helmet({
     },
   },
 }));
-app.use(cors());
+// CORS configuration
+const corsOptions = {
+  origin: function (origin, callback) {
+    // Allow requests with no origin (like mobile apps or curl requests)
+    if (!origin) return callback(null, true);
+    
+    // Allow configured frontend URL
+    const allowedOrigins = [
+      process.env.FRONTEND_URL || 'http://localhost:3000',
+      'http://localhost:3000',
+      'http://localhost:3001'
+    ];
+    
+    // Also allow Railway URLs
+    if (origin.includes('railway.app') || allowedOrigins.includes(origin)) {
+      callback(null, true);
+    } else {
+      callback(new Error('Not allowed by CORS'));
+    }
+  },
+  credentials: true // Allow cookies
+};
+
+app.use(cors(corsOptions));
 app.use(express.json({ limit: '10mb' }));
+app.use(cookieParser());
 
 // Serve static monitoring dashboard
 app.use('/public', express.static('public'));
@@ -83,11 +109,33 @@ const validateAlertPayload = (req, res, next) => {
 // WEBHOOK ENDPOINTS
 // ============================================================================
 
+// Webhook authentication middleware
+const webhookAuth = (req, res, next) => {
+  const webhookSecret = process.env.WEBHOOK_SECRET;
+  
+  if (!webhookSecret) {
+    logger.warn('WEBHOOK_SECRET not configured - webhook endpoints are unprotected');
+    return next();
+  }
+  
+  const providedSecret = req.headers['x-webhook-secret'] || req.query.secret;
+  
+  if (providedSecret !== webhookSecret) {
+    logger.warn('Invalid webhook secret attempt', {
+      ip: req.ip,
+      userAgent: req.headers['user-agent']
+    });
+    return res.status(401).json({ error: 'Unauthorized' });
+  }
+  
+  next();
+};
+
 /**
  * POST /webhook-json - Receive TradingView alerts (JSON format)
  * Expected payload: { ticker, time?, indicator, trigger, htf? }
  */
-app.post('/webhook-json', validateAlertPayload, asyncHandler(async (req, res) => {
+app.post('/webhook-json', webhookAuth, validateAlertPayload, asyncHandler(async (req, res) => {
   const { ticker, time, indicator, trigger, htf } = req.body;
   
   logger.info('Webhook received', {
@@ -171,7 +219,7 @@ app.post('/webhook-json', validateAlertPayload, asyncHandler(async (req, res) =>
  * Expected payload: "TICKER|TIMEFRAME|INDICATOR|TRIGGER" or "TICKER|TIMEFRAME|INDICATOR|TRIGGER|TIME"
  * New structure: "TICKER|INTERVAL|Extreme|TRIGGER|HTF" or "TICKER|INTERVAL|Extreme|TRIGGER|HTF|TIME"
  */
-app.post('/webhook', express.text({ type: '*/*' }), asyncHandler(async (req, res) => {
+app.post('/webhook', webhookAuth, express.text({ type: '*/*' }), asyncHandler(async (req, res) => {
   const body = req.body.toString().trim();
   
   logger.info('Webhook received', {
@@ -315,7 +363,7 @@ app.post('/webhook', express.text({ type: '*/*' }), asyncHandler(async (req, res
  * POST /webhook-text - Receive TradingView alerts (Text format)
  * Expected payload: "TICKER|TIMEFRAME|INDICATOR|TRIGGER" or "TICKER|TIMEFRAME|INDICATOR|TRIGGER|TIME"
  */
-app.post('/webhook-text', express.text({ type: '*/*' }), asyncHandler(async (req, res) => {
+app.post('/webhook-text', webhookAuth, express.text({ type: '*/*' }), asyncHandler(async (req, res) => {
   const body = req.body.toString().trim();
   
   logger.info('Text webhook received', {
@@ -703,8 +751,84 @@ app.post('/api/settings', asyncHandler(async (req, res) => {
 }));
 
 // ============================================================================
-// API ENDPOINTS
+// AUTHENTICATION ENDPOINTS
 // ============================================================================
+
+/**
+ * POST /api/auth/login - User login
+ */
+app.post('/api/auth/login', asyncHandler(async (req, res) => {
+  const { username, password } = req.body;
+  const ipAddress = req.ip || req.connection.remoteAddress;
+
+  if (!username || !password) {
+    return res.status(400).json({ error: 'Username and password are required' });
+  }
+
+  const result = await authService.authenticate(username, password, ipAddress);
+
+  if (!result.success) {
+    return res.status(result.statusCode || 401).json({ 
+      error: result.error,
+      remainingAttempts: result.remainingAttempts 
+    });
+  }
+
+  // Set httpOnly cookie with token
+  res.cookie('authToken', result.token, {
+    httpOnly: true,
+    secure: process.env.NODE_ENV === 'production', // HTTPS only in production
+    sameSite: 'strict',
+    maxAge: 24 * 60 * 60 * 1000 // 24 hours
+  });
+
+  res.json({ 
+    success: true, 
+    message: 'Login successful',
+    expiresIn: result.expiresIn 
+  });
+}));
+
+/**
+ * POST /api/auth/logout - User logout
+ */
+app.post('/api/auth/logout', (req, res) => {
+  res.clearCookie('authToken');
+  res.json({ success: true, message: 'Logged out successfully' });
+});
+
+/**
+ * GET /api/auth/verify - Verify authentication status
+ */
+app.get('/api/auth/verify', authService.requireAuth(), (req, res) => {
+  res.json({ 
+    authenticated: true, 
+    user: {
+      username: req.user.username,
+      isAdmin: req.user.isAdmin
+    }
+  });
+});
+
+// ============================================================================
+// API ENDPOINTS (PROTECTED)
+// ============================================================================
+
+// Apply authentication to all API routes except auth endpoints
+app.use('/api', (req, res, next) => {
+  // Skip auth for authentication endpoints
+  if (req.path.startsWith('/auth/')) {
+    return next();
+  }
+  
+  // Skip auth for health endpoint
+  if (req.path === '/health') {
+    return next();
+  }
+  
+  // Require authentication for all other API routes
+  authService.requireAuth()(req, res, next);
+});
 
 /**
  * GET /api/alerts - Get recent alerts

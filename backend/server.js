@@ -1302,9 +1302,12 @@ app.post('/api/telegram/settings', asyncHandler(async (req, res) => {
 app.get('/api/telegram/settings', asyncHandler(async (req, res) => {
   const config = await telegramNotifier.getTelegramConfig('default');
   
+  // Check if actually configured (has both token and chat ID)
+  const isConfigured = !!(config.botToken && config.botToken.length > 0 && config.chatId && config.chatId.length > 0);
+  
   res.json({
-    configured: !!(config.botToken && config.chatId),
-    botToken: config.botToken ? '***' : null, // Don't return the actual token for security
+    configured: isConfigured,
+    botToken: isConfigured ? '***' : null, // Don't return the actual token for security
     chatId: config.chatId || null,
     messageTemplate: config.messageTemplate
   });
@@ -1411,9 +1414,12 @@ app.post('/api/discord/settings', asyncHandler(async (req, res) => {
 app.get('/api/discord/settings', asyncHandler(async (req, res) => {
   const config = await discordNotifier.getDiscordConfig('default');
   
+  // Check if actually configured (has a real webhook URL)
+  const isConfigured = !!(config.webhookUrl && config.webhookUrl.length > 0);
+  
   res.json({
-    configured: !!config.webhookUrl,
-    webhookUrl: config.webhookUrl ? '***' : null, // Don't return the actual URL for security
+    configured: isConfigured,
+    webhookUrl: isConfigured ? '***' : null, // Don't return the actual URL for security
     messageTemplate: config.messageTemplate
   });
 }));

@@ -216,7 +216,7 @@ class DiscordNotifier {
         .single();
 
       if (error || !data) {
-        console.log('No user settings found, using defaults');
+        console.log('No user settings found for Discord, using defaults. Error:', error?.message);
         return {
           webhookUrl: '',
           messageTemplate: {
@@ -226,7 +226,8 @@ class DiscordNotifier {
             showTriggers: true,
             showScore: true,
             format: 'detailed'
-          }
+          },
+          enabled: true
         };
       }
 
@@ -276,9 +277,11 @@ class DiscordNotifier {
         .select();
 
       if (error) {
+        console.error('Failed to save Discord config to database:', error);
         throw error;
       }
 
+      console.log('Discord config saved successfully for user:', userId);
       return { success: true, data };
     } catch (error) {
       console.error('Failed to save Discord config:', error.message);

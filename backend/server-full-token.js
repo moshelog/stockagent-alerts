@@ -610,32 +610,36 @@ app.get('/api/settings', requireAuth, async (req, res) => {
     }
 
     const { data, error } = await supabase
-      .from('user_settings')
+      .from('settings')
       .select('*')
+      .eq('user_id', 'default') // Using 'default' for single user setup
       .single();
 
-    if (error) {
-      // If no settings found, return defaults
-      if (error.code === 'PGRST116') {
-        return res.json({
-          ui: {
-            showAlertsTable: true,
-            showScoreMeter: true,
-            showStrategyPanel: true,
-            showWeights: true
-          },
-          scoring: {
-            timeWindowMinutes: 60
-          }
-        });
-      }
+    if (error && error.code !== 'PGRST116') { // PGRST116 = not found
       if (logger && logger.error) {
-        logger.error('Failed to fetch settings', { error: error.message });
+        logger.error('Error fetching settings', { error: error.message });
       }
-      return res.status(500).json({ error: 'Failed to fetch settings' });
+      return res.status(500).json({ error: error.message });
     }
 
-    res.json(data || {
+    // If no settings found, return default settings
+    if (!data) {
+      const defaultSettings = {
+        ui: {
+          showAlertsTable: true,
+          showScoreMeter: true,
+          showStrategyPanel: true,
+          showWeights: true
+        },
+        scoring: {
+          timeWindowMinutes: 60
+        }
+      };
+      return res.json(defaultSettings);
+    }
+
+    // Return the settings from the 'settings' column
+    res.json(data.settings || {
       ui: {
         showAlertsTable: true,
         showScoreMeter: true,
@@ -656,36 +660,55 @@ app.get('/api/settings', requireAuth, async (req, res) => {
 
 // Save user settings
 app.post('/api/settings', requireAuth, async (req, res) => {
+  const settings = req.body;
+  
   try {
     if (!supabase) {
       return res.json({ success: true });
     }
 
-    const settings = req.body;
-
-    // Upsert settings (insert or update)
-    const { data, error } = await supabase
-      .from('user_settings')
-      .upsert([{
-        id: 1, // Single row for settings
-        ...settings,
+    // Try to update existing record first
+    const { data: updateData, error: updateError } = await supabase
+      .from('settings')
+      .update({
+        settings: settings,
         updated_at: new Date().toISOString()
-      }])
-      .select();
+      })
+      .eq('user_id', 'default')
+      .select()
+      .single();
 
-    if (error) {
-      if (logger && logger.error) {
-        logger.error('Failed to save settings', { error: error.message, details: error });
+    if (updateError && updateError.code === 'PGRST116') {
+      // Record doesn't exist, create it
+      const { data: insertData, error: insertError } = await supabase
+        .from('settings')
+        .insert({
+          user_id: 'default',
+          settings: settings,
+          created_at: new Date().toISOString(),
+          updated_at: new Date().toISOString()
+        })
+        .select()
+        .single();
+
+      if (insertError) {
+        if (logger && logger.error) {
+          logger.error('Error creating settings', { error: insertError.message });
+        }
+        return res.status(500).json({ error: insertError.message });
       }
-      // Return more detailed error for debugging
-      return res.status(500).json({ 
-        error: 'Failed to save settings', 
-        details: error.message,
-        hint: error.hint || 'Check if user_settings table exists in your database'
-      });
+
+      return res.json(insertData.settings);
     }
 
-    res.json({ success: true, data: data[0] });
+    if (updateError) {
+      if (logger && logger.error) {
+        logger.error('Error updating settings', { error: updateError.message });
+      }
+      return res.status(500).json({ error: updateError.message });
+    }
+
+    res.json(updateData.settings);
   } catch (error) {
     if (logger && logger.error) {
       logger.error('Save settings error', { error: error.message });

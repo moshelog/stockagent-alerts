@@ -38,12 +38,12 @@ class DiscordNotifier {
         return { success: false, message: 'Invalid webhook URL format' };
       }
 
-      // Create Discord embed based on template
-      const embed = this.createEmbed(notificationData, messageTemplate);
+      // Format the message like Telegram for consistency
+      const message = this.formatMessage(notificationData, messageTemplate);
       
-      // Send message via Discord webhook
+      // Send message via Discord webhook (using content instead of embeds for text similarity to Telegram)
       const response = await axios.post(webhookUrl, {
-        embeds: [embed],
+        content: message,
         username: 'StockAgent Alerts',
         avatar_url: 'https://raw.githubusercontent.com/github/explore/main/topics/trading/trading.png'
       });
@@ -61,14 +61,14 @@ class DiscordNotifier {
   }
 
   /**
-   * Create Discord embed based on notification data and template
+   * Format the notification message based on template (similar to Telegram)
    * @param {Object} data - Notification data
    * @param {Object} template - Message template configuration
-   * @returns {Object} Discord embed object
+   * @returns {string} Formatted message
    */
-  createEmbed(data, template = {}) {
+  formatMessage(data, template = {}) {
     const { action, ticker, strategy, triggers, score } = data;
-    const timestamp = new Date().toISOString();
+    const timestamp = new Date().toLocaleString();
     
     // Default template if none provided
     const defaultTemplate = {
@@ -82,81 +82,54 @@ class DiscordNotifier {
 
     const config = { ...defaultTemplate, ...template };
     
-    // Base embed structure
-    const embed = {
-      timestamp: config.showTimestamp ? timestamp : undefined,
-      footer: {
-        text: 'StockAgent Alerts',
-        icon_url: 'https://raw.githubusercontent.com/github/explore/main/topics/trading/trading.png'
-      }
-    };
+    // Build message based on format
+    let message = '';
     
     if (config.format === 'minimal') {
-      // Minimal format: Just title with action and ticker
-      embed.title = `${action} ${ticker}`;
-      embed.color = action === 'BUY' ? 0x10B981 : 0xEF4444; // Green or Red
+      // Minimal format: Just action and ticker
+      const emoji = action === 'BUY' ? '🟢' : '🔴';
+      message = `${emoji} ${action} ${ticker}`;
       if (config.showScore) {
-        embed.description = `Score: ${score > 0 ? '+' : ''}${score}`;
+        message += ` (${score > 0 ? '+' : ''}${score})`;
       }
     } else if (config.format === 'compact') {
-      // Compact format: Title with inline fields
-      embed.title = `${action} Signal: ${ticker}`;
-      embed.color = action === 'BUY' ? 0x10B981 : 0xEF4444;
-      embed.fields = [];
-      
+      // Compact format: One-liner with key info
+      const emoji = action === 'BUY' ? '🟢' : '🔴';
+      message = `${emoji} **${action} ${ticker}**`;
       if (config.showStrategy) {
-        embed.fields.push({
-          name: 'Strategy',
-          value: strategy,
-          inline: true
-        });
+        message += ` | ${strategy}`;
       }
       if (config.showScore) {
-        embed.fields.push({
-          name: 'Score',
-          value: `${score > 0 ? '+' : ''}${score}`,
-          inline: true
-        });
+        message += ` | Score: ${score > 0 ? '+' : ''}${score}`;
       }
     } else {
-      // Detailed format: Full embed with all information
+      // Detailed format: Full information (matching Telegram structure)
       const emoji = action === 'BUY' ? '🟢' : '🔴';
-      embed.title = `${emoji} ${action} Signal`;
-      embed.color = action === 'BUY' ? 0x10B981 : 0xEF4444;
-      embed.fields = [];
+      const actionText = action === 'BUY' ? 'BUY SIGNAL' : 'SELL SIGNAL';
+      
+      message = `${emoji} **${actionText}**\n`;
+      message += `━━━━━━━━━━━━━━━\n`;
       
       if (config.showTicker) {
-        embed.fields.push({
-          name: '📈 Ticker',
-          value: ticker,
-          inline: true
-        });
+        message += `💎 **Ticker:** ${ticker}\n`;
+      }
+      if (config.showTimestamp) {
+        message += `⏰ **Time:** ${timestamp}\n`;
       }
       if (config.showStrategy) {
-        embed.fields.push({
-          name: '📊 Strategy',
-          value: strategy,
-          inline: true
-        });
-      }
-      if (config.showScore) {
-        const scoreEmoji = score > 0 ? '📈' : '📉';
-        embed.fields.push({
-          name: `${scoreEmoji} Score`,
-          value: `${score > 0 ? '+' : ''}${score}`,
-          inline: true
-        });
+        message += `🧠 **Strategy:** ${strategy}\n`;
       }
       if (config.showTriggers && triggers && triggers.length > 0) {
-        embed.fields.push({
-          name: '🎯 Triggers',
-          value: triggers.join('\n'),
-          inline: false
-        });
+        message += `🎯 **Triggers:** ${triggers.join(', ')}\n`;
       }
+      if (config.showScore) {
+        message += `🔥 **Score:** ${score > 0 ? '+' : ''}${score}\n`;
+      }
+      
+      message += `━━━━━━━━━━━━━━━`;
     }
     
-    return embed;
+    return message;
   }
 
   /**

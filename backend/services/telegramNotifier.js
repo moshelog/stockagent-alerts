@@ -106,21 +106,20 @@ class TelegramNotifier {
       message = `${emoji} <b>${actionText}</b>\n`;
       message += `━━━━━━━━━━━━━━━\n`;
       
-      if (config.showTimestamp) {
-        message += `📅 <b>Time:</b> ${timestamp}\n`;
-      }
       if (config.showTicker) {
-        message += `📈 <b>Ticker:</b> ${ticker}\n`;
+        message += `💎 <b>Ticker:</b> ${ticker}\n`;
+      }
+      if (config.showTimestamp) {
+        message += `⏰ <b>Time:</b> ${timestamp}\n`;
       }
       if (config.showStrategy) {
-        message += `📊 <b>Strategy:</b> ${strategy}\n`;
+        message += `🧠 <b>Strategy:</b> ${strategy}\n`;
       }
       if (config.showTriggers && triggers && triggers.length > 0) {
         message += `🎯 <b>Triggers:</b> ${triggers.join(', ')}\n`;
       }
       if (config.showScore) {
-        const scoreEmoji = score > 0 ? '📈' : '📉';
-        message += `${scoreEmoji} <b>Score:</b> ${score > 0 ? '+' : ''}${score}\n`;
+        message += `🔥 <b>Score:</b> ${score > 0 ? '+' : ''}${score}\n`;
       }
       
       message += `━━━━━━━━━━━━━━━`;

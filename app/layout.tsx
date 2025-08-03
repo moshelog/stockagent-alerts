@@ -1,22 +1,13 @@
+"use client"
+
 import type React from "react"
-import type { Metadata } from "next"
 import { Inter } from "next/font/google"
+import Head from "next/head"
 import "./globals.css"
 import { Toaster } from "@/components/ui/toaster"
-import dynamic from "next/dynamic"
-
-const ClientAuthProvider = dynamic(
-  () => import("@/components/ClientAuthProvider"),
-  { ssr: false }
-)
+import { AuthProvider } from "@/contexts/AuthContext"
 
 const inter = Inter({ subsets: ["latin"] })
-
-export const metadata: Metadata = {
-  title: "StockAgent - Trade Smarter with AI-Powered Signals",
-  description: "Modern dark-mode trading dashboard with AI-powered market signals and real-time analytics",
-    generator: 'v0.dev'
-}
 
 export default function RootLayout({
   children,
@@ -25,10 +16,15 @@ export default function RootLayout({
 }) {
   return (
     <html lang="en" className="dark">
+      <Head>
+        <title>StockAgent - Trade Smarter with AI-Powered Signals</title>
+        <meta name="description" content="Modern dark-mode trading dashboard with AI-powered market signals and real-time analytics" />
+        <meta name="generator" content="v0.dev" />
+      </Head>
       <body className={inter.className}>
-        <ClientAuthProvider>
+        <AuthProvider>
           {children}
-        </ClientAuthProvider>
+        </AuthProvider>
         <Toaster />
       </body>
     </html>

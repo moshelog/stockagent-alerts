@@ -35,11 +35,17 @@ const calculateTotalAlerts = () => {
 
 export default function Dashboard() {
   const router = useRouter()
+  const [isHydrated, setIsHydrated] = useState(false)
   
   // Time window state for scoring system
   const [timeWindowMinutes, setTimeWindowMinutes] = useState(60)
   
   const { user, isLoading: authLoading, logout } = useAuth()
+
+  // Handle hydration
+  useEffect(() => {
+    setIsHydrated(true)
+  }, [])
   const { config, loading: configLoading, error: configError, updateConfig } = useConfig()
   const { alertConfig, loading: alertsLoading, updateWeight } = useAvailableAlerts()
   const { alerts, score, strategies: apiStrategies, loading: tradingDataLoading } = useTradingData(timeWindowMinutes, alertConfig)
@@ -53,8 +59,8 @@ export default function Dashboard() {
     }
   }, [authLoading, user, router])
   
-  // Show loading state while checking authentication
-  if (authLoading) {
+  // Show loading state while hydrating or checking authentication
+  if (!isHydrated || authLoading) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-background">
         <div className="text-center">

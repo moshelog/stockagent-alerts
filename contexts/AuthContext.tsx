@@ -29,13 +29,15 @@ const AuthContext = createContext<AuthContextType>({
 export const useAuth = () => useContext(AuthContext)
 
 export function AuthProvider({ children }: { children: React.ReactNode }) {
+  // Initialize with null to ensure server and client match
   const [user, setUser] = useState<User | null>(null)
   const [isLoading, setIsLoading] = useState(true)
-  const [isMounted, setIsMounted] = useState(false)
+  const [isHydrated, setIsHydrated] = useState(false)
   const router = useRouter()
 
+  // Handle hydration
   useEffect(() => {
-    setIsMounted(true)
+    setIsHydrated(true)
   }, [])
 
   const checkAuth = async () => {
@@ -158,10 +160,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   }
 
   useEffect(() => {
-    if (isMounted) {
+    if (isHydrated) {
       checkAuth()
     }
-  }, [isMounted])
+  }, [isHydrated])
 
   return (
     <AuthContext.Provider value={{ user, isLoading, login, logout, checkAuth }}>

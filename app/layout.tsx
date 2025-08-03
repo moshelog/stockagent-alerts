@@ -6,6 +6,7 @@ import Head from "next/head"
 import "./globals.css"
 import { Toaster } from "@/components/ui/toaster"
 import { AuthProvider } from "@/contexts/AuthContext"
+import HydrationBoundary from "@/components/HydrationBoundary"
 
 const inter = Inter({ subsets: ["latin"] })
 
@@ -22,9 +23,11 @@ export default function RootLayout({
         <meta name="generator" content="v0.dev" />
       </Head>
       <body className={inter.className}>
-        <AuthProvider>
-          {children}
-        </AuthProvider>
+        <HydrationBoundary>
+          <AuthProvider>
+            {children}
+          </AuthProvider>
+        </HydrationBoundary>
         <Toaster />
       </body>
     </html>

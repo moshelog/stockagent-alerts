@@ -953,6 +953,310 @@ app.post('/api/discord/test-alert', requireAuth, (req, res) => {
   res.json({ success: true, message: 'Discord test alert not implemented yet' });
 });
 
+// Admin endpoints for indicators management
+app.get('/api/indicators', requireAuth, async (req, res) => {
+  try {
+    if (!supabase) {
+      return res.json([]);
+    }
+
+    const { data, error } = await supabase
+      .from('indicators')
+      .select('*')
+      .order('name');
+    
+    if (error) {
+      if (logger && logger.error) {
+        logger.error('Failed to fetch indicators', { error: error.message });
+      }
+      return res.status(500).json({ error: error.message });
+    }
+    
+    res.json(data || []);
+  } catch (error) {
+    if (logger && logger.error) {
+      logger.error('Indicators endpoint error', { error: error.message });
+    }
+    res.status(500).json({ error: 'Internal server error' });
+  }
+});
+
+// Create new indicator
+app.post('/api/indicators', requireAuth, async (req, res) => {
+  try {
+    if (!supabase) {
+      return res.status(503).json({ error: 'Database not configured' });
+    }
+
+    const { name, display_name, description, category } = req.body;
+    
+    if (!name || !display_name) {
+      return res.status(400).json({ 
+        error: 'Missing required fields', 
+        required: ['name', 'display_name'] 
+      });
+    }
+    
+    const { data, error } = await supabase
+      .from('indicators')
+      .insert([{
+        name: name.toLowerCase(),
+        display_name,
+        description: description || '',
+        category: category || 'general',
+        enabled: true,
+        created_at: new Date().toISOString()
+      }])
+      .select();
+    
+    if (error) {
+      if (logger && logger.error) {
+        logger.error('Failed to create indicator', { error: error.message });
+      }
+      return res.status(500).json({ error: error.message });
+    }
+    
+    res.json(data[0]);
+  } catch (error) {
+    if (logger && logger.error) {
+      logger.error('Create indicator error', { error: error.message });
+    }
+    res.status(500).json({ error: 'Internal server error' });
+  }
+});
+
+// Update indicator
+app.put('/api/indicators/:id', requireAuth, async (req, res) => {
+  try {
+    if (!supabase) {
+      return res.status(503).json({ error: 'Database not configured' });
+    }
+
+    const { id } = req.params;
+    const { name, display_name, description, category, enabled } = req.body;
+    
+    const updateData = {};
+    if (name !== undefined) updateData.name = name.toLowerCase();
+    if (display_name !== undefined) updateData.display_name = display_name;
+    if (description !== undefined) updateData.description = description;
+    if (category !== undefined) updateData.category = category;
+    if (enabled !== undefined) updateData.enabled = enabled;
+    
+    const { data, error } = await supabase
+      .from('indicators')
+      .update(updateData)
+      .eq('id', id)
+      .select();
+    
+    if (error) {
+      if (logger && logger.error) {
+        logger.error('Failed to update indicator', { error: error.message });
+      }
+      return res.status(500).json({ error: error.message });
+    }
+    
+    res.json(data[0]);
+  } catch (error) {
+    if (logger && logger.error) {
+      logger.error('Update indicator error', { error: error.message });
+    }
+    res.status(500).json({ error: 'Internal server error' });
+  }
+});
+
+// Delete indicator
+app.delete('/api/indicators/:id', requireAuth, async (req, res) => {
+  try {
+    if (!supabase) {
+      return res.status(503).json({ error: 'Database not configured' });
+    }
+
+    const { id } = req.params;
+    
+    // Check if indicator has associated alerts
+    const { data: alerts, error: alertsError } = await supabase
+      .from('available_alerts')
+      .select('id')
+      .eq('indicator_id', id);
+    
+    if (alertsError) {
+      if (logger && logger.error) {
+        logger.error('Failed to check indicator alerts', { error: alertsError.message });
+      }
+      return res.status(500).json({ error: alertsError.message });
+    }
+    
+    if (alerts && alerts.length > 0) {
+      return res.status(400).json({ 
+        error: 'Cannot delete indicator with associated alerts',
+        alertCount: alerts.length 
+      });
+    }
+    
+    const { error } = await supabase
+      .from('indicators')
+      .delete()
+      .eq('id', id);
+    
+    if (error) {
+      if (logger && logger.error) {
+        logger.error('Failed to delete indicator', { error: error.message });
+      }
+      return res.status(500).json({ error: error.message });
+    }
+    
+    res.json({ success: true });
+  } catch (error) {
+    if (logger && logger.error) {
+      logger.error('Delete indicator error', { error: error.message });
+    }
+    res.status(500).json({ error: 'Internal server error' });
+  }
+});
+
+// Get alerts for an indicator
+app.get('/api/indicators/:id/alerts', requireAuth, async (req, res) => {
+  try {
+    if (!supabase) {
+      return res.json([]);
+    }
+
+    const { id } = req.params;
+    
+    const { data, error } = await supabase
+      .from('available_alerts')
+      .select('*')
+      .eq('indicator_id', id)
+      .order('trigger');
+    
+    if (error) {
+      if (logger && logger.error) {
+        logger.error('Failed to fetch indicator alerts', { error: error.message });
+      }
+      return res.status(500).json({ error: error.message });
+    }
+    
+    res.json(data || []);
+  } catch (error) {
+    if (logger && logger.error) {
+      logger.error('Indicator alerts endpoint error', { error: error.message });
+    }
+    res.status(500).json({ error: 'Internal server error' });
+  }
+});
+
+// Create alert for indicator
+app.post('/api/indicators/:id/alerts', requireAuth, async (req, res) => {
+  try {
+    if (!supabase) {
+      return res.status(503).json({ error: 'Database not configured' });
+    }
+
+    const { id: indicator_id } = req.params;
+    const { trigger, description, weight } = req.body;
+    
+    if (!trigger) {
+      return res.status(400).json({ 
+        error: 'Missing required field: trigger' 
+      });
+    }
+    
+    const { data, error } = await supabase
+      .from('available_alerts')
+      .insert([{
+        indicator_id,
+        trigger,
+        description: description || '',
+        weight: weight || 1.0,
+        enabled: true,
+        created_at: new Date().toISOString()
+      }])
+      .select();
+    
+    if (error) {
+      if (logger && logger.error) {
+        logger.error('Failed to create alert', { error: error.message });
+      }
+      return res.status(500).json({ error: error.message });
+    }
+    
+    res.json(data[0]);
+  } catch (error) {
+    if (logger && logger.error) {
+      logger.error('Create alert error', { error: error.message });
+    }
+    res.status(500).json({ error: 'Internal server error' });
+  }
+});
+
+// Update alert
+app.put('/api/alerts/:id', requireAuth, async (req, res) => {
+  try {
+    if (!supabase) {
+      return res.status(503).json({ error: 'Database not configured' });
+    }
+
+    const { id } = req.params;
+    const { trigger, description, weight, enabled } = req.body;
+    
+    const updateData = {};
+    if (trigger !== undefined) updateData.trigger = trigger;
+    if (description !== undefined) updateData.description = description;
+    if (weight !== undefined) updateData.weight = weight;
+    if (enabled !== undefined) updateData.enabled = enabled;
+    
+    const { data, error } = await supabase
+      .from('available_alerts')
+      .update(updateData)
+      .eq('id', id)
+      .select();
+    
+    if (error) {
+      if (logger && logger.error) {
+        logger.error('Failed to update alert', { error: error.message });
+      }
+      return res.status(500).json({ error: error.message });
+    }
+    
+    res.json(data[0]);
+  } catch (error) {
+    if (logger && logger.error) {
+      logger.error('Update alert error', { error: error.message });
+    }
+    res.status(500).json({ error: 'Internal server error' });
+  }
+});
+
+// Delete alert
+app.delete('/api/alerts/:id', requireAuth, async (req, res) => {
+  try {
+    if (!supabase) {
+      return res.status(503).json({ error: 'Database not configured' });
+    }
+
+    const { id } = req.params;
+    
+    const { error } = await supabase
+      .from('available_alerts')
+      .delete()
+      .eq('id', id);
+    
+    if (error) {
+      if (logger && logger.error) {
+        logger.error('Failed to delete alert', { error: error.message });
+      }
+      return res.status(500).json({ error: error.message });
+    }
+    
+    res.json({ success: true });
+  } catch (error) {
+    if (logger && logger.error) {
+      logger.error('Delete alert error', { error: error.message });
+    }
+    res.status(500).json({ error: 'Internal server error' });
+  }
+});
+
 // Error handling middleware
 app.use(errorLogger);
 

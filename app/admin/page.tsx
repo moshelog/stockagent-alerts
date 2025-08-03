@@ -10,6 +10,7 @@ import { Textarea } from "@/components/ui/textarea"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { useConfig } from "@/hooks/useConfig"
 import Link from "next/link"
+import { getAuthHeaders } from "@/utils/api"
 
 interface Indicator {
   id: string
@@ -68,7 +69,9 @@ export default function AdminPage() {
     
     try {
       setLoadingIndicators(true)
-      const response = await fetch(`${config.apiBase}/indicators`)
+      const response = await fetch(`${config.apiBase}/indicators`, {
+        headers: getAuthHeaders()
+      })
       
       if (!response.ok) {
         console.warn('Indicators API not available yet, using fallback')
@@ -108,7 +111,9 @@ export default function AdminPage() {
     
     try {
       setLoadingAlerts(true)
-      const response = await fetch(`${config.apiBase}/available-alerts`)
+      const response = await fetch(`${config.apiBase}/available-alerts`, {
+        headers: getAuthHeaders()
+      })
       
       if (!response.ok) {
         console.error('Failed to load alerts:', response.status, response.statusText)
@@ -148,7 +153,7 @@ export default function AdminPage() {
     try {
       const response = await fetch(`${config.apiBase}/indicators`, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: getAuthHeaders(),
         body: JSON.stringify(newIndicator)
       })
 
@@ -173,7 +178,7 @@ export default function AdminPage() {
     try {
       const response = await fetch(`${config.apiBase}/indicators/${id}`, {
         method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
+        headers: getAuthHeaders(),
         body: JSON.stringify(updates)
       })
 
@@ -192,7 +197,8 @@ export default function AdminPage() {
 
     try {
       const response = await fetch(`${config.apiBase}/indicators/${id}`, {
-        method: 'DELETE'
+        method: 'DELETE',
+        headers: getAuthHeaders()
       })
 
       if (response.ok) {

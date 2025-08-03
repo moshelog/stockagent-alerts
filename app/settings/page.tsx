@@ -28,6 +28,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { NotificationsPanel } from "@/components/notifications-panel"
 import { useAuth } from "@/contexts/AuthContext"
 import { useRouter } from "next/navigation"
+import { authenticatedFetch } from "@/utils/api"
 
 interface CollapsiblePanelProps {
   title: string
@@ -162,7 +163,7 @@ export default function SettingsPage() {
     const loadNotificationSettings = async () => {
       try {
         // Load Telegram settings
-        const telegramResponse = await fetch(`${config?.apiBase}/telegram/settings`)
+        const telegramResponse = await authenticatedFetch(`${config?.apiBase}/telegram/settings`)
         const telegramData = await telegramResponse.json()
         
         if (telegramData.configured) {
@@ -178,7 +179,7 @@ export default function SettingsPage() {
         }
         
         // Load Discord settings
-        const discordResponse = await fetch(`${config?.apiBase}/discord/settings`)
+        const discordResponse = await authenticatedFetch(`${config?.apiBase}/discord/settings`)
         const discordData = await discordResponse.json()
         
         if (discordData.configured) {
@@ -251,7 +252,7 @@ export default function SettingsPage() {
     setTelegramStatus({ type: null, message: "" })
 
     try {
-      const response = await fetch(`${config.apiBase}/telegram/test`, {
+      const response = await authenticatedFetch(`${config.apiBase}/telegram/test`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -290,7 +291,7 @@ export default function SettingsPage() {
     setTelegramStatus({ type: null, message: "" })
 
     try {
-      const response = await fetch(`${config.apiBase}/telegram/test-alert`, {
+      const response = await authenticatedFetch(`${config.apiBase}/telegram/test-alert`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ 
@@ -330,7 +331,7 @@ export default function SettingsPage() {
     setDiscordStatus({ type: null, message: "" })
 
     try {
-      const response = await fetch(`${config.apiBase}/discord/test`, {
+      const response = await authenticatedFetch(`${config.apiBase}/discord/test`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -368,7 +369,7 @@ export default function SettingsPage() {
     setDiscordStatus({ type: null, message: "" })
 
     try {
-      const response = await fetch(`${config.apiBase}/discord/test-alert`, {
+      const response = await authenticatedFetch(`${config.apiBase}/discord/test-alert`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ 
@@ -409,7 +410,7 @@ export default function SettingsPage() {
     }
 
     try {
-      const response = await fetch(`${config.apiBase}/discord/settings`, {
+      const response = await authenticatedFetch(`${config.apiBase}/discord/settings`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -460,7 +461,7 @@ export default function SettingsPage() {
     }
 
     try {
-      const response = await fetch(`${config.apiBase}/telegram/settings`, {
+      const response = await authenticatedFetch(`${config.apiBase}/telegram/settings`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({

@@ -675,9 +675,14 @@ app.post('/api/settings', requireAuth, async (req, res) => {
 
     if (error) {
       if (logger && logger.error) {
-        logger.error('Failed to save settings', { error: error.message });
+        logger.error('Failed to save settings', { error: error.message, details: error });
       }
-      return res.status(500).json({ error: 'Failed to save settings' });
+      // Return more detailed error for debugging
+      return res.status(500).json({ 
+        error: 'Failed to save settings', 
+        details: error.message,
+        hint: error.hint || 'Check if user_settings table exists in your database'
+      });
     }
 
     res.json({ success: true, data: data[0] });
@@ -715,6 +720,39 @@ app.delete('/api/alerts', requireAuth, async (req, res) => {
     }
     res.status(500).json({ error: 'Internal server error' });
   }
+});
+
+// Notification endpoints (stubs for now)
+app.get('/api/telegram/settings', requireAuth, (req, res) => {
+  res.json({ configured: false });
+});
+
+app.get('/api/discord/settings', requireAuth, (req, res) => {
+  res.json({ configured: false });
+});
+
+app.post('/api/telegram/settings', requireAuth, (req, res) => {
+  res.json({ success: true, message: 'Telegram notifications not implemented yet' });
+});
+
+app.post('/api/discord/settings', requireAuth, (req, res) => {
+  res.json({ success: true, message: 'Discord notifications not implemented yet' });
+});
+
+app.post('/api/telegram/test', requireAuth, (req, res) => {
+  res.json({ success: true, message: 'Telegram test not implemented yet' });
+});
+
+app.post('/api/discord/test', requireAuth, (req, res) => {
+  res.json({ success: true, message: 'Discord test not implemented yet' });
+});
+
+app.post('/api/telegram/test-alert', requireAuth, (req, res) => {
+  res.json({ success: true, message: 'Telegram test alert not implemented yet' });
+});
+
+app.post('/api/discord/test-alert', requireAuth, (req, res) => {
+  res.json({ success: true, message: 'Discord test alert not implemented yet' });
 });
 
 // Error handling middleware

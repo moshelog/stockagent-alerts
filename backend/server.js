@@ -1218,44 +1218,49 @@ app.post('/api/telegram/test', asyncHandler(async (req, res) => {
 app.post('/api/telegram/settings', asyncHandler(async (req, res) => {
   const { botToken, chatId, messageTemplate } = req.body;
   
-  // For now, we'll just validate and return success
-  // In a real implementation, this would save to database
-  if (!botToken || !chatId) {
-    return res.status(400).json({ error: 'Bot token and chat ID are required' });
+  if (!chatId) {
+    return res.status(400).json({ error: 'Chat ID is required' });
   }
   
-  // Store in environment variables temporarily
-  process.env.TELEGRAM_BOT_TOKEN = botToken;
-  process.env.TELEGRAM_CHAT_ID = chatId;
-  
-  if (messageTemplate) {
-    process.env.TELEGRAM_SHOW_TIMESTAMP = messageTemplate.showTimestamp ? 'true' : 'false';
-    process.env.TELEGRAM_SHOW_TICKER = messageTemplate.showTicker ? 'true' : 'false';
-    process.env.TELEGRAM_SHOW_STRATEGY = messageTemplate.showStrategy ? 'true' : 'false';
-    process.env.TELEGRAM_SHOW_TRIGGERS = messageTemplate.showTriggers ? 'true' : 'false';
-    process.env.TELEGRAM_SHOW_SCORE = messageTemplate.showScore ? 'true' : 'false';
-    process.env.TELEGRAM_MESSAGE_FORMAT = messageTemplate.format || 'detailed';
+  // botToken can be null if user is not updating it
+  if (botToken !== null && !botToken) {
+    return res.status(400).json({ error: 'Bot token cannot be empty' });
   }
   
-  res.json({ 
-    success: true, 
-    message: 'Telegram settings saved successfully',
-    settings: {
-      chatId,
-      messageTemplate
-    }
+  // Save to database
+  const result = await telegramNotifier.saveTelegramConfig('default', {
+    botToken,
+    chatId,
+    messageTemplate
   });
+  
+  if (result.success) {
+    res.json({ 
+      success: true, 
+      message: 'Telegram settings saved successfully',
+      settings: {
+        chatId,
+        messageTemplate
+      }
+    });
+  } else {
+    res.status(500).json({ 
+      error: 'Failed to save settings',
+      message: result.error
+    });
+  }
 }));
 
 /**
  * GET /api/telegram/settings - Get current Telegram settings
  */
 app.get('/api/telegram/settings', asyncHandler(async (req, res) => {
-  const config = await telegramNotifier.getTelegramConfig();
+  const config = await telegramNotifier.getTelegramConfig('default');
   
   res.json({
     configured: !!(config.botToken && config.chatId),
-    chatId: config.chatId ? config.chatId : null,
+    botToken: config.botToken ? '***' + config.botToken.slice(-4) : null, // Only show last 4 chars
+    chatId: config.chatId || null,
     messageTemplate: config.messageTemplate
   });
 }));

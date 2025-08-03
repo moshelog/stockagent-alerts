@@ -168,22 +168,42 @@ class TelegramNotifier {
    */
   async getTelegramConfig(userId = 'default') {
     try {
-      // For now, we'll use environment variables
-      // In future, this could fetch from user settings in database
-      const config = {
-        botToken: process.env.TELEGRAM_BOT_TOKEN || '',
-        chatId: process.env.TELEGRAM_CHAT_ID || '',
-        messageTemplate: {
-          showTimestamp: process.env.TELEGRAM_SHOW_TIMESTAMP !== 'false',
-          showTicker: process.env.TELEGRAM_SHOW_TICKER !== 'false',
-          showStrategy: process.env.TELEGRAM_SHOW_STRATEGY !== 'false',
-          showTriggers: process.env.TELEGRAM_SHOW_TRIGGERS !== 'false',
-          showScore: process.env.TELEGRAM_SHOW_SCORE !== 'false',
-          format: process.env.TELEGRAM_MESSAGE_FORMAT || 'detailed'
-        }
-      };
+      // Fetch from database
+      const { data, error } = await supabase
+        .from('user_settings')
+        .select('telegram_bot_token, telegram_chat_id, telegram_message_template, telegram_enabled')
+        .eq('user_id', userId)
+        .single();
 
-      return config;
+      if (error || !data) {
+        console.log('No user settings found, using defaults');
+        return {
+          botToken: '',
+          chatId: '',
+          messageTemplate: {
+            showTimestamp: true,
+            showTicker: true,
+            showStrategy: true,
+            showTriggers: true,
+            showScore: true,
+            format: 'detailed'
+          }
+        };
+      }
+
+      return {
+        botToken: data.telegram_bot_token || '',
+        chatId: data.telegram_chat_id || '',
+        messageTemplate: data.telegram_message_template || {
+          showTimestamp: true,
+          showTicker: true,
+          showStrategy: true,
+          showTriggers: true,
+          showScore: true,
+          format: 'detailed'
+        },
+        enabled: data.telegram_enabled
+      };
     } catch (error) {
       console.error('Failed to get Telegram config:', error.message);
       return {
@@ -191,6 +211,57 @@ class TelegramNotifier {
         chatId: '',
         messageTemplate: {}
       };
+    }
+  }
+
+  /**
+   * Save Telegram configuration for a user
+   * @param {string} userId - User ID
+   * @param {Object} config - Telegram configuration
+   * @returns {Object} Save result
+   */
+  async saveTelegramConfig(userId = 'default', config) {
+    try {
+      const { botToken, chatId, messageTemplate } = config;
+      
+      // First get existing settings
+      const { data: existing } = await supabase
+        .from('user_settings')
+        .select('telegram_bot_token')
+        .eq('user_id', userId)
+        .single();
+      
+      // Build update object
+      const updateData = {
+        user_id: userId,
+        telegram_chat_id: chatId,
+        telegram_message_template: messageTemplate,
+        updated_at: new Date().toISOString()
+      };
+      
+      // Only update bot token if a new one is provided (not null)
+      if (botToken !== null) {
+        updateData.telegram_bot_token = botToken;
+      } else if (existing && existing.telegram_bot_token) {
+        // Keep existing token
+        updateData.telegram_bot_token = existing.telegram_bot_token;
+      }
+      
+      const { data, error } = await supabase
+        .from('user_settings')
+        .upsert(updateData, {
+          onConflict: 'user_id'
+        })
+        .select();
+
+      if (error) {
+        throw error;
+      }
+
+      return { success: true, data };
+    } catch (error) {
+      console.error('Failed to save Telegram config:', error.message);
+      return { success: false, error: error.message };
     }
   }
 }

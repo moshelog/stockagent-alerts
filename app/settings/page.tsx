@@ -25,6 +25,7 @@ import Link from "next/link"
 import { useToast } from "@/hooks/use-toast"
 import { Switch } from "@/components/ui/switch"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
+import { useEffect } from "react"
 
 interface CollapsiblePanelProps {
   title: string
@@ -80,6 +81,7 @@ export default function SettingsPage() {
     type: null,
     message: "",
   })
+  const [loadingTelegramSettings, setLoadingTelegramSettings] = useState(true)
   
   // Message template states
   const [messageTemplate, setMessageTemplate] = useState({
@@ -120,6 +122,33 @@ export default function SettingsPage() {
   })
 
   const { toast } = useToast()
+
+  // Load Telegram settings on mount
+  useEffect(() => {
+    const loadTelegramSettings = async () => {
+      try {
+        const response = await fetch(`${config?.apiBase}/telegram/settings`)
+        const data = await response.json()
+        
+        if (data.configured) {
+          // Don't show the actual bot token for security
+          setTelegramBotToken(data.botToken || '')
+          setTelegramChatId(data.chatId || '')
+          if (data.messageTemplate) {
+            setMessageTemplate(data.messageTemplate)
+          }
+        }
+      } catch (error) {
+        console.error('Failed to load Telegram settings:', error)
+      } finally {
+        setLoadingTelegramSettings(false)
+      }
+    }
+
+    if (config?.apiBase) {
+      loadTelegramSettings()
+    }
+  }, [config])
 
   const handleReload = async () => {
     setIsReloading(true)
@@ -195,8 +224,17 @@ export default function SettingsPage() {
   }
 
   const handleSaveTelegram = async () => {
-    if (!telegramBotToken || !telegramChatId) {
-      setTelegramStatus({ type: "error", message: "Please enter both Bot Token and Chat ID" })
+    // Check if we have a chat ID (bot token might be masked)
+    if (!telegramChatId) {
+      setTelegramStatus({ type: "error", message: "Please enter Chat ID" })
+      return
+    }
+    
+    // If bot token starts with ***, it means it's already saved and user didn't change it
+    const tokenToSave = telegramBotToken.startsWith('***') ? null : telegramBotToken
+    
+    if (!tokenToSave && !telegramBotToken.startsWith('***')) {
+      setTelegramStatus({ type: "error", message: "Please enter Bot Token" })
       return
     }
 
@@ -205,7 +243,7 @@ export default function SettingsPage() {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          botToken: telegramBotToken,
+          botToken: tokenToSave, // null means don't update
           chatId: telegramChatId,
           messageTemplate
         })
@@ -686,10 +724,10 @@ export default function SettingsPage() {
                   </Label>
                   <Input
                     id="telegramBotToken"
-                    type="text"
+                    type="password"
                     value={telegramBotToken}
                     onChange={(e) => setTelegramBotToken(e.target.value)}
-                    placeholder="Enter your Telegram bot token..."
+                    placeholder={telegramBotToken.startsWith('***') ? "Token saved (enter new to change)" : "Enter your Telegram bot token..."}
                     className="mt-1 bg-background border-gray-700 focus:border-accent-buy focus:ring-accent-buy"
                   />
                   <p className="text-xs mt-1" style={{ color: "#A3A9B8" }}>

@@ -8,8 +8,24 @@ const PORT = process.env.PORT || 3001;
 
 // Basic middleware
 app.use(cors({
-  origin: true,
-  credentials: true
+  origin: function (origin, callback) {
+    // Allow specific origins
+    const allowedOrigins = [
+      'https://app.stockagent.app',
+      'http://app.stockagent.app',
+      'http://localhost:3000'
+    ];
+    
+    if (!origin || allowedOrigins.includes(origin)) {
+      callback(null, true);
+    } else {
+      callback(null, true); // Allow all for now
+    }
+  },
+  credentials: true,
+  methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
+  allowedHeaders: ['Content-Type', 'Authorization'],
+  exposedHeaders: ['set-cookie']
 }));
 app.use(express.json());
 app.use(cookieParser());
@@ -30,16 +46,21 @@ app.get('/', (req, res) => {
 // Simple login endpoint (no bcrypt for now)
 app.post('/api/auth/login', (req, res) => {
   const { username, password } = req.body;
+  console.log('Login attempt:', { username, origin: req.headers.origin });
   
   // Simple check without bcrypt
   if (username === 'admin' && password === 'password') {
-    // Set a simple cookie
-    res.cookie('authToken', 'dummy-token', {
+    // Set a simple cookie with explicit options
+    const cookieOptions = {
       httpOnly: true,
       secure: true,
       sameSite: 'none',
-      maxAge: 24 * 60 * 60 * 1000
-    });
+      maxAge: 24 * 60 * 60 * 1000,
+      path: '/'
+    };
+    
+    res.cookie('authToken', 'dummy-token-123', cookieOptions);
+    console.log('Cookie set with options:', cookieOptions);
     
     res.json({ 
       success: true,
@@ -53,8 +74,14 @@ app.post('/api/auth/login', (req, res) => {
 // Verify endpoint
 app.get('/api/auth/verify', (req, res) => {
   const token = req.cookies.authToken;
+  console.log('Verify request:', { 
+    token, 
+    cookies: req.cookies,
+    origin: req.headers.origin,
+    cookie: req.headers.cookie 
+  });
   
-  if (token === 'dummy-token') {
+  if (token === 'dummy-token-123') {
     res.json({ 
       authenticated: true,
       user: {
@@ -69,13 +96,18 @@ app.get('/api/auth/verify', (req, res) => {
 
 // Logout endpoint
 app.post('/api/auth/logout', (req, res) => {
-  res.clearCookie('authToken');
+  res.clearCookie('authToken', {
+    httpOnly: true,
+    secure: true,
+    sameSite: 'none',
+    path: '/'
+  });
   res.json({ success: true });
 });
 
 // Protected API endpoints (dummy data)
 const requireAuth = (req, res, next) => {
-  if (req.cookies.authToken === 'dummy-token') {
+  if (req.cookies.authToken === 'dummy-token-123') {
     next();
   } else {
     res.status(401).json({ error: 'Unauthorized' });

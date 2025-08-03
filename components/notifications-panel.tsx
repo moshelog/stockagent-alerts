@@ -218,7 +218,7 @@ export function NotificationsPanel({
                 </>
               )}
               {template.showTimestamp && (
-                <p className="text-xs text-gray-500 mt-2">StockAgent Alerts • {new Date().toLocaleTimeString()}</p>
+                <p className="text-xs text-gray-500 mt-2">StockAgent Alerts • {typeof window !== 'undefined' ? new Date().toLocaleTimeString() : '12:34:56'}</p>
               )}
             </div>
           </Card>
@@ -273,7 +273,7 @@ export function NotificationsPanel({
                 </>
               )}
               {template.showTimestamp && (
-                <p className="text-xs text-gray-500 mt-2">StockAgent Alerts • {new Date().toLocaleTimeString()}</p>
+                <p className="text-xs text-gray-500 mt-2">StockAgent Alerts • {typeof window !== 'undefined' ? new Date().toLocaleTimeString() : '12:34:56'}</p>
               )}
             </div>
           </Card>
@@ -304,7 +304,7 @@ export function NotificationsPanel({
                 <div className="mt-2" style={{ borderTop: '1px solid #374151' }}>
                   <div className="space-y-1 mt-2">
                     {template.showTimestamp && (
-                      <div>📅 <strong>Time:</strong> {new Date().toLocaleString()}</div>
+                      <div>📅 <strong>Time:</strong> {typeof window !== 'undefined' ? new Date().toLocaleString() : 'Just now'}</div>
                     )}
                     {template.showTicker && (
                       <div>📈 <strong>Ticker:</strong> BTC</div>
@@ -345,7 +345,7 @@ export function NotificationsPanel({
                 <div className="mt-2" style={{ borderTop: '1px solid #374151' }}>
                   <div className="space-y-1 mt-2">
                     {template.showTimestamp && (
-                      <div>📅 <strong>Time:</strong> {new Date(Date.now() - 300000).toLocaleString()}</div>
+                      <div>📅 <strong>Time:</strong> {typeof window !== 'undefined' ? new Date(Date.now() - 300000).toLocaleString() : '5 minutes ago'}</div>
                     )}
                     {template.showTicker && (
                       <div>📈 <strong>Ticker:</strong> ETH</div>

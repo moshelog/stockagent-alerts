@@ -510,7 +510,7 @@ export default function SettingsPage() {
       // Simulate API call - replace with actual Binance API call
       await new Promise((resolve) => setTimeout(resolve, 2000))
 
-      const success = Math.random() > 0.3
+      const success = typeof window !== 'undefined' ? Math.random() > 0.3 : true
       if (success) {
         setBinanceStatus({ type: "success", message: "Connection successful! Account balance retrieved." })
         toast({
@@ -546,7 +546,7 @@ export default function SettingsPage() {
       // Simulate API call - replace with actual IBKR API call
       await new Promise((resolve) => setTimeout(resolve, 2000))
 
-      const success = Math.random() > 0.3
+      const success = typeof window !== 'undefined' ? Math.random() > 0.3 : true
       if (success) {
         setIbkrStatus({ type: "success", message: "Connection successful! Current positions retrieved." })
         toast({
@@ -582,7 +582,7 @@ export default function SettingsPage() {
       // Simulate API call - replace with actual OpenAI API test
       await new Promise((resolve) => setTimeout(resolve, 2000))
 
-      const success = Math.random() > 0.3
+      const success = typeof window !== 'undefined' ? Math.random() > 0.3 : true
       if (success) {
         setOpenaiStatus({ type: "success", message: "OpenAI API connection successful!" })
         toast({

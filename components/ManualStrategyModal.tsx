@@ -375,9 +375,20 @@ export default function ManualStrategyModal({ isOpen, onClose, onSave, editingSt
 
   const currentAlerts = currentIndicatorAlerts[selectedIndicator] || []
 
+  // Generate deterministic ID for SSR compatibility
+  const generateGroupId = () => {
+    if (typeof window === 'undefined') {
+      // Server-side: use a counter
+      return `group-${Date.now()}-${ruleGroups.length}`
+    } else {
+      // Client-side: use random for uniqueness
+      return `group-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`
+    }
+  }
+
   const addRuleGroup = () => {
     const newGroup: RuleGroup = {
-      id: `group-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
+      id: generateGroupId(),
       operator: "AND",
       alerts: [],
     }

@@ -1,7 +1,7 @@
 {
   "apiBase": "https://stockagent-backend-production.up.railway.app/api",
   "pollIntervalMs": 5000,
-  "webhookUrl": "https://stockagent-backend-production.up.railway.app/webhook",
+  "webhookUrl": "https://app.stockagent.app/api/webhook",
   "weights": {
     "rsi_oversold": -2.5,
     "rsi_overbought": 2.0,

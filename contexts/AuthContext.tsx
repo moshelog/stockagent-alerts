@@ -34,7 +34,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   const checkAuth = async () => {
     try {
-      const response = await fetch('/api/auth/verify', {
+      const apiBase = 'https://stockagent-backend-production.up.railway.app/api'
+      const response = await fetch(`${apiBase}/auth/verify`, {
         credentials: 'include',
       })
 
@@ -57,7 +58,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   }
 
   const login = async (username: string, password: string) => {
-    const response = await fetch('/api/auth/login', {
+    const apiBase = 'https://stockagent-backend-production.up.railway.app/api'
+    const response = await fetch(`${apiBase}/auth/login`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       credentials: 'include',
@@ -84,7 +86,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   const logout = async () => {
     try {
-      await fetch('/api/auth/logout', {
+      const apiBase = 'https://stockagent-backend-production.up.railway.app/api'
+      await fetch(`${apiBase}/auth/logout`, {
         method: 'POST',
         credentials: 'include',
       })

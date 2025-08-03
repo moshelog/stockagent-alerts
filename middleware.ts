@@ -21,14 +21,9 @@ export function middleware(request: NextRequest) {
     return NextResponse.redirect(new URL('/login', request.nextUrl))
   }
 
-  // For API routes, check authentication
-  if (path.startsWith('/api/') && !path.startsWith('/api/auth/')) {
-    if (!token) {
-      return NextResponse.json(
-        { error: 'Authentication required' },
-        { status: 401 }
-      )
-    }
+  // Skip middleware for API routes (they're handled by backend)
+  if (path.startsWith('/api/')) {
+    return NextResponse.next()
   }
 
   return NextResponse.next()

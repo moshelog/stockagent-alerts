@@ -36,21 +36,142 @@ app.get('/', (req, res) => {
   res.json({ service: 'stockagent-backend', status: 'running' });
 });
 
-// Simple login endpoint for testing
-app.post('/api/auth/login', (req, res) => {
+// Import required modules for auth
+const bcrypt = require('bcrypt');
+const jwt = require('jsonwebtoken');
+
+// Simple login endpoint
+app.post('/api/auth/login', async (req, res) => {
   const { username, password } = req.body;
   
-  // For now, just check if env vars are set
+  // Check if env vars are set
   if (!process.env.ADMIN_PASSWORD_HASH || !process.env.JWT_SECRET) {
     return res.status(503).json({ 
       error: 'Server not configured. Please set ADMIN_PASSWORD_HASH and JWT_SECRET environment variables.' 
     });
   }
   
-  // Simple response for testing
-  res.json({ 
-    message: 'Login endpoint working',
-    received: { username, hasPassword: !!password }
+  // Check username
+  const adminUsername = process.env.ADMIN_USERNAME || 'admin';
+  if (username !== adminUsername) {
+    return res.status(401).json({ error: 'Invalid credentials' });
+  }
+  
+  // Check password
+  try {
+    const isValid = await bcrypt.compare(password, process.env.ADMIN_PASSWORD_HASH);
+    if (!isValid) {
+      return res.status(401).json({ error: 'Invalid credentials' });
+    }
+    
+    // Generate JWT token
+    const token = jwt.sign(
+      { username, isAdmin: true },
+      process.env.JWT_SECRET,
+      { expiresIn: '24h' }
+    );
+    
+    // Set cookie
+    res.cookie('authToken', token, {
+      httpOnly: true,
+      secure: true,
+      sameSite: 'none',
+      maxAge: 24 * 60 * 60 * 1000,
+      path: '/'
+    });
+    
+    res.json({ 
+      success: true,
+      message: 'Login successful',
+      expiresIn: '24h'
+    });
+  } catch (error) {
+    console.error('Login error:', error);
+    res.status(500).json({ error: 'Login failed' });
+  }
+});
+
+// Verify endpoint
+app.get('/api/auth/verify', (req, res) => {
+  const token = req.cookies.authToken;
+  
+  if (!token) {
+    return res.status(401).json({ authenticated: false });
+  }
+  
+  try {
+    const decoded = jwt.verify(token, process.env.JWT_SECRET);
+    res.json({ 
+      authenticated: true,
+      user: {
+        username: decoded.username,
+        isAdmin: decoded.isAdmin
+      }
+    });
+  } catch (error) {
+    res.status(401).json({ authenticated: false });
+  }
+});
+
+// Logout endpoint
+app.post('/api/auth/logout', (req, res) => {
+  res.clearCookie('authToken', {
+    httpOnly: true,
+    secure: true,
+    sameSite: 'none',
+    path: '/'
+  });
+  res.json({ success: true, message: 'Logged out successfully' });
+});
+
+// Auth middleware for protected routes
+const requireAuth = (req, res, next) => {
+  const token = req.cookies.authToken;
+  
+  if (!token) {
+    return res.status(401).json({ error: 'Unauthorized' });
+  }
+  
+  try {
+    const decoded = jwt.verify(token, process.env.JWT_SECRET);
+    req.user = decoded;
+    next();
+  } catch (error) {
+    res.status(401).json({ error: 'Invalid token' });
+  }
+};
+
+// Protected API endpoints (return empty data for now)
+app.get('/api/alerts', requireAuth, (req, res) => {
+  res.json([]);
+});
+
+app.get('/api/score', requireAuth, (req, res) => {
+  res.json({
+    lastAction: null,
+    scores: []
+  });
+});
+
+app.get('/api/strategies', requireAuth, (req, res) => {
+  res.json([]);
+});
+
+app.get('/api/available-alerts', requireAuth, (req, res) => {
+  res.json([]);
+});
+
+app.get('/api/settings', requireAuth, (req, res) => {
+  res.json({
+    ui: {
+      showAlertsTable: true,
+      showScoreMeter: true,
+      showStrategyPanel: true,
+      showWeights: true
+    },
+    scoring: {
+      timeWindowMinutes: 60
+    }
   });
 });
 

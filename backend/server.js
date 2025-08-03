@@ -34,11 +34,13 @@ const corsOptions = {
     const allowedOrigins = [
       process.env.FRONTEND_URL || 'http://localhost:3000',
       'http://localhost:3000',
-      'http://localhost:3001'
+      'http://localhost:3001',
+      'https://app.stockagent.app',
+      'http://app.stockagent.app'
     ];
     
-    // Also allow Railway URLs
-    if (origin.includes('railway.app') || allowedOrigins.includes(origin)) {
+    // Also allow Railway URLs and stockagent.app domains
+    if (origin.includes('railway.app') || origin.includes('stockagent.app') || allowedOrigins.includes(origin)) {
       callback(null, true);
     } else {
       callback(new Error('Not allowed by CORS'));
@@ -777,9 +779,10 @@ app.post('/api/auth/login', asyncHandler(async (req, res) => {
   // Set httpOnly cookie with token
   res.cookie('authToken', result.token, {
     httpOnly: true,
-    secure: process.env.NODE_ENV === 'production', // HTTPS only in production
-    sameSite: 'strict',
-    maxAge: 24 * 60 * 60 * 1000 // 24 hours
+    secure: true, // Always use secure in production
+    sameSite: 'none', // Required for cross-domain cookies
+    maxAge: 24 * 60 * 60 * 1000, // 24 hours
+    path: '/' // Cookie available on all paths
   });
 
   res.json({ 
@@ -793,7 +796,12 @@ app.post('/api/auth/login', asyncHandler(async (req, res) => {
  * POST /api/auth/logout - User logout
  */
 app.post('/api/auth/logout', (req, res) => {
-  res.clearCookie('authToken');
+  res.clearCookie('authToken', {
+    httpOnly: true,
+    secure: true,
+    sameSite: 'none',
+    path: '/'
+  });
   res.json({ success: true, message: 'Logged out successfully' });
 });
 

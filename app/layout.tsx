@@ -3,7 +3,12 @@ import type { Metadata } from "next"
 import { Inter } from "next/font/google"
 import "./globals.css"
 import { Toaster } from "@/components/ui/toaster"
-import { AuthProvider } from "@/contexts/AuthContext"
+import dynamic from "next/dynamic"
+
+const ClientAuthProvider = dynamic(
+  () => import("@/components/ClientAuthProvider"),
+  { ssr: false }
+)
 
 const inter = Inter({ subsets: ["latin"] })
 
@@ -21,9 +26,9 @@ export default function RootLayout({
   return (
     <html lang="en" className="dark">
       <body className={inter.className}>
-        <AuthProvider>
+        <ClientAuthProvider>
           {children}
-        </AuthProvider>
+        </ClientAuthProvider>
         <Toaster />
       </body>
     </html>

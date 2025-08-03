@@ -1,6 +1,7 @@
 "use client"
 
-import React, { createContext, useContext, useState, useEffect } from 'react'
+import React, { createContext, useContext, useState, useEffect, useCallback } from 'react'
+import dynamic from 'next/dynamic'
 import { useRouter } from 'next/navigation'
 import { toast } from '@/hooks/use-toast'
 
@@ -30,7 +31,12 @@ export const useAuth = () => useContext(AuthContext)
 export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [user, setUser] = useState<User | null>(null)
   const [isLoading, setIsLoading] = useState(true)
+  const [isMounted, setIsMounted] = useState(false)
   const router = useRouter()
+
+  useEffect(() => {
+    setIsMounted(true)
+  }, [])
 
   const checkAuth = async () => {
     try {
@@ -152,8 +158,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   }
 
   useEffect(() => {
-    checkAuth()
-  }, [])
+    if (isMounted) {
+      checkAuth()
+    }
+  }, [isMounted])
 
   return (
     <AuthContext.Provider value={{ user, isLoading, login, logout, checkAuth }}>

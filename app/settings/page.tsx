@@ -403,6 +403,9 @@ export default function SettingsPage() {
 
       if (response.ok && result.success) {
         setDiscordStatus({ type: "success", message: "Discord settings saved successfully!" })
+        setDiscordConfigured(true)
+        // Clear the webhook URL from the input for security
+        setDiscordWebhookUrl("")
         toast({
           title: "Saved",
           description: "Discord notification settings updated",
@@ -452,6 +455,9 @@ export default function SettingsPage() {
 
       if (response.ok && result.success) {
         setTelegramStatus({ type: "success", message: "Telegram settings saved successfully!" })
+        setTelegramConfigured(true)
+        // Clear the bot token from the input for security
+        setTelegramBotToken("")
         toast({
           title: "Saved",
           description: "Telegram notification settings updated",

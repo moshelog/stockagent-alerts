@@ -1213,6 +1213,50 @@ app.post('/api/telegram/test', asyncHandler(async (req, res) => {
 }));
 
 /**
+ * POST /api/telegram/test-alert - Send a test trading alert
+ */
+app.post('/api/telegram/test-alert', asyncHandler(async (req, res) => {
+  const { action = 'BUY' } = req.body;
+  
+  // Get saved Telegram config
+  const telegramConfig = await telegramNotifier.getTelegramConfig('default');
+  
+  if (!telegramConfig.botToken || !telegramConfig.chatId) {
+    return res.status(400).json({ 
+      error: 'Telegram not configured', 
+      message: 'Please save your Telegram settings first' 
+    });
+  }
+  
+  // Create realistic test data
+  const testData = {
+    action: action,
+    ticker: action === 'BUY' ? 'BTC' : 'ETH',
+    strategy: action === 'BUY' ? 'Buy on discount zone' : 'Sell on premium zone',
+    triggers: action === 'BUY' 
+      ? ['Discount Zone', 'Normal Bullish Divergence', 'Bullish OB Break'] 
+      : ['Premium Zone', 'Normal Bearish Divergence', 'Bearish OB Break'],
+    score: action === 'BUY' ? 4.2 : -4.3
+  };
+  
+  // Send the test alert
+  const result = await telegramNotifier.sendNotification(testData, telegramConfig);
+  
+  if (result.success) {
+    res.json({ 
+      success: true, 
+      message: `Test ${action} alert sent successfully!`,
+      data: testData
+    });
+  } else {
+    res.status(400).json({ 
+      error: 'Failed to send test alert', 
+      message: result.message 
+    });
+  }
+}));
+
+/**
  * POST /api/telegram/settings - Save Telegram settings
  */
 app.post('/api/telegram/settings', asyncHandler(async (req, res) => {

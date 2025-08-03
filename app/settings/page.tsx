@@ -77,6 +77,8 @@ export default function SettingsPage() {
   const [telegramBotToken, setTelegramBotToken] = useState("")
   const [telegramChatId, setTelegramChatId] = useState("")
   const [testingTelegram, setTestingTelegram] = useState(false)
+  const [sendingTestAlert, setSendingTestAlert] = useState(false)
+  const [testAlertType, setTestAlertType] = useState<'BUY' | 'SELL'>('BUY')
   const [telegramStatus, setTelegramStatus] = useState<{ type: "success" | "error" | null; message: string }>({
     type: null,
     message: "",
@@ -220,6 +222,42 @@ export default function SettingsPage() {
       })
     } finally {
       setTestingTelegram(false)
+    }
+  }
+
+  const handleSendTestAlert = async (action: 'BUY' | 'SELL') => {
+    setSendingTestAlert(true)
+    setTelegramStatus({ type: null, message: "" })
+
+    try {
+      const response = await fetch(`${config.apiBase}/telegram/test-alert`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ action })
+      })
+
+      const result = await response.json()
+
+      if (response.ok && result.success) {
+        setTelegramStatus({ type: "success", message: result.message })
+        toast({
+          title: "Success",
+          description: `Test ${action} alert sent to Telegram!`,
+          className: "bg-accent-buy text-white border-accent-buy",
+        })
+      } else {
+        throw new Error(result.message || "Failed to send test alert")
+      }
+    } catch (error) {
+      const errorMessage = error instanceof Error ? error.message : "Failed to send test alert"
+      setTelegramStatus({ type: "error", message: errorMessage })
+      toast({
+        title: "Error",
+        description: errorMessage,
+        className: "bg-accent-sell text-white border-accent-sell",
+      })
+    } finally {
+      setSendingTestAlert(false)
     }
   }
 
@@ -981,6 +1019,56 @@ export default function SettingsPage() {
                     the total score crosses your defined threshold.
                   </p>
                 </div>
+              </div>
+
+              {/* Send Test Alert Section */}
+              <div className="mt-8 pt-6 border-t border-gray-700">
+                <h4 className="text-lg font-semibold mb-4" style={{ color: "#E0E6ED" }}>
+                  🚀 Send Test Alert
+                </h4>
+                <p className="text-sm mb-4" style={{ color: "#A3A9B8" }}>
+                  Send a realistic test alert to your Telegram to verify your configuration is working properly.
+                </p>
+                
+                <div className="flex gap-3">
+                  <Button
+                    onClick={() => handleSendTestAlert('BUY')}
+                    disabled={sendingTestAlert || !telegramChatId || !telegramBotToken || telegramBotToken === ''}
+                    variant="outline"
+                    className="flex-1 border-emerald-600/50 text-emerald-600 hover:bg-emerald-600/10 disabled:opacity-50 disabled:cursor-not-allowed"
+                  >
+                    {sendingTestAlert ? (
+                      <RefreshCw className="w-4 h-4 mr-2 animate-spin" />
+                    ) : (
+                      <span className="flex items-center justify-center gap-2">
+                        <span>🟢</span>
+                        <span>Send Test BUY Alert</span>
+                      </span>
+                    )}
+                  </Button>
+                  
+                  <Button
+                    onClick={() => handleSendTestAlert('SELL')}
+                    disabled={sendingTestAlert || !telegramChatId || !telegramBotToken || telegramBotToken === ''}
+                    variant="outline"
+                    className="flex-1 border-rose-600/50 text-rose-600 hover:bg-rose-600/10 disabled:opacity-50 disabled:cursor-not-allowed"
+                  >
+                    {sendingTestAlert ? (
+                      <RefreshCw className="w-4 h-4 mr-2 animate-spin" />
+                    ) : (
+                      <span className="flex items-center justify-center gap-2">
+                        <span>🔴</span>
+                        <span>Send Test SELL Alert</span>
+                      </span>
+                    )}
+                  </Button>
+                </div>
+                
+                {(!telegramChatId || !telegramBotToken || telegramBotToken === '') && (
+                  <p className="text-xs mt-2 text-amber-500">
+                    ⚠️ Please configure and save your Telegram Bot Token and Chat ID first
+                  </p>
+                )}
               </div>
             </div>
           </CollapsiblePanel>

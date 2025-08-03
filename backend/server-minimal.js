@@ -1,6 +1,8 @@
 const express = require('express');
 const cors = require('cors');
 const cookieParser = require('cookie-parser');
+const bcrypt = require('bcrypt');
+const jwt = require('jsonwebtoken');
 require('dotenv').config();
 
 const app = express();
@@ -35,10 +37,6 @@ app.get('/api/health', (req, res) => {
 app.get('/', (req, res) => {
   res.json({ service: 'stockagent-backend', status: 'running' });
 });
-
-// Import required modules for auth
-const bcrypt = require('bcrypt');
-const jwt = require('jsonwebtoken');
 
 // Simple login endpoint
 app.post('/api/auth/login', async (req, res) => {
@@ -175,8 +173,14 @@ app.get('/api/settings', requireAuth, (req, res) => {
   });
 });
 
+// Error handling middleware
+app.use((err, req, res, next) => {
+  console.error('Error:', err);
+  res.status(500).json({ error: 'Internal server error' });
+});
+
 // Start server
-app.listen(PORT, '0.0.0.0', () => {
+const server = app.listen(PORT, '0.0.0.0', () => {
   console.log(`Server running on port ${PORT}`);
   console.log('Environment check:', {
     PORT,
@@ -185,5 +189,20 @@ app.listen(PORT, '0.0.0.0', () => {
     hasSupabaseKey: !!process.env.SUPABASE_ANON_KEY,
     hasJwtSecret: !!process.env.JWT_SECRET,
     hasAdminPassword: !!process.env.ADMIN_PASSWORD_HASH
+  });
+});
+
+// Handle server errors
+server.on('error', (error) => {
+  console.error('Server error:', error);
+  process.exit(1);
+});
+
+// Graceful shutdown
+process.on('SIGTERM', () => {
+  console.log('SIGTERM received, shutting down gracefully');
+  server.close(() => {
+    console.log('Server closed');
+    process.exit(0);
   });
 });

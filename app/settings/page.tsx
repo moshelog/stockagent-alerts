@@ -225,8 +225,15 @@ export default function SettingsPage() {
   }
 
   const handleTestTelegram = async () => {
-    if (!telegramBotToken || !telegramChatId) {
+    // Check if we have credentials in state OR if Telegram is configured
+    if (!telegramBotToken && !telegramChatId && !telegramConfigured) {
       setTelegramStatus({ type: "error", message: "Please enter both Bot Token and Chat ID" })
+      return
+    }
+
+    // Check if we have chat ID (required even if token is saved)
+    if (!telegramChatId) {
+      setTelegramStatus({ type: "error", message: "Please enter Chat ID" })
       return
     }
 
@@ -238,7 +245,7 @@ export default function SettingsPage() {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          botToken: telegramBotToken,
+          botToken: telegramBotToken || undefined, // Send only if available
           chatId: telegramChatId
         })
       })
@@ -276,7 +283,11 @@ export default function SettingsPage() {
       const response = await fetch(`${config.apiBase}/telegram/test-alert`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ action })
+        body: JSON.stringify({ 
+          action,
+          botToken: telegramBotToken || undefined,
+          chatId: telegramChatId || undefined
+        })
       })
 
       const result = await response.json()
@@ -305,11 +316,6 @@ export default function SettingsPage() {
   }
 
   const handleTestDiscord = async () => {
-    if (!discordWebhookUrl) {
-      setDiscordStatus({ type: "error", message: "Please enter a webhook URL" })
-      return
-    }
-
     setTestingDiscord(true)
     setDiscordStatus({ type: null, message: "" })
 
@@ -318,7 +324,7 @@ export default function SettingsPage() {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          webhookUrl: discordWebhookUrl
+          webhookUrl: discordWebhookUrl || undefined // Send undefined to use saved webhook
         })
       })
 
@@ -355,7 +361,10 @@ export default function SettingsPage() {
       const response = await fetch(`${config.apiBase}/discord/test-alert`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ action })
+        body: JSON.stringify({ 
+          action,
+          webhookUrl: discordWebhookUrl || undefined
+        })
       })
 
       const result = await response.json()

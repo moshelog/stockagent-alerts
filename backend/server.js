@@ -1198,10 +1198,20 @@ const discordNotifier = require('./services/discordNotifier');
  * POST /api/telegram/test - Test Telegram connection
  */
 app.post('/api/telegram/test', asyncHandler(async (req, res) => {
-  const { botToken, chatId } = req.body;
+  let { botToken, chatId } = req.body;
   
+  // If credentials not provided, try to use saved ones
   if (!botToken || !chatId) {
-    return res.status(400).json({ error: 'Bot token and chat ID are required' });
+    const savedConfig = await telegramNotifier.getTelegramConfig('default');
+    botToken = botToken || savedConfig.botToken;
+    chatId = chatId || savedConfig.chatId;
+    
+    if (!botToken || !chatId) {
+      return res.status(400).json({ 
+        error: 'Bot token and chat ID are required',
+        message: 'Please enter your Telegram credentials'
+      });
+    }
   }
   
   const result = await telegramNotifier.testConnection(botToken, chatId);
@@ -1217,12 +1227,16 @@ app.post('/api/telegram/test', asyncHandler(async (req, res) => {
  * POST /api/telegram/test-alert - Send a test trading alert
  */
 app.post('/api/telegram/test-alert', asyncHandler(async (req, res) => {
-  const { action = 'BUY' } = req.body;
+  const { action = 'BUY', botToken, chatId } = req.body;
   
   // Get saved Telegram config
   const telegramConfig = await telegramNotifier.getTelegramConfig('default');
   
-  if (!telegramConfig.botToken || !telegramConfig.chatId) {
+  // Use provided credentials if available, otherwise use saved ones
+  const finalBotToken = botToken || telegramConfig.botToken;
+  const finalChatId = chatId || telegramConfig.chatId;
+  
+  if (!finalBotToken || !finalChatId) {
     return res.status(400).json({ 
       error: 'Telegram not configured', 
       message: 'Please save your Telegram settings first' 
@@ -1240,8 +1254,12 @@ app.post('/api/telegram/test-alert', asyncHandler(async (req, res) => {
     score: action === 'BUY' ? 4.2 : -4.3
   };
   
-  // Send the test alert
-  const result = await telegramNotifier.sendNotification(testData, telegramConfig);
+  // Send the test alert with the appropriate credentials
+  const result = await telegramNotifier.sendNotification(testData, {
+    ...telegramConfig,
+    botToken: finalBotToken,
+    chatId: finalChatId
+  });
   
   if (result.success) {
     res.json({ 
@@ -1321,10 +1339,16 @@ app.get('/api/telegram/settings', asyncHandler(async (req, res) => {
  * POST /api/discord/test - Test Discord webhook connection
  */
 app.post('/api/discord/test', asyncHandler(async (req, res) => {
-  const { webhookUrl } = req.body;
+  let { webhookUrl } = req.body;
   
+  // If no webhook URL provided, try to use the saved one
   if (!webhookUrl) {
-    return res.status(400).json({ error: 'Webhook URL is required' });
+    const savedConfig = await discordNotifier.getDiscordConfig('default');
+    webhookUrl = savedConfig.webhookUrl;
+    
+    if (!webhookUrl) {
+      return res.status(400).json({ error: 'Webhook URL is required' });
+    }
   }
   
   const result = await discordNotifier.testConnection(webhookUrl);
@@ -1340,12 +1364,15 @@ app.post('/api/discord/test', asyncHandler(async (req, res) => {
  * POST /api/discord/test-alert - Send a test trading alert to Discord
  */
 app.post('/api/discord/test-alert', asyncHandler(async (req, res) => {
-  const { action = 'BUY' } = req.body;
+  const { action = 'BUY', webhookUrl } = req.body;
   
   // Get saved Discord config
   const discordConfig = await discordNotifier.getDiscordConfig('default');
   
-  if (!discordConfig.webhookUrl) {
+  // Use webhook URL from request if provided, otherwise use saved one
+  const finalWebhookUrl = webhookUrl || discordConfig.webhookUrl;
+  
+  if (!finalWebhookUrl) {
     return res.status(400).json({ 
       error: 'Discord not configured', 
       message: 'Please save your Discord webhook URL first' 
@@ -1363,8 +1390,11 @@ app.post('/api/discord/test-alert', asyncHandler(async (req, res) => {
     score: action === 'BUY' ? 4.2 : -4.3
   };
   
-  // Send test notification
-  const result = await discordNotifier.sendNotification(testData, discordConfig);
+  // Send test notification with the appropriate webhook URL
+  const result = await discordNotifier.sendNotification(testData, {
+    ...discordConfig,
+    webhookUrl: finalWebhookUrl
+  });
   
   if (result.success) {
     res.json({ 

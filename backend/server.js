@@ -824,6 +824,7 @@ app.post('/api/auth/login', asyncHandler(async (req, res) => {
   res.json({ 
     success: true, 
     message: 'Login successful',
+    token: result.token, // Include token for frontend localStorage
     expiresIn: result.expiresIn 
   });
 }));

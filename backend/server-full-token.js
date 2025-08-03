@@ -235,6 +235,106 @@ app.use('/api', (req, res, next) => {
   requireAuth(req, res, next);
 });
 
+// Validation middleware for JSON payloads
+const validateAlertPayload = (req, res, next) => {
+  const { ticker, indicator, trigger } = req.body;
+  
+  if (!ticker || !indicator || !trigger) {
+    return res.status(400).json({
+      error: 'Missing required fields',
+      required: ['ticker', 'indicator', 'trigger']
+    });
+  }
+  
+  // Validate ticker format (basic)
+  if (typeof ticker !== 'string' || ticker.length > 20) {
+    return res.status(400).json({
+      error: 'Invalid ticker format'
+    });
+  }
+  
+  next();
+};
+
+// Webhook endpoint for JSON format (used by test webhook button)
+app.post('/webhook-json', webhookLimiter, validateAlertPayload, async (req, res) => {
+  try {
+    const { ticker, time, indicator, trigger, htf, timeframe } = req.body;
+    
+    if (logger && logger.info) {
+      logger.info('Webhook JSON received', {
+        ticker,
+        indicator,
+        trigger,
+        htf: htf || 'none',
+        timeframe: timeframe || '15m',
+        timestamp: time || new Date().toISOString()
+      });
+    }
+    
+    // Save alert to database
+    if (supabase) {
+      const alertData = {
+        ticker: ticker.toUpperCase(),
+        timeframe: timeframe || '15m',
+        indicator,
+        trigger,
+        timestamp: time ? 
+          (typeof time === 'string' && time.length === 13 ? 
+            new Date(parseInt(time)).toISOString() : 
+            new Date(time).toISOString()) : 
+          new Date().toISOString()
+      };
+      
+      // Add HTF field if it exists
+      if (htf) {
+        alertData.htf = htf;
+      }
+      
+      const { data, error } = await supabase
+        .from('alerts')
+        .insert([alertData]);
+
+      if (error) {
+        if (logger && logger.error) {
+          logger.error('Failed to save alert', { error: error.message });
+        }
+        return res.status(500).json({ error: 'Failed to save alert' });
+      }
+
+      // After saving alert, evaluate strategies
+      if (strategyEvaluator && strategyEvaluator.evaluateStrategies) {
+        try {
+          const evaluationResult = await strategyEvaluator.evaluateStrategies({ 
+            ticker: ticker.toUpperCase(), 
+            timeframe: timeframe || '15m',
+            indicator,
+            trigger
+          });
+          if (logger && logger.info) {
+            logger.info('Strategy evaluation result', evaluationResult);
+          }
+        } catch (evalError) {
+          if (logger && logger.error) {
+            logger.error('Strategy evaluation failed', { error: evalError.message });
+          }
+        }
+      }
+    } else {
+      if (logger && logger.warn) {
+        logger.warn('Database not configured, alert not saved');
+      }
+    }
+
+    res.json({ success: true, message: 'Alert received' });
+  } catch (error) {
+    if (logger && logger.error) {
+      logger.error('Webhook JSON error', { error: error.message });
+    }
+    res.status(500).json({ error: 'Internal server error' });
+  }
+});
+
 // Webhook endpoint - receives alerts from TradingView
 app.post('/webhook', webhookLimiter, express.text({ type: '*/*' }), async (req, res) => {
   try {

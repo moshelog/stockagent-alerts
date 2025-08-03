@@ -2235,16 +2235,7 @@ app.use((error, req, res, next) => {
 
 async function startServer() {
   try {
-    // Test database connection
-    logger.info('Testing database connection...');
-    const dbConnected = await testConnection();
-    
-    if (!dbConnected) {
-      logger.error('Failed to connect to database. Exiting...');
-      process.exit(1);
-    }
-    
-    // Start server
+    // Start server immediately for health checks
     app.listen(PORT, () => {
       logger.info('StockAgent Backend started', {
         port: PORT,
@@ -2252,6 +2243,19 @@ async function startServer() {
         healthCheck: `http://localhost:${PORT}/api/health`,
         webhookUrl: `http://localhost:${PORT}/webhook`,
         timestamp: new Date().toISOString()
+      });
+      
+      // Test database connection after server starts
+      logger.info('Testing database connection...');
+      testConnection().then(dbConnected => {
+        if (!dbConnected) {
+          logger.error('Failed to connect to database. Server running in degraded mode.');
+          // Don't exit - let the server run without database
+        } else {
+          logger.info('Database connection established successfully');
+        }
+      }).catch(err => {
+        logger.error('Error testing database connection:', err.message);
       });
     });
     

@@ -1593,56 +1593,65 @@ app.get('/api/discord/settings', asyncHandler(async (req, res) => {
 /**
  * GET /api/health - Health check (Backend Restore Fix)
  */
-app.get('/api/health', asyncHandler(async (req, res) => {
-  const dbConnected = await testConnection();
-  const memUsage = process.memoryUsage();
-  
-  // Get recent activity counts
-  let recentActivity = { alerts: 0, actions: 0, strategies: 0 };
+app.get('/api/health', async (req, res) => {
   try {
-    const [alertsResult, actionsResult, strategiesResult] = await Promise.all([
-      supabase.from('alerts').select('id', { count: 'exact', head: true }),
-      supabase.from('actions').select('id', { count: 'exact', head: true }),
-      supabase.from('strategies').select('id', { count: 'exact', head: true })
-    ]);
+    const memUsage = process.memoryUsage();
     
-    recentActivity = {
-      alerts: alertsResult.count || 0,
-      actions: actionsResult.count || 0,
-      strategies: strategiesResult.count || 0
-    };
-  } catch (err) {
-    // Don't fail health check if counts fail
-    logger.warn('Failed to get activity counts for health check', { error: err.message });
-  }
-  
-  const healthData = {
-    status: dbConnected ? 'healthy' : 'degraded',
-    timestamp: new Date().toISOString(),
-    uptime: Math.round(process.uptime()),
-    database: {
-      connected: dbConnected,
-      status: dbConnected ? 'operational' : 'disconnected'
-    },
-    system: {
-      memory: {
-        rss: Math.round(memUsage.rss / 1024 / 1024),
-        heapTotal: Math.round(memUsage.heapTotal / 1024 / 1024),
-        heapUsed: Math.round(memUsage.heapUsed / 1024 / 1024),
-        unit: 'MB'
+    // Quick health check - don't wait for database during deployment
+    const healthData = {
+      status: 'healthy',
+      timestamp: new Date().toISOString(),
+      uptime: Math.round(process.uptime()),
+      system: {
+        memory: {
+          rss: Math.round(memUsage.rss / 1024 / 1024),
+          heapTotal: Math.round(memUsage.heapTotal / 1024 / 1024),
+          heapUsed: Math.round(memUsage.heapUsed / 1024 / 1024),
+          unit: 'MB'
+        },
+        uptime: `${Math.round(process.uptime())}s`,
+        nodeVersion: process.version,
+        environment: process.env.NODE_ENV || 'development'
       },
-      uptime: `${Math.round(process.uptime())}s`,
-      nodeVersion: process.version,
-      environment: process.env.NODE_ENV || 'development'
-    },
-    data: recentActivity,
-    version: '1.0.0'
-  };
-  
-  // Return 503 if database is down
-  const statusCode = dbConnected ? 200 : 503;
-  res.status(statusCode).json(healthData);
-}));
+      version: '1.0.0'
+    };
+    
+    // Try to check database but don't let it block the health check
+    if (process.uptime() > 10) { // Only check DB after 10 seconds uptime
+      try {
+        const dbConnected = await Promise.race([
+          testConnection(),
+          new Promise((resolve) => setTimeout(() => resolve(false), 2000)) // 2 second timeout
+        ]);
+        
+        healthData.database = {
+          connected: dbConnected,
+          status: dbConnected ? 'operational' : 'disconnected'
+        };
+        
+        if (!dbConnected) {
+          healthData.status = 'degraded';
+        }
+      } catch (err) {
+        logger.warn('Database check failed in health endpoint', { error: err.message });
+        healthData.database = {
+          connected: false,
+          status: 'error',
+          error: err.message
+        };
+      }
+    }
+    
+    res.status(200).json(healthData);
+  } catch (error) {
+    logger.error('Health check error', { error: error.message });
+    res.status(503).json({ 
+      status: 'error', 
+      error: error.message,
+      timestamp: new Date().toISOString()
+    });
+  }
+});
 
 /**
  * GET /api/stats - Get system statistics

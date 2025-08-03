@@ -16,6 +16,13 @@ export function getAuthHeaders(): HeadersInit {
 export async function authenticatedFetch(url: string, options: RequestInit = {}): Promise<Response> {
   const headers = getAuthHeaders()
   
+  // Debug logging
+  console.log('🔐 Authenticated fetch:', {
+    url,
+    hasToken: !!localStorage.getItem('authToken'),
+    headers
+  })
+  
   const response = await fetch(url, {
     ...options,
     headers: {
@@ -24,10 +31,19 @@ export async function authenticatedFetch(url: string, options: RequestInit = {})
     },
   })
   
+  console.log('📡 Response:', {
+    url,
+    status: response.status,
+    statusText: response.statusText
+  })
+  
   // If we get a 401, clear the token and redirect to login
   if (response.status === 401) {
-    localStorage.removeItem('authToken')
-    window.location.href = '/login'
+    console.error('❌ Authentication failed for:', url)
+    console.error('Token:', localStorage.getItem('authToken'))
+    // Temporarily disable auto-redirect to debug
+    // localStorage.removeItem('authToken')
+    // window.location.href = '/login'
   }
   
   return response

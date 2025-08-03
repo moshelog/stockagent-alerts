@@ -6,8 +6,8 @@ export async function POST(request: NextRequest) {
     // Get the webhook data
     const body = await request.json()
     
-    // Forward to Railway backend's webhook endpoint (same as regular webhook)
-    const backendUrl = 'https://stockagent-backend-production.up.railway.app/webhook'
+    // Forward to Railway backend's webhook-json endpoint
+    const backendUrl = 'https://stockagent-backend-production.up.railway.app/webhook-json'
     
     const response = await fetch(backendUrl, {
       method: 'POST',
@@ -33,6 +33,6 @@ export async function POST(request: NextRequest) {
 export async function GET() {
   return NextResponse.json({ 
     message: 'Webhook-json endpoint is active. Send POST requests to this URL.',
-    backend: 'https://stockagent-backend-production.up.railway.app/webhook'
+    backend: 'https://stockagent-backend-production.up.railway.app/webhook-json'
   })
 }

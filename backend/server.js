@@ -15,6 +15,11 @@ const PORT = process.env.PORT || 3001;
 
 // Admin API endpoints deployment fix - 2025-07-30T21:08:00
 
+// Health check endpoint (must be before other middleware for Railway)
+app.get('/', (req, res) => {
+  res.json({ status: 'healthy', service: 'stockagent-backend' });
+});
+
 // Middleware
 app.use(helmet({
   contentSecurityPolicy: {
@@ -1593,64 +1598,13 @@ app.get('/api/discord/settings', asyncHandler(async (req, res) => {
 /**
  * GET /api/health - Health check (Backend Restore Fix)
  */
-app.get('/api/health', async (req, res) => {
-  try {
-    const memUsage = process.memoryUsage();
-    
-    // Quick health check - don't wait for database during deployment
-    const healthData = {
-      status: 'healthy',
-      timestamp: new Date().toISOString(),
-      uptime: Math.round(process.uptime()),
-      system: {
-        memory: {
-          rss: Math.round(memUsage.rss / 1024 / 1024),
-          heapTotal: Math.round(memUsage.heapTotal / 1024 / 1024),
-          heapUsed: Math.round(memUsage.heapUsed / 1024 / 1024),
-          unit: 'MB'
-        },
-        uptime: `${Math.round(process.uptime())}s`,
-        nodeVersion: process.version,
-        environment: process.env.NODE_ENV || 'development'
-      },
-      version: '1.0.0'
-    };
-    
-    // Try to check database but don't let it block the health check
-    if (process.uptime() > 10) { // Only check DB after 10 seconds uptime
-      try {
-        const dbConnected = await Promise.race([
-          testConnection(),
-          new Promise((resolve) => setTimeout(() => resolve(false), 2000)) // 2 second timeout
-        ]);
-        
-        healthData.database = {
-          connected: dbConnected,
-          status: dbConnected ? 'operational' : 'disconnected'
-        };
-        
-        if (!dbConnected) {
-          healthData.status = 'degraded';
-        }
-      } catch (err) {
-        logger.warn('Database check failed in health endpoint', { error: err.message });
-        healthData.database = {
-          connected: false,
-          status: 'error',
-          error: err.message
-        };
-      }
-    }
-    
-    res.status(200).json(healthData);
-  } catch (error) {
-    logger.error('Health check error', { error: error.message });
-    res.status(503).json({ 
-      status: 'error', 
-      error: error.message,
-      timestamp: new Date().toISOString()
-    });
-  }
+app.get('/api/health', (req, res) => {
+  // Simple synchronous health check for Railway
+  res.status(200).json({
+    status: 'healthy',
+    timestamp: new Date().toISOString(),
+    service: 'stockagent-backend'
+  });
 });
 
 /**

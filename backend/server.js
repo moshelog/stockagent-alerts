@@ -5,13 +5,44 @@ const rateLimit = require('express-rate-limit');
 const cookieParser = require('cookie-parser');
 require('dotenv').config();
 
-const { supabase, testConnection } = require('./config/database');
-const strategyEvaluator = require('./services/strategyEvaluator');
-const { logger, requestLogger, errorLogger } = require('./middleware/logger');
-const authService = require('./services/authService');
-
+// Initialize express app first
 const app = express();
 const PORT = process.env.PORT || 3001;
+
+// Import with error handling
+let supabase, testConnection, strategyEvaluator, logger, requestLogger, errorLogger, authService;
+
+try {
+  const db = require('./config/database');
+  supabase = db.supabase;
+  testConnection = db.testConnection;
+} catch (err) {
+  console.error('Database module load error:', err.message);
+}
+
+try {
+  strategyEvaluator = require('./services/strategyEvaluator');
+} catch (err) {
+  console.error('Strategy evaluator load error:', err.message);
+}
+
+try {
+  const loggerModule = require('./middleware/logger');
+  logger = loggerModule.logger || console;
+  requestLogger = loggerModule.requestLogger || ((req, res, next) => next());
+  errorLogger = loggerModule.errorLogger || ((err, req, res, next) => next(err));
+} catch (err) {
+  console.error('Logger module load error:', err.message);
+  logger = console;
+  requestLogger = (req, res, next) => next();
+  errorLogger = (err, req, res, next) => next(err);
+}
+
+try {
+  authService = require('./services/authService');
+} catch (err) {
+  console.error('Auth service load error:', err.message);
+}
 
 // Admin API endpoints deployment fix - 2025-07-30T21:08:00
 
@@ -2191,7 +2222,7 @@ async function startServer() {
   try {
     // Start server immediately for health checks
     app.listen(PORT, () => {
-      logger.info('StockAgent Backend started', {
+      console.log('StockAgent Backend started', {
         port: PORT,
         environment: process.env.NODE_ENV || 'development',
         healthCheck: `http://localhost:${PORT}/api/health`,
@@ -2200,21 +2231,25 @@ async function startServer() {
       });
       
       // Test database connection after server starts
-      logger.info('Testing database connection...');
-      testConnection().then(dbConnected => {
-        if (!dbConnected) {
-          logger.error('Failed to connect to database. Server running in degraded mode.');
-          // Don't exit - let the server run without database
-        } else {
-          logger.info('Database connection established successfully');
-        }
-      }).catch(err => {
-        logger.error('Error testing database connection:', err.message);
-      });
+      if (testConnection) {
+        console.log('Testing database connection...');
+        testConnection().then(dbConnected => {
+          if (!dbConnected) {
+            console.error('Failed to connect to database. Server running in degraded mode.');
+            // Don't exit - let the server run without database
+          } else {
+            console.log('Database connection established successfully');
+          }
+        }).catch(err => {
+          console.error('Error testing database connection:', err.message);
+        });
+      } else {
+        console.log('Database module not loaded - running without database');
+      }
     });
     
   } catch (error) {
-    logger.error('Failed to start server', {
+    console.error('Failed to start server', {
       error: error.message,
       stack: error.stack
     });
@@ -2224,18 +2259,18 @@ async function startServer() {
 
 // Handle graceful shutdown
 process.on('SIGTERM', () => {
-  logger.info('SIGTERM received, shutting down gracefully...');
+  console.log('SIGTERM received, shutting down gracefully...');
   process.exit(0);
 });
 
 process.on('SIGINT', () => {
-  logger.info('SIGINT received, shutting down gracefully...');
+  console.log('SIGINT received, shutting down gracefully...');
   process.exit(0);
 });
 
 // Handle uncaught exceptions
 process.on('uncaughtException', (error) => {
-  logger.error('Uncaught Exception', {
+  console.error('Uncaught Exception', {
     error: error.message,
     stack: error.stack
   });
@@ -2243,7 +2278,7 @@ process.on('uncaughtException', (error) => {
 });
 
 process.on('unhandledRejection', (reason, promise) => {
-  logger.error('Unhandled Rejection', {
+  console.error('Unhandled Rejection', {
     reason: reason,
     promise: promise
   });

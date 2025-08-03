@@ -1,0 +1,15 @@
+
+> stockagent-backend@1.0.0 dev
+> nodemon server.js
+
+[33m[nodemon] 3.1.10[39m
+[33m[nodemon] to restart at any time, enter `rs`[39m
+[33m[nodemon] watching path(s): *.*[39m
+[33m[nodemon] watching extensions: js,mjs,cjs,json[39m
+[32m[nodemon] starting `node server.js`[39m
+[32minfo[39m: Testing database connection... {"service":"stockagent-backend","timestamp":"2025-08-02T17:08:05.908Z"}
+✅ Database connection successful
+[32minfo[39m: StockAgent Backend started {"environment":"development","healthCheck":"http://localhost:3001/api/health","port":"3001","service":"stockagent-backend","timestamp":"2025-08-02T17:08:06.924Z","webhookUrl":"http://localhost:3001/webhook"}
+[32minfo[39m: Request started {"ip":"::1","method":"GET","service":"stockagent-backend","timestamp":"2025-08-02T17:08:15.707Z","url":"/api/available-alerts","userAgent":"curl/8.7.1"}
+[32minfo[39m: Request completed {"duration":"366ms","method":"GET","responseSize":18132,"service":"stockagent-backend","statusCode":200,"timestamp":"2025-08-02T17:08:16.073Z","url":"/api/available-alerts"}
+[32minfo[39m: SIGTERM received, shutting down gracefully... {"service":"stockagent-backend","timestamp":"2025-08-02T17:08:40.304Z"}

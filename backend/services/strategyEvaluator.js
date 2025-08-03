@@ -1,4 +1,5 @@
 const { supabase } = require('../config/database');
+const telegramNotifier = require('./telegramNotifier');
 
 /**
  * Strategy Evaluation Service
@@ -162,6 +163,23 @@ class StrategyEvaluator {
         score: score,
         foundRules: foundRules.length
       });
+
+      // Send Telegram notification
+      try {
+        const telegramConfig = await telegramNotifier.getTelegramConfig();
+        const triggers = foundRules.map(rule => rule.trigger);
+        
+        await telegramNotifier.sendNotification({
+          action,
+          ticker,
+          strategy: strategy.name,
+          triggers,
+          score
+        }, telegramConfig);
+      } catch (notificationError) {
+        console.error('Failed to send Telegram notification:', notificationError.message);
+        // Continue even if notification fails
+      }
 
       return data[0];
 

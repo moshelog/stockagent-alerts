@@ -1,0 +1,22 @@
+
+> my-v0-project@0.1.1 dev /Users/moshelugasi/Downloads/Github/stockagent alerts
+> next dev
+
+   ▲ Next.js 15.2.4
+   - Local:        http://localhost:3000
+   - Network:      http://172.20.10.14:3000
+
+ ✓ Starting...
+ ✓ Ready in 1598ms
+ ○ Compiling / ...
+ ✓ Compiled / in 2.4s (1769 modules)
+🔍 Strategy Manager Debug - FINAL WEIGHT FIX v5:
+  📊 dbStrategies: []
+  ⏳ strategiesLoading: true
+  ❌ strategiesError: null
+  ⚙️ config: null
+  📈 apiStrategies: []
+🚨 DEBUGGING: If you see this message, debugging version is LIVE!
+ GET / 200 in 2678ms
+ ✓ Compiled in 330ms (845 modules)
+[?25h

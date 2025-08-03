@@ -1188,6 +1188,79 @@ app.delete('/api/available-alerts/:id', asyncHandler(async (req, res) => {
 }));
 
 // ============================================================================
+// TELEGRAM NOTIFICATION ENDPOINTS
+// ============================================================================
+
+const telegramNotifier = require('./services/telegramNotifier');
+
+/**
+ * POST /api/telegram/test - Test Telegram connection
+ */
+app.post('/api/telegram/test', asyncHandler(async (req, res) => {
+  const { botToken, chatId } = req.body;
+  
+  if (!botToken || !chatId) {
+    return res.status(400).json({ error: 'Bot token and chat ID are required' });
+  }
+  
+  const result = await telegramNotifier.testConnection(botToken, chatId);
+  
+  if (result.success) {
+    res.json(result);
+  } else {
+    res.status(400).json(result);
+  }
+}));
+
+/**
+ * POST /api/telegram/settings - Save Telegram settings
+ */
+app.post('/api/telegram/settings', asyncHandler(async (req, res) => {
+  const { botToken, chatId, messageTemplate } = req.body;
+  
+  // For now, we'll just validate and return success
+  // In a real implementation, this would save to database
+  if (!botToken || !chatId) {
+    return res.status(400).json({ error: 'Bot token and chat ID are required' });
+  }
+  
+  // Store in environment variables temporarily
+  process.env.TELEGRAM_BOT_TOKEN = botToken;
+  process.env.TELEGRAM_CHAT_ID = chatId;
+  
+  if (messageTemplate) {
+    process.env.TELEGRAM_SHOW_TIMESTAMP = messageTemplate.showTimestamp ? 'true' : 'false';
+    process.env.TELEGRAM_SHOW_TICKER = messageTemplate.showTicker ? 'true' : 'false';
+    process.env.TELEGRAM_SHOW_STRATEGY = messageTemplate.showStrategy ? 'true' : 'false';
+    process.env.TELEGRAM_SHOW_TRIGGERS = messageTemplate.showTriggers ? 'true' : 'false';
+    process.env.TELEGRAM_SHOW_SCORE = messageTemplate.showScore ? 'true' : 'false';
+    process.env.TELEGRAM_MESSAGE_FORMAT = messageTemplate.format || 'detailed';
+  }
+  
+  res.json({ 
+    success: true, 
+    message: 'Telegram settings saved successfully',
+    settings: {
+      chatId,
+      messageTemplate
+    }
+  });
+}));
+
+/**
+ * GET /api/telegram/settings - Get current Telegram settings
+ */
+app.get('/api/telegram/settings', asyncHandler(async (req, res) => {
+  const config = await telegramNotifier.getTelegramConfig();
+  
+  res.json({
+    configured: !!(config.botToken && config.chatId),
+    chatId: config.chatId ? config.chatId : null,
+    messageTemplate: config.messageTemplate
+  });
+}));
+
+// ============================================================================
 // UTILITY ENDPOINTS
 // ============================================================================
 

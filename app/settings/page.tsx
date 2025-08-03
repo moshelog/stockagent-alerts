@@ -23,6 +23,8 @@ import { Label } from "@/components/ui/label"
 import { useConfig } from "@/hooks/useConfig"
 import Link from "next/link"
 import { useToast } from "@/hooks/use-toast"
+import { Switch } from "@/components/ui/switch"
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 
 interface CollapsiblePanelProps {
   title: string
@@ -77,6 +79,16 @@ export default function SettingsPage() {
   const [telegramStatus, setTelegramStatus] = useState<{ type: "success" | "error" | null; message: string }>({
     type: null,
     message: "",
+  })
+  
+  // Message template states
+  const [messageTemplate, setMessageTemplate] = useState({
+    showTimestamp: true,
+    showTicker: true,
+    showStrategy: true,
+    showTriggers: true,
+    showScore: true,
+    format: 'detailed' as 'detailed' | 'compact' | 'minimal'
   })
 
   // Exchange credentials states
@@ -148,12 +160,18 @@ export default function SettingsPage() {
     setTelegramStatus({ type: null, message: "" })
 
     try {
-      // Simulate API call - replace with actual Telegram API call
-      await new Promise((resolve) => setTimeout(resolve, 2000))
+      const response = await fetch(`${config.apiBase}/telegram/test`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          botToken: telegramBotToken,
+          chatId: telegramChatId
+        })
+      })
 
-      // Mock success/failure for demo
-      const success = Math.random() > 0.3
-      if (success) {
+      const result = await response.json()
+
+      if (response.ok && result.success) {
         setTelegramStatus({ type: "success", message: "Test message sent successfully!" })
         toast({
           title: "Success",
@@ -161,10 +179,11 @@ export default function SettingsPage() {
           className: "bg-accent-buy text-white border-accent-buy",
         })
       } else {
-        throw new Error("Invalid bot token or chat ID")
+        throw new Error(result.message || "Invalid bot token or chat ID")
       }
     } catch (error) {
-      setTelegramStatus({ type: "error", message: "Failed to send test message. Check your credentials." })
+      const errorMessage = error instanceof Error ? error.message : "Failed to send test message"
+      setTelegramStatus({ type: "error", message: errorMessage })
       toast({
         title: "Error",
         description: "Telegram connection test failed",
@@ -176,17 +195,42 @@ export default function SettingsPage() {
   }
 
   const handleSaveTelegram = async () => {
+    if (!telegramBotToken || !telegramChatId) {
+      setTelegramStatus({ type: "error", message: "Please enter both Bot Token and Chat ID" })
+      return
+    }
+
     try {
-      // Simulate save operation
-      await new Promise((resolve) => setTimeout(resolve, 1000))
-      setTelegramStatus({ type: "success", message: "Telegram settings saved successfully!" })
-      toast({
-        title: "Saved",
-        description: "Telegram notification settings updated",
-        className: "bg-accent-buy text-white border-accent-buy",
+      const response = await fetch(`${config.apiBase}/telegram/settings`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          botToken: telegramBotToken,
+          chatId: telegramChatId,
+          messageTemplate
+        })
       })
+
+      const result = await response.json()
+
+      if (response.ok && result.success) {
+        setTelegramStatus({ type: "success", message: "Telegram settings saved successfully!" })
+        toast({
+          title: "Saved",
+          description: "Telegram notification settings updated",
+          className: "bg-accent-buy text-white border-accent-buy",
+        })
+      } else {
+        throw new Error(result.message || "Failed to save settings")
+      }
     } catch (error) {
-      setTelegramStatus({ type: "error", message: "Failed to save settings" })
+      const errorMessage = error instanceof Error ? error.message : "Failed to save settings"
+      setTelegramStatus({ type: "error", message: errorMessage })
+      toast({
+        title: "Error",
+        description: errorMessage,
+        className: "bg-accent-sell text-white border-accent-sell",
+      })
     }
   }
 
@@ -699,6 +743,106 @@ export default function SettingsPage() {
                   {telegramStatus.message}
                 </div>
               )}
+              
+              {/* Message Customization */}
+              <div className="mt-8 pt-6 border-t border-gray-700">
+                <h4 className="text-lg font-semibold mb-4" style={{ color: "#E0E6ED" }}>
+                  ✏️ Customize Message Format
+                </h4>
+                
+                <div className="space-y-4">
+                  {/* Format Selection */}
+                  <div>
+                    <Label className="text-sm font-medium" style={{ color: "#E0E6ED" }}>
+                      Message Format
+                    </Label>
+                    <Select
+                      value={messageTemplate.format}
+                      onValueChange={(value: 'detailed' | 'compact' | 'minimal') => 
+                        setMessageTemplate({ ...messageTemplate, format: value })
+                      }
+                    >
+                      <SelectTrigger className="mt-1 bg-background border-gray-700">
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="detailed">Detailed - Full information</SelectItem>
+                        <SelectItem value="compact">Compact - One line summary</SelectItem>
+                        <SelectItem value="minimal">Minimal - Just action and ticker</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+
+                  {/* Toggle Options */}
+                  <div className="space-y-3">
+                    <div className="flex items-center justify-between">
+                      <Label htmlFor="showTimestamp" className="text-sm" style={{ color: "#E0E6ED" }}>
+                        Show Timestamp
+                      </Label>
+                      <Switch
+                        id="showTimestamp"
+                        checked={messageTemplate.showTimestamp}
+                        onCheckedChange={(checked) => 
+                          setMessageTemplate({ ...messageTemplate, showTimestamp: checked })
+                        }
+                      />
+                    </div>
+                    
+                    <div className="flex items-center justify-between">
+                      <Label htmlFor="showTicker" className="text-sm" style={{ color: "#E0E6ED" }}>
+                        Show Ticker
+                      </Label>
+                      <Switch
+                        id="showTicker"
+                        checked={messageTemplate.showTicker}
+                        onCheckedChange={(checked) => 
+                          setMessageTemplate({ ...messageTemplate, showTicker: checked })
+                        }
+                      />
+                    </div>
+                    
+                    <div className="flex items-center justify-between">
+                      <Label htmlFor="showStrategy" className="text-sm" style={{ color: "#E0E6ED" }}>
+                        Show Strategy
+                      </Label>
+                      <Switch
+                        id="showStrategy"
+                        checked={messageTemplate.showStrategy}
+                        onCheckedChange={(checked) => 
+                          setMessageTemplate({ ...messageTemplate, showStrategy: checked })
+                        }
+                      />
+                    </div>
+                    
+                    <div className="flex items-center justify-between">
+                      <Label htmlFor="showTriggers" className="text-sm" style={{ color: "#E0E6ED" }}>
+                        Show Triggers
+                      </Label>
+                      <Switch
+                        id="showTriggers"
+                        checked={messageTemplate.showTriggers}
+                        onCheckedChange={(checked) => 
+                          setMessageTemplate({ ...messageTemplate, showTriggers: checked })
+                        }
+                      />
+                    </div>
+                    
+                    <div className="flex items-center justify-between">
+                      <Label htmlFor="showScore" className="text-sm" style={{ color: "#E0E6ED" }}>
+                        Show Score
+                      </Label>
+                      <Switch
+                        id="showScore"
+                        checked={messageTemplate.showScore}
+                        onCheckedChange={(checked) => 
+                          setMessageTemplate({ ...messageTemplate, showScore: checked })
+                        }
+                      />
+                    </div>
+                  </div>
+                </div>
+              </div>
+              
               {/* Notification Preview */}
               <div className="mt-8 pt-6 border-t border-gray-700">
                 <h4 className="text-lg font-semibold mb-4 flex items-center gap-2" style={{ color: "#E0E6ED" }}>
@@ -708,65 +852,88 @@ export default function SettingsPage() {
                   This is how your notifications will appear when a strategy triggers an action:
                 </p>
 
-                {/* Buy Action Preview */}
+                {/* Dynamic Preview based on message format */}
                 <div className="space-y-4">
+                  {/* Buy Signal Preview */}
                   <div className="bg-green-500/10 border border-green-500/20 rounded-lg p-4">
-                    <div className="flex items-center gap-2 mb-2">
-                      <div className="w-2 h-2 bg-green-400 rounded-full"></div>
-                      <span className="text-sm font-semibold text-green-400">BUY SIGNAL</span>
-                    </div>
-                    <div className="space-y-1 text-sm">
-                      <div className="flex justify-between">
-                        <span style={{ color: "#A3A9B8" }}>Timestamp:</span>
-                        <span style={{ color: "#E0E6ED" }}>{new Date().toLocaleString()}</span>
-                      </div>
-                      <div className="flex justify-between">
-                        <span style={{ color: "#A3A9B8" }}>Ticker:</span>
-                        <span className="font-bold text-green-400">BTC</span>
-                      </div>
-                      <div className="flex justify-between">
-                        <span style={{ color: "#A3A9B8" }}>Strategy:</span>
-                        <span style={{ color: "#E0E6ED" }}>Buy on discount zone</span>
-                      </div>
-                      <div className="flex justify-between">
-                        <span style={{ color: "#A3A9B8" }}>Triggers:</span>
-                        <span style={{ color: "#E0E6ED" }}>Discount Zone + Normal Bullish Divergence</span>
-                      </div>
-                      <div className="flex justify-between">
-                        <span style={{ color: "#A3A9B8" }}>Total Score:</span>
-                        <span className="font-bold text-green-400">+4.2</span>
-                      </div>
-                    </div>
+                    {messageTemplate.format === 'minimal' ? (
+                      <p className="text-sm">
+                        <span className="text-green-400">🟢 BUY BTC</span>
+                        {messageTemplate.showScore && <span className="text-green-400"> (+4.2)</span>}
+                      </p>
+                    ) : messageTemplate.format === 'compact' ? (
+                      <p className="text-sm">
+                        <span className="text-green-400 font-bold">🟢 BUY BTC</span>
+                        {messageTemplate.showStrategy && <span style={{ color: "#E0E6ED" }}> | Buy on discount zone</span>}
+                        {messageTemplate.showScore && <span className="text-green-400"> | Score: +4.2</span>}
+                      </p>
+                    ) : (
+                      <>
+                        <div className="text-sm">
+                          <span className="text-green-400 font-bold">🟢 BUY SIGNAL</span>
+                          <div className="mt-2" style={{ borderTop: '1px solid #374151' }}>
+                            <div className="space-y-1 mt-2">
+                              {messageTemplate.showTimestamp && (
+                                <div>📅 <strong>Time:</strong> {new Date().toLocaleString()}</div>
+                              )}
+                              {messageTemplate.showTicker && (
+                                <div>📈 <strong>Ticker:</strong> BTC</div>
+                              )}
+                              {messageTemplate.showStrategy && (
+                                <div>📊 <strong>Strategy:</strong> Buy on discount zone</div>
+                              )}
+                              {messageTemplate.showTriggers && (
+                                <div>🎯 <strong>Triggers:</strong> Discount Zone, Normal Bullish Divergence</div>
+                              )}
+                              {messageTemplate.showScore && (
+                                <div>📈 <strong>Score:</strong> +4.2</div>
+                              )}
+                            </div>
+                          </div>
+                        </div>
+                      </>
+                    )}
                   </div>
 
-                  {/* Sell Action Preview */}
+                  {/* Sell Signal Preview */}
                   <div className="bg-red-500/10 border border-red-500/20 rounded-lg p-4">
-                    <div className="flex items-center gap-2 mb-2">
-                      <div className="w-2 h-2 bg-red-400 rounded-full"></div>
-                      <span className="text-sm font-semibold text-red-400">SELL SIGNAL</span>
-                    </div>
-                    <div className="space-y-1 text-sm">
-                      <div className="flex justify-between">
-                        <span style={{ color: "#A3A9B8" }}>Timestamp:</span>
-                        <span style={{ color: "#E0E6ED" }}>{new Date(Date.now() - 300000).toLocaleString()}</span>
-                      </div>
-                      <div className="flex justify-between">
-                        <span style={{ color: "#A3A9B8" }}>Ticker:</span>
-                        <span className="font-bold text-red-400">ETH</span>
-                      </div>
-                      <div className="flex justify-between">
-                        <span style={{ color: "#A3A9B8" }}>Strategy:</span>
-                        <span style={{ color: "#E0E6ED" }}>Sell on Premium zone</span>
-                      </div>
-                      <div className="flex justify-between">
-                        <span style={{ color: "#A3A9B8" }}>Triggers:</span>
-                        <span style={{ color: "#E0E6ED" }}>Premium Zone + Normal Bearish Divergence</span>
-                      </div>
-                      <div className="flex justify-between">
-                        <span style={{ color: "#A3A9B8" }}>Total Score:</span>
-                        <span className="font-bold text-red-400">-4.3</span>
-                      </div>
-                    </div>
+                    {messageTemplate.format === 'minimal' ? (
+                      <p className="text-sm">
+                        <span className="text-red-400">🔴 SELL ETH</span>
+                        {messageTemplate.showScore && <span className="text-red-400"> (-4.3)</span>}
+                      </p>
+                    ) : messageTemplate.format === 'compact' ? (
+                      <p className="text-sm">
+                        <span className="text-red-400 font-bold">🔴 SELL ETH</span>
+                        {messageTemplate.showStrategy && <span style={{ color: "#E0E6ED" }}> | Sell on Premium zone</span>}
+                        {messageTemplate.showScore && <span className="text-red-400"> | Score: -4.3</span>}
+                      </p>
+                    ) : (
+                      <>
+                        <div className="text-sm">
+                          <span className="text-red-400 font-bold">🔴 SELL SIGNAL</span>
+                          <div className="mt-2" style={{ borderTop: '1px solid #374151' }}>
+                            <div className="space-y-1 mt-2">
+                              {messageTemplate.showTimestamp && (
+                                <div>📅 <strong>Time:</strong> {new Date(Date.now() - 300000).toLocaleString()}</div>
+                              )}
+                              {messageTemplate.showTicker && (
+                                <div>📈 <strong>Ticker:</strong> ETH</div>
+                              )}
+                              {messageTemplate.showStrategy && (
+                                <div>📊 <strong>Strategy:</strong> Sell on Premium zone</div>
+                              )}
+                              {messageTemplate.showTriggers && (
+                                <div>🎯 <strong>Triggers:</strong> Premium Zone, Normal Bearish Divergence</div>
+                              )}
+                              {messageTemplate.showScore && (
+                                <div>📉 <strong>Score:</strong> -4.3</div>
+                              )}
+                            </div>
+                          </div>
+                        </div>
+                      </>
+                    )}
                   </div>
                 </div>
 

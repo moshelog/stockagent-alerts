@@ -25,6 +25,7 @@ interface NotificationsPanelProps {
   testingTelegram: boolean
   sendingTestAlert: boolean
   telegramStatus: { type: "success" | "error" | null; message: string }
+  telegramConfigured?: boolean
   
   // Discord props
   discordWebhookUrl: string
@@ -37,6 +38,7 @@ interface NotificationsPanelProps {
   testingDiscord: boolean
   sendingDiscordTestAlert: boolean
   discordStatus: { type: "success" | "error" | null; message: string }
+  discordConfigured?: boolean
 }
 
 export function NotificationsPanel({
@@ -52,6 +54,7 @@ export function NotificationsPanel({
   testingTelegram,
   sendingTestAlert,
   telegramStatus,
+  telegramConfigured = false,
   discordWebhookUrl,
   setDiscordWebhookUrl,
   discordMessageTemplate,
@@ -61,7 +64,8 @@ export function NotificationsPanel({
   handleSendDiscordTestAlert,
   testingDiscord,
   sendingDiscordTestAlert,
-  discordStatus
+  discordStatus,
+  discordConfigured = false
 }: NotificationsPanelProps) {
   const [activeTab, setActiveTab] = useState("telegram")
 
@@ -390,12 +394,17 @@ export function NotificationsPanel({
               type="password"
               value={telegramBotToken}
               onChange={(e) => setTelegramBotToken(e.target.value)}
-              placeholder={telegramBotToken.startsWith('***') ? "Token saved (enter new to change)" : "Enter your Telegram bot token..."}
+              placeholder={telegramConfigured && !telegramBotToken ? "Token saved (enter new to change)" : "Enter your Telegram bot token..."}
               className="mt-1 bg-background border-gray-700 focus:border-accent-buy focus:ring-accent-buy"
             />
             <p className="text-xs mt-1" style={{ color: "#A3A9B8" }}>
               Get this from @BotFather on Telegram
             </p>
+            {telegramConfigured && !telegramBotToken && (
+              <p className="text-xs mt-1 text-amber-500">
+                ℹ️ Bot token is saved but hidden for security. To test connection or change token, please enter it again.
+              </p>
+            )}
           </div>
           <div>
             <Label htmlFor="telegramChatId" className="text-sm font-medium" style={{ color: "#E0E6ED" }}>
@@ -476,7 +485,7 @@ export function NotificationsPanel({
           <div className="flex gap-3">
             <Button
               onClick={() => handleSendTestAlert('BUY')}
-              disabled={sendingTestAlert || !telegramChatId || !telegramBotToken || telegramBotToken === ''}
+              disabled={sendingTestAlert || !telegramChatId || (!telegramBotToken && !telegramConfigured)}
               variant="outline"
               className="flex-1 border-emerald-600/50 text-emerald-600 hover:bg-emerald-600/10 disabled:opacity-50 disabled:cursor-not-allowed"
             >
@@ -492,7 +501,7 @@ export function NotificationsPanel({
             
             <Button
               onClick={() => handleSendTestAlert('SELL')}
-              disabled={sendingTestAlert || !telegramChatId || !telegramBotToken || telegramBotToken === ''}
+              disabled={sendingTestAlert || !telegramChatId || (!telegramBotToken && !telegramConfigured)}
               variant="outline"
               className="flex-1 border-rose-600/50 text-rose-600 hover:bg-rose-600/10 disabled:opacity-50 disabled:cursor-not-allowed"
             >
@@ -507,7 +516,7 @@ export function NotificationsPanel({
             </Button>
           </div>
           
-          {(!telegramChatId || !telegramBotToken || telegramBotToken === '') && (
+          {(!telegramChatId || (!telegramBotToken && !telegramConfigured)) && (
             <p className="text-xs mt-2 text-amber-500">
               ⚠️ Please configure and save your Telegram Bot Token and Chat ID first
             </p>
@@ -539,12 +548,17 @@ export function NotificationsPanel({
               type="text"
               value={discordWebhookUrl}
               onChange={(e) => setDiscordWebhookUrl(e.target.value)}
-              placeholder="https://discord.com/api/webhooks/..."
+              placeholder={discordConfigured && !discordWebhookUrl ? "Webhook saved (enter new URL to change)" : "https://discord.com/api/webhooks/..."}
               className="mt-1 bg-background border-gray-700 focus:border-accent-buy focus:ring-accent-buy"
             />
             <p className="text-xs mt-1" style={{ color: "#A3A9B8" }}>
               Discord webhook URL for your channel
             </p>
+            {discordConfigured && !discordWebhookUrl && (
+              <p className="text-xs mt-1 text-amber-500">
+                ℹ️ Webhook URL is saved but hidden for security. To test connection or change URL, please enter it again.
+              </p>
+            )}
           </div>
         </div>
 
@@ -609,7 +623,7 @@ export function NotificationsPanel({
           <div className="flex gap-3">
             <Button
               onClick={() => handleSendDiscordTestAlert('BUY')}
-              disabled={sendingDiscordTestAlert || !discordWebhookUrl}
+              disabled={sendingDiscordTestAlert || (!discordWebhookUrl && !discordConfigured)}
               variant="outline"
               className="flex-1 border-emerald-600/50 text-emerald-600 hover:bg-emerald-600/10 disabled:opacity-50 disabled:cursor-not-allowed"
             >
@@ -625,7 +639,7 @@ export function NotificationsPanel({
             
             <Button
               onClick={() => handleSendDiscordTestAlert('SELL')}
-              disabled={sendingDiscordTestAlert || !discordWebhookUrl}
+              disabled={sendingDiscordTestAlert || (!discordWebhookUrl && !discordConfigured)}
               variant="outline"
               className="flex-1 border-rose-600/50 text-rose-600 hover:bg-rose-600/10 disabled:opacity-50 disabled:cursor-not-allowed"
             >
@@ -640,7 +654,7 @@ export function NotificationsPanel({
             </Button>
           </div>
           
-          {!discordWebhookUrl && (
+          {!discordWebhookUrl && !discordConfigured && (
             <p className="text-xs mt-2 text-amber-500">
               ⚠️ Please enter and save your Discord Webhook URL first
             </p>

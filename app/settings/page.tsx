@@ -77,6 +77,7 @@ export default function SettingsPage() {
   // Notification states
   const [telegramBotToken, setTelegramBotToken] = useState("")
   const [telegramChatId, setTelegramChatId] = useState("")
+  const [telegramConfigured, setTelegramConfigured] = useState(false)
   const [testingTelegram, setTestingTelegram] = useState(false)
   const [sendingTestAlert, setSendingTestAlert] = useState(false)
   const [testAlertType, setTestAlertType] = useState<'BUY' | 'SELL'>('BUY')
@@ -88,6 +89,7 @@ export default function SettingsPage() {
   
   // Discord states
   const [discordWebhookUrl, setDiscordWebhookUrl] = useState("")
+  const [discordConfigured, setDiscordConfigured] = useState(false)
   const [testingDiscord, setTestingDiscord] = useState(false)
   const [sendingDiscordTestAlert, setSendingDiscordTestAlert] = useState(false)
   const [discordStatus, setDiscordStatus] = useState<{ type: "success" | "error" | null; message: string }>({
@@ -154,8 +156,11 @@ export default function SettingsPage() {
         const telegramData = await telegramResponse.json()
         
         if (telegramData.configured) {
-          // Don't show the actual bot token for security
-          setTelegramBotToken(telegramData.botToken || '')
+          setTelegramConfigured(true)
+          // Don't set the bot token if it's masked (for security)
+          if (telegramData.botToken && telegramData.botToken !== '***') {
+            setTelegramBotToken(telegramData.botToken)
+          }
           setTelegramChatId(telegramData.chatId || '')
           if (telegramData.messageTemplate) {
             setTelegramMessageTemplate(telegramData.messageTemplate)
@@ -167,7 +172,12 @@ export default function SettingsPage() {
         const discordData = await discordResponse.json()
         
         if (discordData.configured) {
-          setDiscordWebhookUrl(discordData.webhookUrl || '')
+          setDiscordConfigured(true)
+          // Don't set the webhook URL if it's masked (for security)
+          // User will need to re-enter it if they want to change it
+          if (discordData.webhookUrl && discordData.webhookUrl !== '***') {
+            setDiscordWebhookUrl(discordData.webhookUrl)
+          }
           if (discordData.messageTemplate) {
             setDiscordMessageTemplate(discordData.messageTemplate)
           }
@@ -919,6 +929,7 @@ export default function SettingsPage() {
               testingTelegram={testingTelegram}
               sendingTestAlert={sendingTestAlert}
               telegramStatus={telegramStatus}
+              telegramConfigured={telegramConfigured}
               
               // Discord props
               discordWebhookUrl={discordWebhookUrl}
@@ -931,6 +942,7 @@ export default function SettingsPage() {
               testingDiscord={testingDiscord}
               sendingDiscordTestAlert={sendingDiscordTestAlert}
               discordStatus={discordStatus}
+              discordConfigured={discordConfigured}
             />
           </CollapsiblePanel>
 

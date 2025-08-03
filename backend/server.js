@@ -1304,7 +1304,7 @@ app.get('/api/telegram/settings', asyncHandler(async (req, res) => {
   
   res.json({
     configured: !!(config.botToken && config.chatId),
-    botToken: config.botToken ? '***' + config.botToken.slice(-4) : null, // Only show last 4 chars
+    botToken: config.botToken ? '***' : null, // Don't return the actual token for security
     chatId: config.chatId || null,
     messageTemplate: config.messageTemplate
   });
@@ -1413,7 +1413,7 @@ app.get('/api/discord/settings', asyncHandler(async (req, res) => {
   
   res.json({
     configured: !!config.webhookUrl,
-    webhookUrl: config.webhookUrl ? config.webhookUrl.replace(/\/[\w-]+$/, '/***') : null, // Hide token part
+    webhookUrl: config.webhookUrl ? '***' : null, // Don't return the actual URL for security
     messageTemplate: config.messageTemplate
   });
 }));

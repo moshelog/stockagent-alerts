@@ -1118,7 +1118,11 @@ app.post('/api/telegram/test-alert', requireAuth, asyncHandler(async (req, res) 
     timestamp: new Date().toISOString()
   };
   
-  const result = await telegramNotifier.sendTestAlert(finalBotToken, finalChatId, alertData, telegramConfig.messageTemplate);
+  const result = await telegramNotifier.sendNotification(alertData, {
+    botToken: finalBotToken,
+    chatId: finalChatId,
+    messageTemplate: telegramConfig.messageTemplate
+  });
   
   if (result.success) {
     res.json({ 
@@ -1255,7 +1259,10 @@ app.post('/api/discord/test-alert', requireAuth, asyncHandler(async (req, res) =
     timestamp: new Date().toISOString()
   };
   
-  const result = await discordNotifier.sendTestAlert(finalWebhookUrl, alertData, discordConfig.messageTemplate);
+  const result = await discordNotifier.sendNotification(alertData, {
+    webhookUrl: finalWebhookUrl,
+    messageTemplate: discordConfig.messageTemplate
+  });
   
   if (result.success) {
     res.json({ 

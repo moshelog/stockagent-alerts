@@ -1,7 +1,6 @@
 "use client"
 
-import React, { createContext, useContext, useState, useEffect, useCallback } from 'react'
-import dynamic from 'next/dynamic'
+import React, { createContext, useContext, useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import { toast } from '@/hooks/use-toast'
 
@@ -29,26 +28,12 @@ const AuthContext = createContext<AuthContextType>({
 export const useAuth = () => useContext(AuthContext)
 
 export function AuthProvider({ children }: { children: React.ReactNode }) {
-  // Initialize with null to ensure server and client match
   const [user, setUser] = useState<User | null>(null)
   const [isLoading, setIsLoading] = useState(true)
-  const [isHydrated, setIsHydrated] = useState(false)
   const router = useRouter()
-
-  // Handle hydration
-  useEffect(() => {
-    setIsHydrated(true)
-  }, [])
 
   const checkAuth = async () => {
     try {
-      // Check if we're on the client side before accessing localStorage
-      if (typeof window === 'undefined') {
-        setUser(null)
-        setIsLoading(false)
-        return
-      }
-      
       const token = localStorage.getItem('authToken')
       if (!token) {
         setUser(null)
@@ -69,22 +54,16 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           setUser(data.user)
         } else {
           setUser(null)
-          if (typeof window !== 'undefined') {
-            localStorage.removeItem('authToken')
-          }
+          localStorage.removeItem('authToken')
         }
       } else {
         setUser(null)
-        if (typeof window !== 'undefined') {
-          localStorage.removeItem('authToken')
-        }
+        localStorage.removeItem('authToken')
       }
     } catch (error) {
       console.error('Auth check failed:', error)
       setUser(null)
-      if (typeof window !== 'undefined') {
-        localStorage.removeItem('authToken')
-      }
+      localStorage.removeItem('authToken')
     } finally {
       setIsLoading(false)
     }
@@ -105,7 +84,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     }
 
     // Store token for token-based auth
-    if (data.token && typeof window !== 'undefined') {
+    if (data.token) {
       localStorage.setItem('authToken', data.token)
     }
 
@@ -123,7 +102,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   const logout = async () => {
     try {
-      const token = typeof window !== 'undefined' ? localStorage.getItem('authToken') : null
+      const token = localStorage.getItem('authToken')
       const apiBase = 'https://stockagent-backend-production.up.railway.app/api'
       
       if (token) {
@@ -136,9 +115,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       }
 
       // Clear token
-      if (typeof window !== 'undefined') {
-        localStorage.removeItem('authToken')
-      }
+      localStorage.removeItem('authToken')
       setUser(null)
       
       toast({
@@ -151,19 +128,15 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     } catch (error) {
       console.error('Logout failed:', error)
       // Even if logout fails, clear local state
-      if (typeof window !== 'undefined') {
-        localStorage.removeItem('authToken')
-      }
+      localStorage.removeItem('authToken')
       setUser(null)
       router.push('/login')
     }
   }
 
   useEffect(() => {
-    if (isHydrated) {
-      checkAuth()
-    }
-  }, [isHydrated])
+    checkAuth()
+  }, [])
 
   return (
     <AuthContext.Provider value={{ user, isLoading, login, logout, checkAuth }}>

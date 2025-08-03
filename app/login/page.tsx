@@ -8,11 +8,9 @@ import { Button } from "@/components/ui/button"
 import { Label } from "@/components/ui/label"
 import { AlertCircle, Loader2 } from "lucide-react"
 import { toast } from "@/hooks/use-toast"
-import { useAuth } from "@/contexts/AuthContext"
 
 export default function LoginPage() {
   const router = useRouter()
-  const { login } = useAuth()
   const [username, setUsername] = useState("")
   const [password, setPassword] = useState("")
   const [isLoading, setIsLoading] = useState(false)
@@ -24,11 +22,35 @@ export default function LoginPage() {
     setIsLoading(true)
 
     try {
-      // Use the AuthContext login method which handles everything
-      await login(username, password)
-      // The login method handles the redirect, so we don't need to do it here
-    } catch (err: any) {
-      setError(err.message || "Invalid credentials")
+      const apiBase = 'https://stockagent-backend-production.up.railway.app/api'
+      const response = await fetch(`${apiBase}/auth/login`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        credentials: 'include',
+        body: JSON.stringify({ username, password }),
+      })
+
+      const data = await response.json()
+
+      if (response.ok) {
+        // For token-based auth, store the token in localStorage
+        if (data.token) {
+          localStorage.setItem('authToken', data.token)
+        }
+        
+        toast({
+          title: "Success",
+          description: "Login successful. Redirecting...",
+          className: "bg-accent-buy text-white border-accent-buy",
+        })
+        
+        // Redirect to dashboard
+        router.push("/")
+      } else {
+        setError(data.error || "Invalid credentials")
+      }
+    } catch (err) {
+      setError("An error occurred. Please try again.")
       console.error("Login error:", err)
     } finally {
       setIsLoading(false)

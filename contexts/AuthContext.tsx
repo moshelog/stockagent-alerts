@@ -97,7 +97,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       className: "bg-accent-buy text-white border-accent-buy",
     })
 
-    router.push('/')
+    window.location.href = 'https://app.stockagent.app/'
   }
 
   const logout = async () => {

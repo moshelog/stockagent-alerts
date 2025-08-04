@@ -16,6 +16,8 @@ import {
   Eye,
   EyeOff,
   Bell,
+  TestTube,
+  Send,
 } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -119,6 +121,22 @@ export default function SettingsPage() {
     showTriggers: true,
     showScore: true,
     format: 'detailed' as 'detailed' | 'compact' | 'minimal'
+  })
+
+  // Webhook Tester states
+  const [webhookTesterTicker, setWebhookTesterTicker] = useState("BTCUSDT.P")
+  const [webhookTesterIndicator, setWebhookTesterIndicator] = useState("Extreme Zones")
+  const [webhookTesterTrigger, setWebhookTesterTrigger] = useState("Premium Zone")
+  const [sendingWebhookTest, setSendingWebhookTest] = useState(false)
+  const [webhookTestStatus, setWebhookTestStatus] = useState<{ type: "success" | "error" | null; message: string }>({
+    type: null,
+    message: "",
+  })
+  const [availableAlerts, setAvailableAlerts] = useState<Record<string, string[]>>({
+    "Extreme Zones": ["Premium Zone", "Premium Zone Reversed", "Discount Zone", "Discount Zone Reversed", "Equilibrium Zone", "RSI: Bearish", "RSI: Neutral", "RSI: Bullish", "HTF: No Synergy"],
+    "Nautilus™": ["Normal Bullish Divergence", "Normal Bearish Divergence", "Hidden Bullish Divergence", "Hidden Bearish Divergence", "Bullish Volume Cross", "Bearish Volume Cross"],
+    "Market Core Pro™": ["Bullish OB Touch", "Bearish OB Touch", "Bullish OB Breakout", "Bearish OB Breakout", "SFP Bullish formed", "SFP Bearish formed", "Bullish Smart Money OB Touch", "Bearish Smart Money OB Touch"],
+    "Market Waves Pro™": ["Buy Signals", "Sell Signals", "Buy Trend", "Sell Trend", "HTF Buy Trend", "HTF Sell Trend"],
   })
 
   // Exchange credentials states
@@ -617,6 +635,58 @@ export default function SettingsPage() {
       })
     } catch (error) {
       setOpenaiStatus({ type: "error", message: "Failed to save API key" })
+    }
+  }
+
+  const handleTestWebhook = async () => {
+    if (!webhookTesterTrigger) {
+      setWebhookTestStatus({ type: "error", message: "Please select a trigger" })
+      return
+    }
+
+    setSendingWebhookTest(true)
+    setWebhookTestStatus({ type: null, message: "" })
+
+    try {
+      const response = await authenticatedFetch(`${config.apiBase.replace('/api', '')}/webhook-json`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          ticker: webhookTesterTicker,
+          time: new Date().toLocaleTimeString('en-US', { hour12: false }),
+          indicator: webhookTesterIndicator,
+          trigger: webhookTesterTrigger,
+          timeframe: "15"
+        })
+      })
+
+      if (response.ok) {
+        setWebhookTestStatus({ type: "success", message: "Webhook test sent successfully! Check your dashboard for results." })
+        toast({
+          title: "Success",
+          description: "Test webhook sent successfully",
+          className: "bg-accent-buy text-white border-accent-buy",
+        })
+      } else {
+        const errorData = await response.json()
+        const errorMessage = errorData.error || "Failed to send test webhook"
+        setWebhookTestStatus({ type: "error", message: errorMessage })
+        toast({
+          title: "Error",
+          description: errorMessage,
+          className: "bg-accent-sell text-white border-accent-sell",
+        })
+      }
+    } catch (error) {
+      const errorMessage = error instanceof Error ? error.message : "Failed to send test webhook"
+      setWebhookTestStatus({ type: "error", message: errorMessage })
+      toast({
+        title: "Error",
+        description: errorMessage,
+        className: "bg-accent-sell text-white border-accent-sell",
+      })
+    } finally {
+      setSendingWebhookTest(false)
     }
   }
 
@@ -1129,6 +1199,143 @@ export default function SettingsPage() {
                     </div>
                   )}
                 </div>
+              </div>
+            </div>
+          </CollapsiblePanel>
+
+          {/* Webhook Tester */}
+          <CollapsiblePanel title="Webhook Tester" icon={<TestTube className="w-5 h-5 text-accent-neutral" />}>
+            <div className="space-y-6">
+              <div className="bg-blue-500/10 border border-blue-500/20 rounded-lg p-4">
+                <h4 className="text-sm font-semibold mb-2 text-blue-400">Test Webhook Integration</h4>
+                <p className="text-xs" style={{ color: "#A3A9B8" }}>
+                  Send test webhook alerts to verify your strategies and notifications are working correctly.
+                </p>
+              </div>
+
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                {/* Ticker Selection */}
+                <div>
+                  <Label htmlFor="webhookTicker" className="text-sm font-medium" style={{ color: "#E0E6ED" }}>
+                    Ticker
+                  </Label>
+                  <Select
+                    value={webhookTesterTicker}
+                    onValueChange={setWebhookTesterTicker}
+                  >
+                    <SelectTrigger id="webhookTicker" className="mt-1 bg-background border-gray-700">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="BTCUSDT.P">BTCUSDT.P</SelectItem>
+                      <SelectItem value="ETHUSDT.P">ETHUSDT.P</SelectItem>
+                      <SelectItem value="BNBUSDT.P">BNBUSDT.P</SelectItem>
+                      <SelectItem value="XRPUSDT.P">XRPUSDT.P</SelectItem>
+                      <SelectItem value="SOLUSDT.P">SOLUSDT.P</SelectItem>
+                      <SelectItem value="ADAUSDT.P">ADAUSDT.P</SelectItem>
+                      <SelectItem value="USDT.D">USDT.D</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+
+                {/* Indicator Selection */}
+                <div>
+                  <Label htmlFor="webhookIndicator" className="text-sm font-medium" style={{ color: "#E0E6ED" }}>
+                    Indicator
+                  </Label>
+                  <Select
+                    value={webhookTesterIndicator}
+                    onValueChange={(value) => {
+                      setWebhookTesterIndicator(value)
+                      setWebhookTesterTrigger("") // Reset trigger when indicator changes
+                    }}
+                  >
+                    <SelectTrigger id="webhookIndicator" className="mt-1 bg-background border-gray-700">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="Extreme Zones">Extreme Zones</SelectItem>
+                      <SelectItem value="Nautilus™">Nautilus™</SelectItem>
+                      <SelectItem value="Market Core Pro™">Market Core Pro™</SelectItem>
+                      <SelectItem value="Market Waves Pro™">Market Waves Pro™</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+
+                {/* Trigger Selection */}
+                <div>
+                  <Label htmlFor="webhookTrigger" className="text-sm font-medium" style={{ color: "#E0E6ED" }}>
+                    Trigger
+                  </Label>
+                  <Select
+                    value={webhookTesterTrigger}
+                    onValueChange={setWebhookTesterTrigger}
+                  >
+                    <SelectTrigger id="webhookTrigger" className="mt-1 bg-background border-gray-700">
+                      <SelectValue placeholder="Select a trigger" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {availableAlerts[webhookTesterIndicator]?.map((trigger) => (
+                        <SelectItem key={trigger} value={trigger}>
+                          {trigger}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+              </div>
+
+              {/* Test Button */}
+              <div className="flex items-center gap-4">
+                <Button
+                  onClick={handleTestWebhook}
+                  disabled={sendingWebhookTest || !webhookTesterTrigger}
+                  className="bg-accent-buy hover:bg-accent-buy/80 text-white focus:ring-accent-buy"
+                >
+                  {sendingWebhookTest ? (
+                    <>
+                      <RefreshCw className="w-4 h-4 mr-2 animate-spin" />
+                      Sending Test...
+                    </>
+                  ) : (
+                    <>
+                      <Send className="w-4 h-4 mr-2" />
+                      Test Webhook
+                    </>
+                  )}
+                </Button>
+
+                {!webhookTesterTrigger && (
+                  <p className="text-xs text-amber-500">
+                    ⚠️ Please select a trigger first
+                  </p>
+                )}
+              </div>
+
+              {/* Status Message */}
+              {webhookTestStatus.message && (
+                <div
+                  className={`text-sm p-3 rounded-lg ${
+                    webhookTestStatus.type === "success"
+                      ? "bg-accent-buy/20 text-accent-buy border border-accent-buy/30"
+                      : "bg-accent-sell/20 text-accent-sell border border-accent-sell/30"
+                  }`}
+                >
+                  {webhookTestStatus.message}
+                </div>
+              )}
+
+              {/* Info */}
+              <div className="mt-4 p-4 bg-gray-800/30 rounded-lg">
+                <h5 className="text-sm font-semibold mb-2" style={{ color: "#E0E6ED" }}>
+                  How it works:
+                </h5>
+                <ul className="text-xs space-y-1" style={{ color: "#A3A9B8" }}>
+                  <li>• Select a ticker, indicator, and trigger to simulate a TradingView webhook</li>
+                  <li>• The webhook will be processed by your strategies</li>
+                  <li>• If a strategy completes, you'll receive notifications</li>
+                  <li>• Check your dashboard to see the alert and any triggered actions</li>
+                </ul>
               </div>
             </div>
           </CollapsiblePanel>

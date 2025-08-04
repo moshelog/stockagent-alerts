@@ -378,11 +378,15 @@ app.post('/webhook', webhookAuth, express.text({ type: '*/*' }), asyncHandler(as
   const normalizedIndicator = indicatorMapping[indicatorLower] || indicator;
 
   logger.info('Webhook parsed', {
-    ticker,
-    timeframe,
-    indicator: normalizedIndicator,
-    trigger,
-    price: price || null,
+    format: isSecondPartNumeric ? 'price-first' : 'standard',
+    raw_parts: parts,
+    parsed: {
+      ticker,
+      timeframe,
+      indicator: normalizedIndicator,
+      trigger,
+      price: price || null
+    },
     htf: htf || 'none',
     timestamp: time || new Date().toISOString()
   });

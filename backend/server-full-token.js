@@ -476,7 +476,13 @@ app.post('/webhook', webhookLimiter, express.text({ type: '*/*' }), async (req, 
       // After saving alert, evaluate strategies
       if (strategyEvaluator && strategyEvaluator.evaluateStrategiesForTicker) {
         try {
-          const evaluationResult = await strategyEvaluator.evaluateStrategiesForTicker(alert.ticker, alert);
+          const evaluationResult = await strategyEvaluator.evaluateStrategiesForTicker(ticker.toUpperCase(), {
+            ticker: ticker.toUpperCase(),
+            timeframe: timeframe,
+            indicator: normalizedIndicator,
+            trigger: trigger,
+            htf: htf
+          });
           if (logger && logger.info) {
             logger.info('Strategy evaluation result', evaluationResult);
           }

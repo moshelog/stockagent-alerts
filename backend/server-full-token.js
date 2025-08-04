@@ -436,28 +436,51 @@ app.post('/webhook', webhookLimiter, express.text({ type: '*/*' }), async (req, 
       });
     }
 
-    // Parse text format: "TICKER|TIMEFRAME|INDICATOR|TRIGGER" or "TICKER|TIMEFRAME|INDICATOR|TRIGGER|TIME"
-    // New structure: "TICKER|INTERVAL|Extreme|TRIGGER|HTF" or "TICKER|INTERVAL|Extreme|TRIGGER|HTF|TIME"
+    // Parse text format: 
+    // Legacy: "TICKER|TIMEFRAME|INDICATOR|TRIGGER" or "TICKER|TIMEFRAME|INDICATOR|TRIGGER|TIME"
+    // New with price: "TICKER|PRICE|TIMEFRAME|INDICATOR|TRIGGER" or variants
     const parts = body.split('|');
     
     if (parts.length < 4) {
       return res.status(400).json({ 
-        error: 'Invalid text format. Expected: TICKER|TIMEFRAME|INDICATOR|TRIGGER or TICKER|TIMEFRAME|INDICATOR|TRIGGER|TIME',
+        error: 'Invalid text format. Expected: TICKER|TIMEFRAME|INDICATOR|TRIGGER or TICKER|PRICE|TIMEFRAME|INDICATOR|TRIGGER',
         received: body 
       });
     }
 
-    const ticker = parts[0].trim();
-    const timeframe = parts[1].trim();
-    const indicator = parts[2].trim();
-    const trigger = parts[3].trim();
+    let ticker, price, timeframe, indicator, trigger;
+    let partIndex = 0;
+
+    // Parse ticker (always first)
+    ticker = parts[partIndex++].trim();
+
+    // Check if second part is a price (contains digits and possibly decimal/dollar)
+    const secondPart = parts[partIndex].trim();
+    const isPricePattern = /^[\$]?[\d,]+\.?\d*$/.test(secondPart.replace(/,/g, ''));
+    
+    if (isPricePattern) {
+      // Format with price: TICKER|PRICE|TIMEFRAME|INDICATOR|TRIGGER
+      price = parseFloat(secondPart.replace(/[\$,]/g, ''));
+      partIndex++;
+      timeframe = parts[partIndex++].trim();
+      indicator = parts[partIndex++].trim();
+      trigger = parts[partIndex++].trim();
+    } else {
+      // Legacy format without price: TICKER|TIMEFRAME|INDICATOR|TRIGGER  
+      price = null;
+      timeframe = secondPart;
+      partIndex++;
+      indicator = parts[partIndex++].trim();
+      trigger = parts[partIndex++].trim();
+    }
     
     // Handle HTF, time parameters, and test flag
     let htf = null;
     let time = null;
     let isTest = false;
     
-    if (parts.length >= 5) {
+    // Check if there are remaining parts after parsing the core fields
+    if (partIndex < parts.length) {
       // Check if the last part is "TEST" flag
       const lastPart = parts[parts.length - 1].trim();
       if (lastPart === 'TEST') {
@@ -466,21 +489,21 @@ app.post('/webhook', webhookLimiter, express.text({ type: '*/*' }), async (req, 
         parts.pop();
       }
       
-      // Now process remaining parts
-      if (parts.length >= 5) {
+      // Process remaining parts for HTF/time
+      if (partIndex < parts.length) {
         // Check for new structure with HTF that may contain pipe symbols
         if (indicator.toLowerCase().includes('extreme') || indicator.toLowerCase() === 'indicator') {
-          // New structure: TICKER|INTERVAL|Extreme|TRIGGER|HTF (HTF may contain pipes)
-          // Join everything from the 5th part onward as HTF field
-          htf = parts.slice(4).join('|').trim();
+          // New structure: includes HTF field (HTF may contain pipes)
+          // Join everything from current partIndex onward as HTF field
+          htf = parts.slice(partIndex).join('|').trim();
           time = null; // No time in this structure
-        } else if (parts.length === 5) {
-          // Old 5-part structure: TICKER|TIMEFRAME|INDICATOR|TRIGGER|TIME
-          time = parts[4].trim();
-        } else if (parts.length === 6) {
-          // 6-part structure: TICKER|TIMEFRAME|INDICATOR|TRIGGER|HTF|TIME
-          htf = parts[4].trim();
-          time = parts[5].trim();
+        } else if (parts.length - partIndex === 1) {
+          // Single remaining part - could be TIME
+          time = parts[partIndex].trim();
+        } else if (parts.length - partIndex === 2) {
+          // Two remaining parts: HTF and TIME
+          htf = parts[partIndex].trim();
+          time = parts[partIndex + 1].trim();
         }
       }
     }
@@ -508,6 +531,7 @@ app.post('/webhook', webhookLimiter, express.text({ type: '*/*' }), async (req, 
 
     console.log('WEBHOOK PARSED VALUES:', {
       ticker,
+      price: price || 'none',
       timeframe,
       indicator: normalizedIndicator,
       trigger,
@@ -554,6 +578,11 @@ app.post('/webhook', webhookLimiter, express.text({ type: '*/*' }), async (req, 
         trigger: trigger,
         timestamp: timestamp
       };
+      
+      // Add price if it was parsed from webhook
+      if (price !== null && price !== undefined) {
+        alertData.price = price;
+      }
       
       // Add HTF field if it exists
       if (htf) {

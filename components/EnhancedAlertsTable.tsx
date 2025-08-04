@@ -9,6 +9,7 @@ interface Alert {
   id: string
   time: string
   ticker: string
+  price?: number
   timeframe: string
   indicator: string
   trigger: string
@@ -22,7 +23,7 @@ interface EnhancedAlertsTableProps {
   showWeights?: boolean
 }
 
-type SortField = 'time' | 'ticker' | 'timeframe' | 'indicator' | 'trigger' | 'weight'
+type SortField = 'time' | 'ticker' | 'price' | 'timeframe' | 'indicator' | 'trigger' | 'weight'
 type SortDirection = 'asc' | 'desc'
 
 export function EnhancedAlertsTable({ alerts, loading, onClearAlerts, showWeights = true }: EnhancedAlertsTableProps) {
@@ -174,6 +175,16 @@ export function EnhancedAlertsTable({ alerts, loading, onClearAlerts, showWeight
               <th 
                 className="px-4 py-3 text-left text-sm font-medium cursor-pointer hover:bg-gray-800/50 transition-colors group"
                 style={{ color: "#A3A9B8" }}
+                onClick={() => handleSort('price')}
+              >
+                <div className="flex items-center justify-between">
+                  Price
+                  {getSortIcon('price')}
+                </div>
+              </th>
+              <th 
+                className="px-4 py-3 text-left text-sm font-medium cursor-pointer hover:bg-gray-800/50 transition-colors group"
+                style={{ color: "#A3A9B8" }}
                 onClick={() => handleSort('timeframe')}
               >
                 <div className="flex items-center justify-between">
@@ -231,6 +242,9 @@ export function EnhancedAlertsTable({ alerts, loading, onClearAlerts, showWeight
                 </td>
                 <td className="px-4 py-3 text-sm font-bold" style={{ color: "#E0E6ED" }}>
                   {alert.ticker}
+                </td>
+                <td className="px-4 py-3 text-sm" style={{ color: "#A3A9B8" }}>
+                  {alert.price ? `$${alert.price.toLocaleString()}` : '—'}
                 </td>
                 <td className="px-4 py-3 text-sm" style={{ color: "#A3A9B8" }}>
                   <span className="bg-blue-900/30 px-2 py-1 rounded text-xs font-mono text-blue-300">

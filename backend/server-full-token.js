@@ -458,13 +458,17 @@ app.post('/webhook', webhookLimiter, express.text({ type: '*/*' }), async (req, 
 
     // Check if second part is a price (contains digits and possibly decimal/dollar)
     const secondPart = parts[partIndex] || '';
-    const isPricePattern = /^\$?[0-9,.]+$/.test(secondPart.replace(/,/g, ''));
+    const cleanedSecondPart = secondPart.replace(/,/g, '');
+    const isPricePattern = /^\$?[0-9,.]+$/.test(cleanedSecondPart);
     
     console.log('PRICE PARSING DEBUG:', {
       secondPart,
+      cleanedSecondPart,
       isPricePattern,
+      regexTest: /^\$?[0-9,.]+$/.test(cleanedSecondPart),
       partsLength: parts.length,
-      parts
+      parts,
+      partIndex
     });
     
     if (isPricePattern && parts.length >= 5) {
@@ -594,11 +598,12 @@ app.post('/webhook', webhookLimiter, express.text({ type: '*/*' }), async (req, 
       };
       
       // Add price if it was parsed from webhook
-      if (price !== null && price !== undefined) {
+      console.log('PRICE CHECK - value:', price, 'type:', typeof price, 'isNaN:', isNaN(price));
+      if (price !== null && price !== undefined && !isNaN(price)) {
         alertData.price = price;
         console.log('PRICE ADDED TO ALERT DATA:', price);
       } else {
-        console.log('NO PRICE TO ADD - price is:', price);
+        console.log('NO PRICE TO ADD - price is:', price, 'null check:', price !== null, 'undefined check:', price !== undefined, 'NaN check:', !isNaN(price));
       }
       
       // Add HTF field if it exists

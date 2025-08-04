@@ -224,6 +224,29 @@ export default function SettingsPage() {
     }
   }, [config])
 
+  // Auto-save telegram message template when it changes
+  useEffect(() => {
+    // Only auto-save if telegram is configured and we have an API base
+    // Also skip the first render to avoid saving default values
+    if (telegramConfigured && config?.apiBase && telegramBotToken && telegramChatId) {
+      const timeoutId = setTimeout(() => {
+        handleSaveTelegram()
+      }, 1000) // 1 second debounce
+      return () => clearTimeout(timeoutId)
+    }
+  }, [telegramMessageTemplate])
+
+  // Auto-save discord message template when it changes  
+  useEffect(() => {
+    // Only auto-save if discord is configured and we have an API base
+    if (discordConfigured && config?.apiBase && discordWebhookUrl) {
+      const timeoutId = setTimeout(() => {
+        handleSaveDiscord()
+      }, 1000) // 1 second debounce
+      return () => clearTimeout(timeoutId)
+    }
+  }, [discordMessageTemplate])
+
   const handleReload = async () => {
     setIsReloading(true)
     await reload()

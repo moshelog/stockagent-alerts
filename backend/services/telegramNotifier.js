@@ -63,7 +63,7 @@ class TelegramNotifier {
    * @returns {string} Formatted message
    */
   formatMessage(data, template = {}) {
-    const { action, ticker, strategy, triggers, score } = data;
+    const { action, ticker, strategy, triggers, score, isTest } = data;
     const timestamp = new Date().toLocaleString();
     
     // Default template if none provided
@@ -84,14 +84,16 @@ class TelegramNotifier {
     if (config.format === 'minimal') {
       // Minimal format: Just action and ticker
       const emoji = action === 'BUY' ? '🟢' : '🔴';
-      message = `${emoji} ${action} ${ticker}`;
+      const testTag = isTest ? ' (Test)' : '';
+      message = `${emoji} ${action} ${ticker}${testTag}`;
       if (config.showScore) {
         message += ` (${score > 0 ? '+' : ''}${score})`;
       }
     } else if (config.format === 'compact') {
       // Compact format: One-liner with key info
       const emoji = action === 'BUY' ? '🟢' : '🔴';
-      message = `${emoji} <b>${action} ${ticker}</b>`;
+      const testTag = isTest ? ' (Test)' : '';
+      message = `${emoji} <b>${action} ${ticker}${testTag}</b>`;
       if (config.showStrategy) {
         message += ` | ${strategy}`;
       }
@@ -102,8 +104,9 @@ class TelegramNotifier {
       // Detailed format: Full information
       const emoji = action === 'BUY' ? '🟢' : '🔴';
       const actionText = action === 'BUY' ? 'BUY SIGNAL' : 'SELL SIGNAL';
+      const testTag = isTest ? ' (Test)' : '';
       
-      message = `${emoji} <b>${actionText}</b>\n`;
+      message = `${emoji} <b>${actionText}${testTag}</b>\n`;
       message += `━━━━━━━━━━━━━━━\n`;
       
       if (config.showTicker) {

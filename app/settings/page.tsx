@@ -744,8 +744,8 @@ export default function SettingsPage() {
       // Use the regular webhook endpoint in text format
       const webhookUrl = config.apiBase.replace('/api', '') + '/webhook'
       
-      // Format as text payload: "TICKER|TIMEFRAME|INDICATOR|TRIGGER"
-      const payload = `${webhookTesterTicker}|15m|${webhookTesterIndicator}|${webhookTesterTrigger}`
+      // Format as text payload: "TICKER|TIMEFRAME|INDICATOR|TRIGGER|TEST"
+      const payload = `${webhookTesterTicker}|15m|${webhookTesterIndicator}|${webhookTesterTrigger}|TEST`
       
       console.log('Sending webhook test with payload:', payload, 'to URL:', webhookUrl)
       

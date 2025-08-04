@@ -391,24 +391,36 @@ app.post('/webhook', webhookLimiter, express.text({ type: '*/*' }), async (req, 
     const indicator = parts[2].trim();
     const trigger = parts[3].trim();
     
-    // Handle HTF and time parameters
+    // Handle HTF, time parameters, and test flag
     let htf = null;
     let time = null;
+    let isTest = false;
     
     if (parts.length >= 5) {
-      // Check for new structure with HTF that may contain pipe symbols
-      if (indicator.toLowerCase().includes('extreme') || indicator.toLowerCase() === 'indicator') {
-        // New structure: TICKER|INTERVAL|Extreme|TRIGGER|HTF (HTF may contain pipes)
-        // Join everything from the 5th part onward as HTF field
-        htf = parts.slice(4).join('|').trim();
-        time = null; // No time in this structure
-      } else if (parts.length === 5) {
-        // Old 5-part structure: TICKER|TIMEFRAME|INDICATOR|TRIGGER|TIME
-        time = parts[4].trim();
-      } else if (parts.length === 6) {
-        // 6-part structure: TICKER|TIMEFRAME|INDICATOR|TRIGGER|HTF|TIME
-        htf = parts[4].trim();
-        time = parts[5].trim();
+      // Check if the last part is "TEST" flag
+      const lastPart = parts[parts.length - 1].trim();
+      if (lastPart === 'TEST') {
+        isTest = true;
+        // Remove TEST from parts for normal processing
+        parts.pop();
+      }
+      
+      // Now process remaining parts
+      if (parts.length >= 5) {
+        // Check for new structure with HTF that may contain pipe symbols
+        if (indicator.toLowerCase().includes('extreme') || indicator.toLowerCase() === 'indicator') {
+          // New structure: TICKER|INTERVAL|Extreme|TRIGGER|HTF (HTF may contain pipes)
+          // Join everything from the 5th part onward as HTF field
+          htf = parts.slice(4).join('|').trim();
+          time = null; // No time in this structure
+        } else if (parts.length === 5) {
+          // Old 5-part structure: TICKER|TIMEFRAME|INDICATOR|TRIGGER|TIME
+          time = parts[4].trim();
+        } else if (parts.length === 6) {
+          // 6-part structure: TICKER|TIMEFRAME|INDICATOR|TRIGGER|HTF|TIME
+          htf = parts[4].trim();
+          time = parts[5].trim();
+        }
       }
     }
 
@@ -440,6 +452,7 @@ app.post('/webhook', webhookLimiter, express.text({ type: '*/*' }), async (req, 
       trigger,
       htf: htf || 'none',
       time: time,
+      isTest: isTest,
       parts: parts
     });
 
@@ -505,7 +518,8 @@ app.post('/webhook', webhookLimiter, express.text({ type: '*/*' }), async (req, 
             timeframe: timeframe,
             indicator: normalizedIndicator,
             trigger: trigger,
-            htf: htf
+            htf: htf,
+            isTest: isTest
           });
           if (logger && logger.info) {
             logger.info('Strategy evaluation result', evaluationResult);

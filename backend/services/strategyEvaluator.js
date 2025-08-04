@@ -114,7 +114,7 @@ class StrategyEvaluator {
 
       // If strategy is complete, record the action
       if (isComplete) {
-        await this.recordStrategyCompletion(strategy, ticker, foundRules, missingRules, threshold);
+        await this.recordStrategyCompletion(strategy, ticker, foundRules, missingRules, threshold, newAlert.isTest);
       }
 
     } catch (error) {
@@ -129,8 +129,9 @@ class StrategyEvaluator {
    * @param {Array} foundRules - Rules that were satisfied
    * @param {Array} missingRules - Rules that were not satisfied (should be empty)
    * @param {number} threshold - Strategy threshold for determining action
+   * @param {boolean} isTest - Whether this is a test signal
    */
-  async recordStrategyCompletion(strategy, ticker, foundRules, missingRules, threshold) {
+  async recordStrategyCompletion(strategy, ticker, foundRules, missingRules, threshold, isTest = false) {
     try {
       // Check if this strategy+ticker combination was already completed recently (within 5 minutes)
       const fiveMinutesAgo = new Date(Date.now() - 5 * 60 * 1000).toISOString();
@@ -190,7 +191,8 @@ class StrategyEvaluator {
         ticker,
         strategy: strategy.name,
         triggers,
-        score
+        score,
+        isTest: isTest
       };
 
       // Send Telegram notification

@@ -648,36 +648,18 @@ export default function SettingsPage() {
     setWebhookTestStatus({ type: null, message: "" })
 
     try {
-      // webhook-json is at the root, not under /api
-      const webhookUrl = config.apiBase.replace('/api', '') + '/webhook-json'
-      const payload = {
-        ticker: webhookTesterTicker,
-        time: new Date().toLocaleTimeString('en-US', { hour12: false }),
-        indicator: webhookTesterIndicator,
-        trigger: webhookTesterTrigger,
-        timeframe: "15"
-      }
-      console.log('Sending webhook test with payload:', payload, 'to URL:', webhookUrl)
+      // Use the regular webhook endpoint in text format
+      const webhookUrl = config.apiBase.replace('/api', '') + '/webhook'
       
-      // First, test with simple endpoint
-      const testUrl = config.apiBase.replace('/api', '') + '/webhook-test'
-      console.log('Testing with simple endpoint first:', testUrl)
-      try {
-        const testResponse = await fetch(testUrl, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify(payload)
-        })
-        const testData = await testResponse.json()
-        console.log('Test endpoint response:', testData)
-      } catch (testError) {
-        console.error('Test endpoint failed:', testError)
-      }
+      // Format as text payload: "TICKER|TIMEFRAME|INDICATOR|TRIGGER"
+      const payload = `${webhookTesterTicker}|15m|${webhookTesterIndicator}|${webhookTesterTrigger}`
+      
+      console.log('Sending webhook test with payload:', payload, 'to URL:', webhookUrl)
       
       const response = await fetch(webhookUrl, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(payload)
+        headers: { 'Content-Type': 'text/plain' },
+        body: payload
       })
 
       if (response.ok) {
@@ -824,36 +806,26 @@ export default function SettingsPage() {
                     This is your unique webhook endpoint for receiving alerts.
                     <br />
                     <span className="text-xs opacity-75">
-                      For JSON payloads, append: <code className="bg-gray-800 px-1 rounded text-blue-300">/webhook-json</code>
+                      Accepts text format: <code className="bg-gray-800 px-1 rounded text-blue-300">TICKER|TIMEFRAME|INDICATOR|TRIGGER</code>
                     </span>
                   </p>
                   <button
                     onClick={async () => {
                       try {
-                        // Construct the JSON webhook URL properly
-                        let jsonWebhookUrl = config.webhookUrl
-                        if (jsonWebhookUrl.endsWith('/webhook')) {
-                          jsonWebhookUrl = jsonWebhookUrl.replace('/webhook', '/webhook-json')
-                        } else if (!jsonWebhookUrl.includes('/webhook-json')) {
-                          // If URL doesn't end with /webhook, append /webhook-json
-                          jsonWebhookUrl = jsonWebhookUrl.replace(/\/$/, '') + '/webhook-json'
-                        }
+                        // Use the regular webhook endpoint with text format
+                        const webhookUrl = config.webhookUrl
                         
-                        console.log('Testing webhook at:', jsonWebhookUrl)
+                        // Format as text payload: "TICKER|TIMEFRAME|INDICATOR|TRIGGER|HTF"
+                        const payload = "BTCUSDT.P|15m|Extreme Zones|Discount Zone|↑15m↑4H↓=85%"
                         
-                        const response = await fetch(jsonWebhookUrl, {
+                        console.log('Testing webhook at:', webhookUrl, 'with payload:', payload)
+                        
+                        const response = await fetch(webhookUrl, {
                           method: "POST",
                           headers: { 
-                            "Content-Type": "application/json",
-                            "Accept": "application/json"
+                            "Content-Type": "text/plain"
                           },
-                          body: JSON.stringify({ 
-                            ticker: "BTC",
-                            indicator: "Extreme Zones", 
-                            trigger: "Discount Zone",
-                            htf: "↑15m↑4H↓=85%",
-                            time: new Date().toISOString()
-                          }),
+                          body: payload
                         })
 
                         const responseText = await response.text()

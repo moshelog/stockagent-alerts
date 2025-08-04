@@ -254,7 +254,8 @@ app.post('/webhook-json', webhookAuth, validateAlertPayload, asyncHandler(async 
 
 /**
  * POST /webhook - Receive TradingView alerts (Primary endpoint)
- * Expected payload: "TICKER|TIMEFRAME|INDICATOR|TRIGGER" or "TICKER|TIMEFRAME|INDICATOR|TRIGGER|PRICE"
+ * Standard format: "TICKER|TIMEFRAME|INDICATOR|TRIGGER" or "TICKER|TIMEFRAME|INDICATOR|TRIGGER|PRICE"
+ * User format: "TICKER|PRICE|TIMEFRAME|INDICATOR|TRIGGER" (price in 2nd position)
  * Extended formats: "TICKER|TIMEFRAME|INDICATOR|TRIGGER|PRICE|TIME" or "TICKER|INTERVAL|Extreme|TRIGGER|HTF|PRICE"
  */
 app.post('/webhook', webhookAuth, express.text({ type: '*/*' }), asyncHandler(async (req, res) => {
@@ -269,24 +270,45 @@ app.post('/webhook', webhookAuth, express.text({ type: '*/*' }), asyncHandler(as
   // Extended formats: "TICKER|TIMEFRAME|INDICATOR|TRIGGER|PRICE|TIME" or "TICKER|INTERVAL|Extreme|TRIGGER|HTF|PRICE"
   const parts = body.split('|');
   
-  if (parts.length < 4) {
+  // Detect format based on 2nd position - if it's numeric, it's price-first format
+  const secondPart = parts[1] ? parts[1].trim() : '';
+  const isSecondPartNumeric = /^\d+\.?\d*$/.test(secondPart);
+  
+  // Validate minimum parts based on format
+  if (isSecondPartNumeric && parts.length < 5) {
     return res.status(400).json({ 
-      error: 'Invalid text format. Expected: TICKER|TIMEFRAME|INDICATOR|TRIGGER or TICKER|TIMEFRAME|INDICATOR|TRIGGER|PRICE',
+      error: 'Invalid price-first format. Expected: TICKER|PRICE|TIMEFRAME|INDICATOR|TRIGGER',
+      received: body 
+    });
+  } else if (!isSecondPartNumeric && parts.length < 4) {
+    return res.status(400).json({ 
+      error: 'Invalid standard format. Expected: TICKER|TIMEFRAME|INDICATOR|TRIGGER',
       received: body 
     });
   }
-
-  const ticker = parts[0].trim();
-  const timeframe = parts[1].trim();
-  const indicator = parts[2].trim();
-  const trigger = parts[3].trim();
   
-  // Handle price, HTF and time parameters
-  let price = null;
+  let ticker, timeframe, indicator, trigger, price = null;
+  
+  if (isSecondPartNumeric && parts.length >= 5) {
+    // User format: TICKER|PRICE|TIMEFRAME|INDICATOR|TRIGGER
+    ticker = parts[0].trim();
+    price = parseFloat(secondPart);
+    timeframe = parts[2].trim();
+    indicator = parts[3].trim();
+    trigger = parts[4].trim();
+  } else {
+    // Standard format: TICKER|TIMEFRAME|INDICATOR|TRIGGER
+    ticker = parts[0].trim();
+    timeframe = parts[1].trim();
+    indicator = parts[2].trim();
+    trigger = parts[3].trim();
+  }
+  
+  // Handle additional HTF and time parameters (only for standard format)
   let htf = null;
   let time = null;
   
-  if (parts.length >= 5) {
+  if (!isSecondPartNumeric && parts.length >= 5) {
     const fifthPart = parts[4].trim();
     
     // Check for new structure with HTF that may contain pipe symbols

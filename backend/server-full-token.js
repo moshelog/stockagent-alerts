@@ -456,7 +456,7 @@ app.post('/webhook', webhookLimiter, express.text({ type: '*/*' }), async (req, 
 
     // Check if second part is a price (contains digits and possibly decimal/dollar)
     const secondPart = parts[partIndex] ? parts[partIndex].trim() : '';
-    const isPricePattern = /^[\$]?[\d,]+\.?\d*$/.test(secondPart.replace(/,/g, ''));
+    const isPricePattern = /^\$?[0-9,.]+$/.test(secondPart.replace(/,/g, ''));
     
     console.log('PRICE PARSING DEBUG:', {
       secondPart,

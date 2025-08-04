@@ -277,6 +277,7 @@ const validateAlertPayload = (req, res, next) => {
 
 // Webhook endpoint for JSON format (used by test webhook button)
 app.post('/webhook-json', webhookLimiter, validateAlertPayload, async (req, res) => {
+  console.log('Webhook-json endpoint hit with body:', req.body);
   try {
     const { ticker, time, indicator, trigger, htf, timeframe } = req.body;
     
@@ -347,10 +348,11 @@ app.post('/webhook-json', webhookLimiter, validateAlertPayload, async (req, res)
 
     res.json({ success: true, message: 'Alert received' });
   } catch (error) {
+    console.error('Webhook JSON error:', error);
     if (logger && logger.error) {
-      logger.error('Webhook JSON error', { error: error.message });
+      logger.error('Webhook JSON error', { error: error.message, stack: error.stack });
     }
-    res.status(500).json({ error: 'Internal server error' });
+    res.status(500).json({ error: error.message || 'Internal server error' });
   }
 });
 

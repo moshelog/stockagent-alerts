@@ -741,25 +741,34 @@ export default function SettingsPage() {
     setWebhookTestStatus({ type: null, message: "" })
 
     try {
-      // Use the regular webhook endpoint in text format
-      const webhookUrl = config.apiBase.replace('/api', '') + '/webhook'
+      // Use the new test notification endpoint that directly sends test notifications
+      const testUrl = `${config.apiBase}/test-notification`
       
-      // Format as text payload: "TICKER|TIMEFRAME|INDICATOR|TRIGGER|TEST"
-      const payload = `${webhookTesterTicker}|15m|${webhookTesterIndicator}|${webhookTesterTrigger}|TEST`
+      // Determine action based on trigger
+      const action = webhookTesterTrigger.toLowerCase().includes('premium') || 
+                    webhookTesterTrigger.toLowerCase().includes('sell') ||
+                    webhookTesterTrigger.toLowerCase().includes('bearish') ? 'SELL' : 'BUY'
       
-      console.log('Sending webhook test with payload:', payload, 'to URL:', webhookUrl)
+      const payload = {
+        action: action,
+        ticker: webhookTesterTicker
+      }
       
-      const response = await fetch(webhookUrl, {
+      console.log('Sending test notification with payload:', payload, 'to URL:', testUrl)
+      
+      const response = await authenticatedFetch(testUrl, {
         method: 'POST',
-        headers: { 'Content-Type': 'text/plain' },
-        body: payload
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload)
       })
 
       if (response.ok) {
-        setWebhookTestStatus({ type: "success", message: "Webhook test sent successfully! Check your dashboard for results." })
+        const result = await response.json()
+        const successMessage = `Test notification sent! Telegram: ${result.results.telegram.success ? 'Success' : 'Failed'}, Discord: ${result.results.discord.success ? 'Success' : 'Failed'}`
+        setWebhookTestStatus({ type: "success", message: successMessage })
         toast({
-          title: "Success",
-          description: "Test webhook sent successfully",
+          title: "Test Notification Sent!",
+          description: "Check your Telegram and Discord for the test signal with (Test) tag",
           className: "bg-accent-buy text-white border-accent-buy",
         })
       } else {

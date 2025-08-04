@@ -281,6 +281,67 @@ app.post('/webhook-test', async (req, res) => {
   res.json({ success: true, message: 'Test endpoint working', received: req.body });
 });
 
+// Test notification endpoint - sends notifications without requiring strategy completion
+app.post('/api/test-notification', requireAuth, asyncHandler(async (req, res) => {
+  const { action = 'BUY', ticker = 'BTCUSDT.P' } = req.body;
+  
+  console.log('🧪 Test notification requested:', { action, ticker });
+  
+  // Create test notification data
+  const testNotificationData = {
+    action,
+    ticker,
+    strategy: action === 'BUY' ? 'Buy on discount zone' : 'Sell on Premium zone',
+    triggers: action === 'BUY' 
+      ? ['Discount Zone', 'Normal Bullish Divergence', 'Bullish OB Break']
+      : ['Premium Zone', 'Normal Bearish Divergence', 'Bearish OB Break'],
+    score: action === 'BUY' ? 4.2 : -4.3,
+    isTest: true // Mark as test notification
+  };
+
+  let telegramResult = { success: false, message: 'Not configured' };
+  let discordResult = { success: false, message: 'Not configured' };
+
+  // Send Telegram test notification
+  if (telegramNotifier) {
+    try {
+      const telegramConfig = await telegramNotifier.getTelegramConfig();
+      if (telegramConfig.enabled && telegramConfig.botToken && telegramConfig.chatId) {
+        telegramResult = await telegramNotifier.sendNotification(testNotificationData, telegramConfig);
+        console.log('📤 Telegram test result:', telegramResult);
+      } else {
+        telegramResult = { success: false, message: 'Telegram not configured' };
+      }
+    } catch (error) {
+      telegramResult = { success: false, message: error.message };
+    }
+  }
+
+  // Send Discord test notification  
+  if (discordNotifier) {
+    try {
+      const discordConfig = await discordNotifier.getDiscordConfig();
+      if (discordConfig.enabled && discordConfig.webhookUrl) {
+        discordResult = await discordNotifier.sendNotification(testNotificationData, discordConfig);
+        console.log('📤 Discord test result:', discordResult);
+      } else {
+        discordResult = { success: false, message: 'Discord not configured' };
+      }
+    } catch (error) {
+      discordResult = { success: false, message: error.message };
+    }
+  }
+
+  res.json({
+    success: telegramResult.success || discordResult.success,
+    message: 'Test notifications sent',
+    results: {
+      telegram: telegramResult,
+      discord: discordResult
+    }
+  });
+}));
+
 // Webhook endpoint for JSON format (used by test webhook button)
 app.post('/webhook-json', webhookLimiter, validateAlertPayload, async (req, res) => {
   console.log('Webhook-json endpoint hit with body:', req.body);

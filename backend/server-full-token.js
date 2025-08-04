@@ -397,7 +397,7 @@ app.post('/webhook', webhookLimiter, express.text({ type: '*/*' }), async (req, 
     
     if (parts.length >= 5) {
       // Check for new structure with HTF that may contain pipe symbols
-      if (indicator.toLowerCase() === 'extreme' || indicator.toLowerCase() === 'indicator') {
+      if (indicator.toLowerCase().includes('extreme') || indicator.toLowerCase() === 'indicator') {
         // New structure: TICKER|INTERVAL|Extreme|TRIGGER|HTF (HTF may contain pipes)
         // Join everything from the 5th part onward as HTF field
         htf = parts.slice(4).join('|').trim();

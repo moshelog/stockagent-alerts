@@ -440,7 +440,8 @@ app.post('/webhook', webhookLimiter, express.text({ type: '*/*' }), async (req, 
     // Parse text format: 
     // Legacy: "TICKER|TIMEFRAME|INDICATOR|TRIGGER" or "TICKER|TIMEFRAME|INDICATOR|TRIGGER|TIME"
     // New with price: "TICKER|PRICE|TIMEFRAME|INDICATOR|TRIGGER" or variants
-    const parts = body.split('|');
+    // Also handles TradingView format with spaces: "TICKER | PRICE | TIMEFRAME | INDICATOR | TRIGGER"
+    const parts = body.split('|').map(part => part.trim());
     
     if (parts.length < 4) {
       return res.status(400).json({ 
@@ -453,10 +454,10 @@ app.post('/webhook', webhookLimiter, express.text({ type: '*/*' }), async (req, 
     let partIndex = 0;
 
     // Parse ticker (always first)
-    ticker = parts[partIndex++].trim();
+    ticker = parts[partIndex++];
 
     // Check if second part is a price (contains digits and possibly decimal/dollar)
-    const secondPart = parts[partIndex] ? parts[partIndex].trim() : '';
+    const secondPart = parts[partIndex] || '';
     const isPricePattern = /^\$?[0-9,.]+$/.test(secondPart.replace(/,/g, ''));
     
     console.log('PRICE PARSING DEBUG:', {
@@ -470,20 +471,20 @@ app.post('/webhook', webhookLimiter, express.text({ type: '*/*' }), async (req, 
       // Format with price: TICKER|PRICE|TIMEFRAME|INDICATOR|TRIGGER
       price = parseFloat(secondPart.replace(/[\$,]/g, ''));
       partIndex++;
-      timeframe = parts[partIndex] ? parts[partIndex].trim() : '';
+      timeframe = parts[partIndex] || '';
       partIndex++;
-      indicator = parts[partIndex] ? parts[partIndex].trim() : '';
+      indicator = parts[partIndex] || '';
       partIndex++;
-      trigger = parts[partIndex] ? parts[partIndex].trim() : '';
+      trigger = parts[partIndex] || '';
       console.log('PARSED WITH PRICE:', { price, timeframe, indicator, trigger });
     } else {
       // Legacy format without price: TICKER|TIMEFRAME|INDICATOR|TRIGGER  
       price = null;
       timeframe = secondPart;
       partIndex++;
-      indicator = parts[partIndex] ? parts[partIndex].trim() : '';
+      indicator = parts[partIndex] || '';
       partIndex++;
-      trigger = parts[partIndex] ? parts[partIndex].trim() : '';
+      trigger = parts[partIndex] || '';
       console.log('PARSED WITHOUT PRICE (LEGACY):', { price, timeframe, indicator, trigger });
     }
     
@@ -495,7 +496,7 @@ app.post('/webhook', webhookLimiter, express.text({ type: '*/*' }), async (req, 
     // Check if there are remaining parts after parsing the core fields
     if (partIndex < parts.length) {
       // Check if the last part is "TEST" flag
-      const lastPart = parts[parts.length - 1].trim();
+      const lastPart = parts[parts.length - 1];
       if (lastPart === 'TEST') {
         isTest = true;
         // Remove TEST from parts for normal processing
@@ -512,11 +513,11 @@ app.post('/webhook', webhookLimiter, express.text({ type: '*/*' }), async (req, 
           time = null; // No time in this structure
         } else if (parts.length - partIndex === 1) {
           // Single remaining part - could be TIME
-          time = parts[partIndex].trim();
+          time = parts[partIndex];
         } else if (parts.length - partIndex === 2) {
           // Two remaining parts: HTF and TIME
-          htf = parts[partIndex].trim();
-          time = parts[partIndex + 1].trim();
+          htf = parts[partIndex];
+          time = parts[partIndex + 1];
         }
       }
     }

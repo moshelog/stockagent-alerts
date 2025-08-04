@@ -650,16 +650,19 @@ export default function SettingsPage() {
     try {
       // webhook-json is at the root, not under /api
       const webhookUrl = config.apiBase.replace('/api', '') + '/webhook-json'
+      const payload = {
+        ticker: webhookTesterTicker,
+        time: new Date().toLocaleTimeString('en-US', { hour12: false }),
+        indicator: webhookTesterIndicator,
+        trigger: webhookTesterTrigger,
+        timeframe: "15"
+      }
+      console.log('Sending webhook test with payload:', payload, 'to URL:', webhookUrl)
+      
       const response = await fetch(webhookUrl, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          ticker: webhookTesterTicker,
-          time: new Date().toLocaleTimeString('en-US', { hour12: false }),
-          indicator: webhookTesterIndicator,
-          trigger: webhookTesterTrigger,
-          timeframe: "15"
-        })
+        body: JSON.stringify(payload)
       })
 
       if (response.ok) {
@@ -670,8 +673,14 @@ export default function SettingsPage() {
           className: "bg-accent-buy text-white border-accent-buy",
         })
       } else {
-        const errorData = await response.json()
-        const errorMessage = errorData.error || "Failed to send test webhook"
+        let errorMessage = "Failed to send test webhook"
+        try {
+          const errorData = await response.json()
+          errorMessage = errorData.error || errorMessage
+          console.error('Webhook test error:', errorData)
+        } catch (e) {
+          console.error('Failed to parse error response:', e)
+        }
         setWebhookTestStatus({ type: "error", message: errorMessage })
         toast({
           title: "Error",

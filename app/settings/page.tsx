@@ -454,22 +454,36 @@ export default function SettingsPage() {
     }
 
     console.log('🔄 Discord template auto-save triggered')
+    const payload = {
+      webhookUrl: discordWebhookUrl || null, // null means don't update URL during auto-save
+      messageTemplate: discordMessageTemplate
+    }
+    console.log('📤 Discord auto-save payload:', payload)
+    
     try {
       const response = await authenticatedFetch(`${config.apiBase}/discord/settings`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          webhookUrl: discordWebhookUrl || null, // null means don't update URL during auto-save
-          messageTemplate: discordMessageTemplate
-        })
+        body: JSON.stringify(payload)
       })
 
       const result = await response.json()
+      console.log('🔍 Discord auto-save response:', { 
+        status: response.status, 
+        ok: response.ok, 
+        result 
+      })
+      
       if (response.ok && result.success) {
         console.log('✅ Discord template auto-saved')
+      } else {
+        console.error('❌ Discord auto-save failed:', { 
+          status: response.status, 
+          result 
+        })
       }
     } catch (error) {
-      console.error('Failed to auto-save discord template:', error)
+      console.error('❌ Failed to auto-save discord template:', error)
     }
   }
 

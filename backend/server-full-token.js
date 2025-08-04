@@ -1210,15 +1210,26 @@ app.post('/api/discord/settings', requireAuth, asyncHandler(async (req, res) => 
   
   const { webhookUrl, messageTemplate } = req.body;
   
-  if (!webhookUrl) {
-    return res.status(400).json({ error: 'Webhook URL is required' });
+  // For auto-save template updates, webhookUrl might be null
+  // Only require webhookUrl for initial setup or when actually updating the URL
+  if (webhookUrl === undefined) {
+    return res.status(400).json({ error: 'Webhook URL is required for initial setup' });
+  }
+  
+  // Get current config for template-only updates
+  let configToSave = { messageTemplate };
+  
+  if (webhookUrl !== null) {
+    // If webhookUrl is provided (not null), include it in the update
+    configToSave.webhookUrl = webhookUrl;
+  } else {
+    // For template-only updates, get the current webhook URL to preserve it
+    const currentConfig = await discordNotifier.getDiscordConfig('default');
+    configToSave.webhookUrl = currentConfig.webhookUrl;
   }
   
   // Save to database
-  const result = await discordNotifier.saveDiscordConfig('default', {
-    webhookUrl,
-    messageTemplate
-  });
+  const result = await discordNotifier.saveDiscordConfig('default', configToSave);
   
   if (result.success) {
     res.json({ 

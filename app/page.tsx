@@ -524,7 +524,9 @@ export default function Dashboard() {
   const { tickerData, lastAction: scoringLastAction } = generateScoringData(alerts, dbStrategies, timeWindowMinutes)
   
   // Try to get last action from backend score data, fallback to scoring calculation
-  const lastAction = extractLastActionFromScore(score) || scoringLastAction
+  // But only show action if strategy conditions are actually met
+  const hasActiveStrategies = tickerData.some(ticker => ticker.missingAlerts.length === 0)
+  const lastAction = hasActiveStrategies ? (extractLastActionFromScore(score) || scoringLastAction) : null
   
   console.log('🎯 Scoring Debug:', {
     alertsCount: alerts.length,

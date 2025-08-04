@@ -104,17 +104,8 @@ export default function SettingsPage() {
   })
   const [loadingDiscordSettings, setLoadingDiscordSettings] = useState(true)
   
-  // Message template states (shared between Telegram and Discord)
-  const [telegramMessageTemplate, setTelegramMessageTemplate] = useState({
-    showTimestamp: true,
-    showTicker: true,
-    showStrategy: true,
-    showTriggers: true,
-    showScore: true,
-    format: 'detailed' as 'detailed' | 'compact' | 'minimal'
-  })
-  
-  const [discordMessageTemplate, setDiscordMessageTemplate] = useState({
+  // Shared message template for both Telegram and Discord
+  const [messageTemplate, setMessageTemplate] = useState({
     showTimestamp: true,
     showTicker: true,
     showStrategy: true,
@@ -191,8 +182,9 @@ export default function SettingsPage() {
             setTelegramBotToken(telegramData.botToken)
           }
           setTelegramChatId(telegramData.chatId || '')
+          // Load shared template from Telegram (preferred source)
           if (telegramData.messageTemplate) {
-            setTelegramMessageTemplate(telegramData.messageTemplate)
+            setMessageTemplate(telegramData.messageTemplate)
           }
         }
         
@@ -207,8 +199,9 @@ export default function SettingsPage() {
           if (discordData.webhookUrl && discordData.webhookUrl !== '***') {
             setDiscordWebhookUrl(discordData.webhookUrl)
           }
-          if (discordData.messageTemplate) {
-            setDiscordMessageTemplate(discordData.messageTemplate)
+          // Use Discord template only if Telegram template wasn't loaded
+          if (discordData.messageTemplate && !telegramData.configured) {
+            setMessageTemplate(discordData.messageTemplate)
           }
         }
       } catch (error) {
@@ -224,27 +217,23 @@ export default function SettingsPage() {
     }
   }, [config])
 
-  // Auto-save telegram message template when it changes
+  // Auto-save shared message template to both platforms when it changes
   useEffect(() => {
-    // Only auto-save if telegram is configured and we have an API base
-    if (telegramConfigured && config?.apiBase && telegramChatId) {
+    // Save to both platforms if they're configured
+    if (config?.apiBase) {
       const timeoutId = setTimeout(() => {
-        autoSaveTelegramTemplate()
+        // Save to Telegram if configured
+        if (telegramConfigured && telegramChatId) {
+          autoSaveTelegramTemplate()
+        }
+        // Save to Discord if configured
+        if (discordConfigured && discordWebhookUrl) {
+          autoSaveDiscordTemplate()
+        }
       }, 1000) // 1 second debounce
       return () => clearTimeout(timeoutId)
     }
-  }, [telegramMessageTemplate])
-
-  // Auto-save discord message template when it changes  
-  useEffect(() => {
-    // Only auto-save if discord is configured and we have an API base
-    if (discordConfigured && config?.apiBase && discordWebhookUrl) {
-      const timeoutId = setTimeout(() => {
-        autoSaveDiscordTemplate()
-      }, 1000) // 1 second debounce
-      return () => clearTimeout(timeoutId)
-    }
-  }, [discordMessageTemplate])
+  }, [messageTemplate])
 
   const handleReload = async () => {
     setIsReloading(true)
@@ -453,7 +442,7 @@ export default function SettingsPage() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           webhookUrl: discordWebhookUrl,
-          messageTemplate: discordMessageTemplate
+          messageTemplate: messageTemplate
         })
       })
 
@@ -479,7 +468,7 @@ export default function SettingsPage() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           webhookUrl: discordWebhookUrl,
-          messageTemplate: discordMessageTemplate
+          messageTemplate: messageTemplate
         })
       })
 
@@ -520,7 +509,7 @@ export default function SettingsPage() {
         body: JSON.stringify({
           botToken: null, // Don't update token during auto-save
           chatId: telegramChatId,
-          messageTemplate: telegramMessageTemplate
+          messageTemplate: messageTemplate
         })
       })
 
@@ -556,7 +545,7 @@ export default function SettingsPage() {
         body: JSON.stringify({
           botToken: tokenToSave, // null means don't update
           chatId: telegramChatId,
-          messageTemplate: telegramMessageTemplate
+          messageTemplate: messageTemplate
         })
       })
 
@@ -1087,8 +1076,8 @@ export default function SettingsPage() {
               setTelegramBotToken={setTelegramBotToken}
               telegramChatId={telegramChatId}
               setTelegramChatId={setTelegramChatId}
-              telegramMessageTemplate={telegramMessageTemplate}
-              setTelegramMessageTemplate={setTelegramMessageTemplate}
+              messageTemplate={messageTemplate}
+              setMessageTemplate={setMessageTemplate}
               handleTestTelegram={handleTestTelegram}
               handleSaveTelegram={handleSaveTelegram}
               handleSendTestAlert={handleSendTestAlert}
@@ -1100,8 +1089,6 @@ export default function SettingsPage() {
               // Discord props
               discordWebhookUrl={discordWebhookUrl}
               setDiscordWebhookUrl={setDiscordWebhookUrl}
-              discordMessageTemplate={discordMessageTemplate}
-              setDiscordMessageTemplate={setDiscordMessageTemplate}
               handleTestDiscord={handleTestDiscord}
               handleSaveDiscord={handleSaveDiscord}
               handleSendDiscordTestAlert={handleSendDiscordTestAlert}

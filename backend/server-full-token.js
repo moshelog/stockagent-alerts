@@ -572,22 +572,10 @@ app.post('/webhook', webhookLimiter, express.text({ type: '*/*' }), async (req, 
 
     // Save alert to database
     if (supabase) {
-      let timestamp;
-      try {
-        if (time) {
-          if (typeof time === 'string' && time.length === 13) {
-            timestamp = new Date(parseInt(time)).toISOString();
-          } else {
-            timestamp = new Date(time).toISOString();
-          }
-        } else {
-          timestamp = new Date().toISOString();
-        }
-        console.log('TIMESTAMP CREATED:', timestamp);
-      } catch (timestampError) {
-        console.error('TIMESTAMP ERROR:', timestampError, 'time value:', time);
-        throw new Error('Invalid time value');
-      }
+      // Use current timestamp for simplicity and reliability
+      const timestamp = new Date().toISOString();
+      
+      console.log('TIMESTAMP CREATED:', timestamp);
 
       const alertData = {
         ticker: ticker.toUpperCase(),

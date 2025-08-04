@@ -433,6 +433,16 @@ app.post('/webhook', webhookLimiter, express.text({ type: '*/*' }), async (req, 
     const indicatorLower = indicator.toLowerCase();
     const normalizedIndicator = indicatorMapping[indicatorLower] || indicator;
 
+    console.log('WEBHOOK PARSED VALUES:', {
+      ticker,
+      timeframe,
+      indicator: normalizedIndicator,
+      trigger,
+      htf: htf || 'none',
+      time: time,
+      parts: parts
+    });
+
     if (logger && logger.info) {
       logger.info('Webhook parsed', {
         ticker,
@@ -446,16 +456,29 @@ app.post('/webhook', webhookLimiter, express.text({ type: '*/*' }), async (req, 
 
     // Save alert to database
     if (supabase) {
+      let timestamp;
+      try {
+        if (time) {
+          if (typeof time === 'string' && time.length === 13) {
+            timestamp = new Date(parseInt(time)).toISOString();
+          } else {
+            timestamp = new Date(time).toISOString();
+          }
+        } else {
+          timestamp = new Date().toISOString();
+        }
+        console.log('TIMESTAMP CREATED:', timestamp);
+      } catch (timestampError) {
+        console.error('TIMESTAMP ERROR:', timestampError, 'time value:', time);
+        throw new Error('Invalid time value');
+      }
+
       const alertData = {
         ticker: ticker.toUpperCase(),
         timeframe: timeframe,
         indicator: normalizedIndicator,
         trigger: trigger,
-        timestamp: time ? 
-          (typeof time === 'string' && time.length === 13 ? 
-            new Date(parseInt(time)).toISOString() : 
-            new Date(time).toISOString()) : 
-          new Date().toISOString()
+        timestamp: timestamp
       };
       
       // Add HTF field if it exists

@@ -167,6 +167,7 @@ export function useTradingData(timeWindowMinutes: number = 60, alertConfig?: any
             time: new Date(alert.timestamp).toLocaleTimeString(),
             timestamp: alert.timestamp, // Keep full timestamp for calculations
             ticker: alert.ticker,
+            price: alert.price, // Include price field from API
             timeframe: alert.timeframe || '15m', // Default to 15m if not set
             indicator: alert.indicator,
             trigger: alert.trigger,

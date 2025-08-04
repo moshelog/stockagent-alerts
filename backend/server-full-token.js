@@ -364,6 +364,7 @@ app.post('/webhook-json', webhookLimiter, validateAlertPayload, async (req, res)
 
 // Webhook endpoint - receives alerts from TradingView
 app.post('/webhook', webhookLimiter, express.text({ type: '*/*' }), async (req, res) => {
+  console.log('WEBHOOK ENDPOINT HIT - Body:', req.body);
   try {
     const body = req.body.toString().trim();
     
@@ -500,10 +501,11 @@ app.post('/webhook', webhookLimiter, express.text({ type: '*/*' }), async (req, 
 
     res.json({ success: true, message: 'Alert received' });
   } catch (error) {
+    console.error('WEBHOOK ERROR:', error);
     if (logger && logger.error) {
-      logger.error('Webhook error', { error: error.message });
+      logger.error('Webhook error', { error: error.message, stack: error.stack });
     }
-    res.status(500).json({ error: 'Internal server error' });
+    res.status(500).json({ error: error.message || 'Internal server error' });
   }
 });
 

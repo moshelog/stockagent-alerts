@@ -17,8 +17,6 @@ interface NotificationsPanelProps {
   setTelegramBotToken: (value: string) => void
   telegramChatId: string
   setTelegramChatId: (value: string) => void
-  telegramMessageTemplate: any
-  setTelegramMessageTemplate: (value: any) => void
   handleTestTelegram: () => void
   handleSaveTelegram: () => void
   handleSendTestAlert: (action: 'BUY' | 'SELL') => void
@@ -30,8 +28,6 @@ interface NotificationsPanelProps {
   // Discord props
   discordWebhookUrl: string
   setDiscordWebhookUrl: (value: string) => void
-  discordMessageTemplate: any
-  setDiscordMessageTemplate: (value: any) => void
   handleTestDiscord: () => void
   handleSaveDiscord: () => void
   handleSendDiscordTestAlert: (action: 'BUY' | 'SELL') => void
@@ -39,6 +35,12 @@ interface NotificationsPanelProps {
   sendingDiscordTestAlert: boolean
   discordStatus: { type: "success" | "error" | null; message: string }
   discordConfigured?: boolean
+
+  // Message template props
+  telegramMessageTemplate: any
+  setTelegramMessageTemplate: (value: any) => void
+  discordMessageTemplate: any
+  setDiscordMessageTemplate: (value: any) => void
 }
 
 export function NotificationsPanel({
@@ -46,8 +48,6 @@ export function NotificationsPanel({
   setTelegramBotToken,
   telegramChatId,
   setTelegramChatId,
-  telegramMessageTemplate,
-  setTelegramMessageTemplate,
   handleTestTelegram,
   handleSaveTelegram,
   handleSendTestAlert,
@@ -57,15 +57,17 @@ export function NotificationsPanel({
   telegramConfigured = false,
   discordWebhookUrl,
   setDiscordWebhookUrl,
-  discordMessageTemplate,
-  setDiscordMessageTemplate,
   handleTestDiscord,
   handleSaveDiscord,
   handleSendDiscordTestAlert,
   testingDiscord,
   sendingDiscordTestAlert,
   discordStatus,
-  discordConfigured = false
+  discordConfigured = false,
+  telegramMessageTemplate,
+  setTelegramMessageTemplate,
+  discordMessageTemplate,
+  setDiscordMessageTemplate
 }: NotificationsPanelProps) {
   const [activeTab, setActiveTab] = useState("telegram")
 

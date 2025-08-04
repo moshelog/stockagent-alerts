@@ -268,10 +268,11 @@ app.post('/webhook', webhookAuth, express.text({ type: '*/*' }), asyncHandler(as
 
   // Parse text format: "TICKER|TIMEFRAME|INDICATOR|TRIGGER" or "TICKER|TIMEFRAME|INDICATOR|TRIGGER|PRICE"
   // Extended formats: "TICKER|TIMEFRAME|INDICATOR|TRIGGER|PRICE|TIME" or "TICKER|INTERVAL|Extreme|TRIGGER|HTF|PRICE"
-  const parts = body.split('|');
+  // Handle spaces around pipes: "TICKER | PRICE | TIMEFRAME | INDICATOR | TRIGGER"
+  const parts = body.split('|').map(part => part.trim());
   
   // Detect format based on 2nd position - if it's numeric, it's price-first format
-  const secondPart = parts[1] ? parts[1].trim() : '';
+  const secondPart = parts[1] || '';
   const isSecondPartNumeric = /^\d+\.?\d*$/.test(secondPart);
   
   // Validate minimum parts based on format
@@ -291,17 +292,17 @@ app.post('/webhook', webhookAuth, express.text({ type: '*/*' }), asyncHandler(as
   
   if (isSecondPartNumeric && parts.length >= 5) {
     // User format: TICKER|PRICE|TIMEFRAME|INDICATOR|TRIGGER
-    ticker = parts[0].trim();
+    ticker = parts[0];
     price = parseFloat(secondPart);
-    timeframe = parts[2].trim();
-    indicator = parts[3].trim();
-    trigger = parts[4].trim();
+    timeframe = parts[2];
+    indicator = parts[3];
+    trigger = parts[4];
   } else {
     // Standard format: TICKER|TIMEFRAME|INDICATOR|TRIGGER
-    ticker = parts[0].trim();
-    timeframe = parts[1].trim();
-    indicator = parts[2].trim();
-    trigger = parts[3].trim();
+    ticker = parts[0];
+    timeframe = parts[1];
+    indicator = parts[2];
+    trigger = parts[3];
   }
   
   // Handle additional HTF and time parameters (only for standard format)

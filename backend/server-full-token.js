@@ -455,23 +455,26 @@ app.post('/webhook', webhookLimiter, express.text({ type: '*/*' }), async (req, 
     ticker = parts[partIndex++].trim();
 
     // Check if second part is a price (contains digits and possibly decimal/dollar)
-    const secondPart = parts[partIndex].trim();
+    const secondPart = parts[partIndex] ? parts[partIndex].trim() : '';
     const isPricePattern = /^[\$]?[\d,]+\.?\d*$/.test(secondPart.replace(/,/g, ''));
     
-    if (isPricePattern) {
+    if (isPricePattern && parts.length >= 5) {
       // Format with price: TICKER|PRICE|TIMEFRAME|INDICATOR|TRIGGER
       price = parseFloat(secondPart.replace(/[\$,]/g, ''));
       partIndex++;
-      timeframe = parts[partIndex++].trim();
-      indicator = parts[partIndex++].trim();
-      trigger = parts[partIndex++].trim();
+      timeframe = parts[partIndex] ? parts[partIndex].trim() : '';
+      partIndex++;
+      indicator = parts[partIndex] ? parts[partIndex].trim() : '';
+      partIndex++;
+      trigger = parts[partIndex] ? parts[partIndex].trim() : '';
     } else {
       // Legacy format without price: TICKER|TIMEFRAME|INDICATOR|TRIGGER  
       price = null;
       timeframe = secondPart;
       partIndex++;
-      indicator = parts[partIndex++].trim();
-      trigger = parts[partIndex++].trim();
+      indicator = parts[partIndex] ? parts[partIndex].trim() : '';
+      partIndex++;
+      trigger = parts[partIndex] ? parts[partIndex].trim() : '';
     }
     
     // Handle HTF, time parameters, and test flag

@@ -615,13 +615,17 @@ app.post('/webhook', webhookLimiter, express.text({ type: '*/*' }), async (req, 
       
       const { data, error } = await supabase
         .from('alerts')
-        .insert([alertData]);
+        .insert([alertData])
+        .select();
+
+      console.log('SUPABASE INSERT RESULT:', { data, error, alertDataSent: alertData });
 
       if (error) {
+        console.error('SUPABASE INSERT ERROR:', error);
         if (logger && logger.error) {
-          logger.error('Failed to save alert', { error: error.message });
+          logger.error('Failed to save alert', { error: error.message, details: error });
         }
-        return res.status(500).json({ error: 'Failed to save alert' });
+        return res.status(500).json({ error: 'Failed to save alert', details: error.message });
       }
 
       // After saving alert, evaluate strategies

@@ -136,7 +136,8 @@ app.get('/api/health', async (req, res) => {
   const health = {
     status: 'healthy',
     timestamp: new Date().toISOString(),
-    service: 'stockagent-backend'
+    service: 'stockagent-backend',
+    priceRegexVersion: 'v2-fixed-decimal-pattern'
   };
 
   // Check database connection

@@ -458,6 +458,13 @@ app.post('/webhook', webhookLimiter, express.text({ type: '*/*' }), async (req, 
     const secondPart = parts[partIndex] ? parts[partIndex].trim() : '';
     const isPricePattern = /^[\$]?[\d,]+\.?\d*$/.test(secondPart.replace(/,/g, ''));
     
+    console.log('PRICE PARSING DEBUG:', {
+      secondPart,
+      isPricePattern,
+      partsLength: parts.length,
+      parts
+    });
+    
     if (isPricePattern && parts.length >= 5) {
       // Format with price: TICKER|PRICE|TIMEFRAME|INDICATOR|TRIGGER
       price = parseFloat(secondPart.replace(/[\$,]/g, ''));
@@ -467,6 +474,7 @@ app.post('/webhook', webhookLimiter, express.text({ type: '*/*' }), async (req, 
       indicator = parts[partIndex] ? parts[partIndex].trim() : '';
       partIndex++;
       trigger = parts[partIndex] ? parts[partIndex].trim() : '';
+      console.log('PARSED WITH PRICE:', { price, timeframe, indicator, trigger });
     } else {
       // Legacy format without price: TICKER|TIMEFRAME|INDICATOR|TRIGGER  
       price = null;
@@ -475,6 +483,7 @@ app.post('/webhook', webhookLimiter, express.text({ type: '*/*' }), async (req, 
       indicator = parts[partIndex] ? parts[partIndex].trim() : '';
       partIndex++;
       trigger = parts[partIndex] ? parts[partIndex].trim() : '';
+      console.log('PARSED WITHOUT PRICE (LEGACY):', { price, timeframe, indicator, trigger });
     }
     
     // Handle HTF, time parameters, and test flag
@@ -585,12 +594,17 @@ app.post('/webhook', webhookLimiter, express.text({ type: '*/*' }), async (req, 
       // Add price if it was parsed from webhook
       if (price !== null && price !== undefined) {
         alertData.price = price;
+        console.log('PRICE ADDED TO ALERT DATA:', price);
+      } else {
+        console.log('NO PRICE TO ADD - price is:', price);
       }
       
       // Add HTF field if it exists
       if (htf) {
         alertData.htf = htf;
       }
+      
+      console.log('FINAL ALERT DATA BEING SAVED:', JSON.stringify(alertData, null, 2));
       
       const { data, error } = await supabase
         .from('alerts')

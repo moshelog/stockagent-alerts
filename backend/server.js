@@ -254,8 +254,8 @@ app.post('/webhook-json', webhookAuth, validateAlertPayload, asyncHandler(async 
 
 /**
  * POST /webhook - Receive TradingView alerts (Primary endpoint)
- * Expected payload: "TICKER|TIMEFRAME|INDICATOR|TRIGGER" or "TICKER|TIMEFRAME|INDICATOR|TRIGGER|TIME"
- * New structure: "TICKER|INTERVAL|Extreme|TRIGGER|HTF" or "TICKER|INTERVAL|Extreme|TRIGGER|HTF|TIME"
+ * Expected payload: "TICKER|TIMEFRAME|INDICATOR|TRIGGER" or "TICKER|TIMEFRAME|INDICATOR|TRIGGER|PRICE"
+ * Extended formats: "TICKER|TIMEFRAME|INDICATOR|TRIGGER|PRICE|TIME" or "TICKER|INTERVAL|Extreme|TRIGGER|HTF|PRICE"
  */
 app.post('/webhook', webhookAuth, express.text({ type: '*/*' }), asyncHandler(async (req, res) => {
   const body = req.body.toString().trim();
@@ -265,13 +265,13 @@ app.post('/webhook', webhookAuth, express.text({ type: '*/*' }), asyncHandler(as
     body: body
   });
 
-  // Parse text format: "TICKER|TIMEFRAME|INDICATOR|TRIGGER" or "TICKER|TIMEFRAME|INDICATOR|TRIGGER|TIME"
-  // New structure: "TICKER|INTERVAL|Extreme|TRIGGER|HTF" or "TICKER|INTERVAL|Extreme|TRIGGER|HTF|TIME"
+  // Parse text format: "TICKER|TIMEFRAME|INDICATOR|TRIGGER" or "TICKER|TIMEFRAME|INDICATOR|TRIGGER|PRICE"
+  // Extended formats: "TICKER|TIMEFRAME|INDICATOR|TRIGGER|PRICE|TIME" or "TICKER|INTERVAL|Extreme|TRIGGER|HTF|PRICE"
   const parts = body.split('|');
   
   if (parts.length < 4) {
     return res.status(400).json({ 
-      error: 'Invalid text format. Expected: TICKER|TIMEFRAME|INDICATOR|TRIGGER or TICKER|TIMEFRAME|INDICATOR|TRIGGER|TIME',
+      error: 'Invalid text format. Expected: TICKER|TIMEFRAME|INDICATOR|TRIGGER or TICKER|TIMEFRAME|INDICATOR|TRIGGER|PRICE',
       received: body 
     });
   }
@@ -281,24 +281,53 @@ app.post('/webhook', webhookAuth, express.text({ type: '*/*' }), asyncHandler(as
   const indicator = parts[2].trim();
   const trigger = parts[3].trim();
   
-  // Handle HTF and time parameters
+  // Handle price, HTF and time parameters
+  let price = null;
   let htf = null;
   let time = null;
   
   if (parts.length >= 5) {
+    const fifthPart = parts[4].trim();
+    
     // Check for new structure with HTF that may contain pipe symbols
-    if (indicator.toLowerCase() === 'extreme' || indicator.toLowerCase() === 'indicator') {
+    // Only treat as HTF if it contains pipe symbols (complex HTF data)
+    if ((indicator.toLowerCase() === 'extreme' || indicator.toLowerCase() === 'indicator') && 
+        parts.slice(4).join('|').includes('|')) {
       // New structure: TICKER|INTERVAL|Extreme|TRIGGER|HTF (HTF may contain pipes)
       // Join everything from the 5th part onward as HTF field
       htf = parts.slice(4).join('|').trim();
       time = null; // No time in this structure
-    } else if (parts.length === 5) {
-      // Old 5-part structure: TICKER|TIMEFRAME|INDICATOR|TRIGGER|TIME
-      time = parts[4].trim();
-    } else if (parts.length === 6) {
-      // 6-part structure: TICKER|TIMEFRAME|INDICATOR|TRIGGER|HTF|TIME
-      htf = parts[4].trim();
-      time = parts[5].trim();
+    } else {
+      // Check if the 5th part is a number (price) or timestamp
+      const isNumeric = /^\d+\.?\d*$/.test(fifthPart);
+      const isTimestamp = /^\d{10,13}$/.test(fifthPart) || fifthPart.includes('T') || fifthPart.includes('-');
+      
+      if (isNumeric) {
+        // It's a price: TICKER|TIMEFRAME|INDICATOR|TRIGGER|PRICE
+        price = parseFloat(fifthPart);
+        
+        if (parts.length >= 6) {
+          // TICKER|TIMEFRAME|INDICATOR|TRIGGER|PRICE|TIME
+          time = parts[5].trim();
+        }
+      } else if (isTimestamp) {
+        // It's a timestamp: TICKER|TIMEFRAME|INDICATOR|TRIGGER|TIME (legacy format)
+        time = fifthPart;
+      } else {
+        // It might be HTF or other data
+        htf = fifthPart;
+        
+        if (parts.length >= 6) {
+          const sixthPart = parts[5].trim();
+          const isSixthNumeric = /^\d+\.?\d*$/.test(sixthPart);
+          
+          if (isSixthNumeric) {
+            price = parseFloat(sixthPart);
+          } else {
+            time = sixthPart;
+          }
+        }
+      }
     }
   }
 
@@ -328,6 +357,7 @@ app.post('/webhook', webhookAuth, express.text({ type: '*/*' }), asyncHandler(as
     timeframe,
     indicator: normalizedIndicator,
     trigger,
+    price: price || null,
     htf: htf || 'none',
     timestamp: time || new Date().toISOString()
   });
@@ -345,6 +375,11 @@ app.post('/webhook', webhookAuth, express.text({ type: '*/*' }), asyncHandler(as
           new Date(time).toISOString()) : 
         new Date().toISOString()
     };
+    
+    // Add price field if it exists
+    if (price !== null && !isNaN(price)) {
+      alertData.price = price;
+    }
     
     // Add HTF field if it exists (after database migration)
     if (htf) {
@@ -370,7 +405,9 @@ app.post('/webhook', webhookAuth, express.text({ type: '*/*' }), asyncHandler(as
 
     logger.info('Webhook alert inserted successfully', {
       id: newAlert.id,
-      ticker: newAlert.ticker
+      ticker: newAlert.ticker,
+      price: newAlert.price || null,
+      timeframe: newAlert.timeframe
     });
 
     // Evaluate strategies for this ticker

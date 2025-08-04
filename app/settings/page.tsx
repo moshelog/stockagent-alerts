@@ -648,7 +648,9 @@ export default function SettingsPage() {
     setWebhookTestStatus({ type: null, message: "" })
 
     try {
-      const response = await authenticatedFetch(`${config.apiBase.replace('/api', '')}/webhook-json`, {
+      // webhook-json is at the root, not under /api
+      const webhookUrl = config.apiBase.replace('/api', '') + '/webhook-json'
+      const response = await fetch(webhookUrl, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({

@@ -324,7 +324,7 @@ app.post('/webhook-json', webhookLimiter, validateAlertPayload, async (req, res)
       // After saving alert, evaluate strategies
       if (strategyEvaluator && strategyEvaluator.evaluateStrategiesForTicker) {
         try {
-          const evaluationResult = await strategyEvaluator.evaluateStrategiesForTicker(parsedAlert.ticker, { 
+          const evaluationResult = await strategyEvaluator.evaluateStrategiesForTicker(ticker.toUpperCase(), { 
             ticker: ticker.toUpperCase(), 
             timeframe: timeframe || '15m',
             indicator,

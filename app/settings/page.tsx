@@ -226,45 +226,23 @@ export default function SettingsPage() {
 
   // Auto-save telegram message template when it changes
   useEffect(() => {
-    console.log('🔄 Telegram template changed:', telegramMessageTemplate)
-    console.log('🔍 Telegram conditions:', {
-      telegramConfigured,
-      apiBase: !!config?.apiBase,
-      hasBotToken: !!telegramBotToken,
-      hasChatId: !!telegramChatId
-    })
-    
     // Only auto-save if telegram is configured and we have an API base
-    // We don't need to check botToken since telegramConfigured already indicates it's set up
     if (telegramConfigured && config?.apiBase && telegramChatId) {
-      console.log('💾 Auto-saving telegram template...')
       const timeoutId = setTimeout(() => {
-        handleSaveTelegram()
+        autoSaveTelegramTemplate()
       }, 1000) // 1 second debounce
       return () => clearTimeout(timeoutId)
-    } else {
-      console.log('⚠️ Skipping telegram auto-save due to conditions')
     }
   }, [telegramMessageTemplate])
 
   // Auto-save discord message template when it changes  
   useEffect(() => {
-    console.log('🔄 Discord template changed:', discordMessageTemplate)
-    console.log('🔍 Discord conditions:', {
-      discordConfigured,
-      apiBase: !!config?.apiBase,
-      hasWebhookUrl: !!discordWebhookUrl
-    })
-    
     // Only auto-save if discord is configured and we have an API base
     if (discordConfigured && config?.apiBase && discordWebhookUrl) {
-      console.log('💾 Auto-saving discord template...')
       const timeoutId = setTimeout(() => {
-        handleSaveDiscord()
+        autoSaveDiscordTemplate()
       }, 1000) // 1 second debounce
       return () => clearTimeout(timeoutId)
-    } else {
-      console.log('⚠️ Skipping discord auto-save due to conditions')
     }
   }, [discordMessageTemplate])
 
@@ -465,8 +443,30 @@ export default function SettingsPage() {
     }
   }
 
+  // Auto-save function for Discord templates
+  const autoSaveDiscordTemplate = async () => {
+    if (!discordWebhookUrl || !config?.apiBase) return
+
+    try {
+      const response = await authenticatedFetch(`${config.apiBase}/discord/settings`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          webhookUrl: discordWebhookUrl,
+          messageTemplate: discordMessageTemplate
+        })
+      })
+
+      const result = await response.json()
+      if (response.ok && result.success) {
+        console.log('✅ Discord template auto-saved')
+      }
+    } catch (error) {
+      console.error('Failed to auto-save discord template:', error)
+    }
+  }
+
   const handleSaveDiscord = async () => {
-    console.log('📤 handleSaveDiscord called with template:', discordMessageTemplate)
     
     if (!discordWebhookUrl) {
       setDiscordStatus({ type: "error", message: "Please enter a webhook URL" })
@@ -509,8 +509,31 @@ export default function SettingsPage() {
     }
   }
 
+  // Auto-save function for templates (doesn't clear token or show toasts)
+  const autoSaveTelegramTemplate = async () => {
+    if (!telegramChatId || !config?.apiBase) return
+
+    try {
+      const response = await authenticatedFetch(`${config.apiBase}/telegram/settings`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          botToken: null, // Don't update token during auto-save
+          chatId: telegramChatId,
+          messageTemplate: telegramMessageTemplate
+        })
+      })
+
+      const result = await response.json()
+      if (response.ok && result.success) {
+        console.log('✅ Telegram template auto-saved')
+      }
+    } catch (error) {
+      console.error('Failed to auto-save telegram template:', error)
+    }
+  }
+
   const handleSaveTelegram = async () => {
-    console.log('📤 handleSaveTelegram called with template:', telegramMessageTemplate)
     
     // Check if we have a chat ID (bot token might be masked)
     if (!telegramChatId) {
@@ -540,6 +563,7 @@ export default function SettingsPage() {
       const result = await response.json()
 
       if (response.ok && result.success) {
+        console.log('✅ Telegram settings saved successfully')
         setTelegramStatus({ type: "success", message: "Telegram settings saved successfully!" })
         setTelegramConfigured(true)
         // Clear the bot token from the input for security

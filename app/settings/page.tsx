@@ -732,8 +732,8 @@ export default function SettingsPage() {
   }
 
   const handleTestWebhook = async () => {
-    if (!webhookTesterTrigger) {
-      setWebhookTestStatus({ type: "error", message: "Please select a trigger" })
+    if (!webhookTesterTicker || !webhookTesterTrigger) {
+      setWebhookTestStatus({ type: "error", message: "Please select a ticker and trigger" })
       return
     }
 
@@ -741,34 +741,30 @@ export default function SettingsPage() {
     setWebhookTestStatus({ type: null, message: "" })
 
     try {
-      // Use the new test notification endpoint that directly sends test notifications
-      const testUrl = `${config.apiBase}/test-notification`
+      // Use the actual webhook endpoint to test price parsing
+      const testUrl = `${config.apiBase}/webhook`
       
-      // Determine action based on trigger
-      const action = webhookTesterTrigger.toLowerCase().includes('premium') || 
-                    webhookTesterTrigger.toLowerCase().includes('sell') ||
-                    webhookTesterTrigger.toLowerCase().includes('bearish') ? 'SELL' : 'BUY'
+      // Generate a random test price
+      const testPrice = (Math.random() * 90000 + 10000).toFixed(2) // Random price between $10,000-$100,000
       
-      const payload = {
-        action: action,
-        ticker: webhookTesterTicker
-      }
+      // Create webhook payload in the format: TICKER|PRICE|TIMEFRAME|INDICATOR|TRIGGER
+      const payload = `${webhookTesterTicker}|${testPrice}|15|Extreme|${webhookTesterTrigger}`
       
-      console.log('Sending test notification with payload:', payload, 'to URL:', testUrl)
+      console.log('🧪 Testing webhook with payload:', payload)
       
-      const response = await authenticatedFetch(testUrl, {
+      const response = await fetch(testUrl, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(payload)
+        headers: { 'Content-Type': 'text/plain' },
+        body: payload
       })
 
       if (response.ok) {
         const result = await response.json()
-        const successMessage = `Test notification sent! Telegram: ${result.results.telegram.success ? 'Success' : 'Failed'}, Discord: ${result.results.discord.success ? 'Success' : 'Failed'}`
+        const successMessage = `Test webhook sent with price $${testPrice}! Check Recent Alerts table to see if price appears.`
         setWebhookTestStatus({ type: "success", message: successMessage })
         toast({
-          title: "Test Notification Sent!",
-          description: "Check your Telegram and Discord for the test signal with (Test) tag",
+          title: "Test Webhook Sent!",
+          description: `Alert created with price $${testPrice}. Check the Recent Alerts table!`,
           className: "bg-accent-buy text-white border-accent-buy",
         })
       } else {

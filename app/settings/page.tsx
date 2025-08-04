@@ -226,24 +226,45 @@ export default function SettingsPage() {
 
   // Auto-save telegram message template when it changes
   useEffect(() => {
+    console.log('🔄 Telegram template changed:', telegramMessageTemplate)
+    console.log('🔍 Telegram conditions:', {
+      telegramConfigured,
+      apiBase: !!config?.apiBase,
+      hasBotToken: !!telegramBotToken,
+      hasChatId: !!telegramChatId
+    })
+    
     // Only auto-save if telegram is configured and we have an API base
     // Also skip the first render to avoid saving default values
     if (telegramConfigured && config?.apiBase && telegramBotToken && telegramChatId) {
+      console.log('💾 Auto-saving telegram template...')
       const timeoutId = setTimeout(() => {
         handleSaveTelegram()
       }, 1000) // 1 second debounce
       return () => clearTimeout(timeoutId)
+    } else {
+      console.log('⚠️ Skipping telegram auto-save due to conditions')
     }
   }, [telegramMessageTemplate])
 
   // Auto-save discord message template when it changes  
   useEffect(() => {
+    console.log('🔄 Discord template changed:', discordMessageTemplate)
+    console.log('🔍 Discord conditions:', {
+      discordConfigured,
+      apiBase: !!config?.apiBase,
+      hasWebhookUrl: !!discordWebhookUrl
+    })
+    
     // Only auto-save if discord is configured and we have an API base
     if (discordConfigured && config?.apiBase && discordWebhookUrl) {
+      console.log('💾 Auto-saving discord template...')
       const timeoutId = setTimeout(() => {
         handleSaveDiscord()
       }, 1000) // 1 second debounce
       return () => clearTimeout(timeoutId)
+    } else {
+      console.log('⚠️ Skipping discord auto-save due to conditions')
     }
   }, [discordMessageTemplate])
 
@@ -445,6 +466,8 @@ export default function SettingsPage() {
   }
 
   const handleSaveDiscord = async () => {
+    console.log('📤 handleSaveDiscord called with template:', discordMessageTemplate)
+    
     if (!discordWebhookUrl) {
       setDiscordStatus({ type: "error", message: "Please enter a webhook URL" })
       return
@@ -487,6 +510,8 @@ export default function SettingsPage() {
   }
 
   const handleSaveTelegram = async () => {
+    console.log('📤 handleSaveTelegram called with template:', telegramMessageTemplate)
+    
     // Check if we have a chat ID (bot token might be masked)
     if (!telegramChatId) {
       setTelegramStatus({ type: "error", message: "Please enter Chat ID" })

@@ -305,55 +305,14 @@ app.post('/webhook', webhookAuth, express.text({ type: '*/*' }), asyncHandler(as
     trigger = parts[3];
   }
   
-  // Handle additional HTF and time parameters (only for standard format)
-  let htf = null;
-  let time = null;
-  
+  // Handle additional parameters for standard format (5th position = price)
   if (!isSecondPartNumeric && parts.length >= 5) {
-    const fifthPart = parts[4].trim();
+    const fifthPart = parts[4];
+    const isNumeric = /^\d+\.?\d*$/.test(fifthPart);
     
-    // Check for new structure with HTF that may contain pipe symbols
-    // Only treat as HTF if it contains pipe symbols (complex HTF data)
-    if ((indicator.toLowerCase() === 'extreme' || indicator.toLowerCase() === 'indicator') && 
-        parts.slice(4).join('|').includes('|')) {
-      // New structure: TICKER|INTERVAL|Extreme|TRIGGER|HTF (HTF may contain pipes)
-      // Join everything from the 5th part onward as HTF field
-      htf = parts.slice(4).join('|').trim();
-      time = null; // No time in this structure
-    } else {
-      // Check if the 5th part is a number (price) or timestamp
-      const isNumeric = /^\d+\.?\d*$/.test(fifthPart);
-      const isTimestamp = /^\d{10,13}$/.test(fifthPart) || fifthPart.includes('T') || fifthPart.includes('-');
-      
-      if (isNumeric && !isTimestamp) {
-        // It's a price: TICKER|TIMEFRAME|INDICATOR|TRIGGER|PRICE
-        price = parseFloat(fifthPart);
-        
-        if (parts.length >= 6) {
-          // TICKER|TIMEFRAME|INDICATOR|TRIGGER|PRICE|TIME
-          time = parts[5].trim();
-        }
-      } else if (isTimestamp) {
-        // It's a timestamp: TICKER|TIMEFRAME|INDICATOR|TRIGGER|TIME (legacy format)
-        time = fifthPart;
-      } else {
-        // It might be HTF or other data - only set if it's not empty
-        if (fifthPart && fifthPart.length > 0) {
-          htf = fifthPart;
-        }
-        
-        if (parts.length >= 6) {
-          const sixthPart = parts[5].trim();
-          const isSixthNumeric = /^\d+\.?\d*$/.test(sixthPart);
-          const isSixthTimestamp = /^\d{10,13}$/.test(sixthPart) || sixthPart.includes('T') || sixthPart.includes('-');
-          
-          if (isSixthNumeric && !isSixthTimestamp) {
-            price = parseFloat(sixthPart);
-          } else if (isSixthTimestamp) {
-            time = sixthPart;
-          }
-        }
-      }
+    if (isNumeric) {
+      // It's a price: TICKER|TIMEFRAME|INDICATOR|TRIGGER|PRICE
+      price = parseFloat(fifthPart);
     }
   }
 
@@ -387,9 +346,7 @@ app.post('/webhook', webhookAuth, express.text({ type: '*/*' }), asyncHandler(as
       indicator: normalizedIndicator,
       trigger,
       price: price || null
-    },
-    htf: htf || 'none',
-    timestamp: time || new Date().toISOString()
+    }
   });
 
   try {
@@ -399,32 +356,12 @@ app.post('/webhook', webhookAuth, express.text({ type: '*/*' }), asyncHandler(as
       timeframe,
       indicator: normalizedIndicator,
       trigger,
-      timestamp: time ? 
-        (() => {
-          try {
-            if (typeof time === 'string' && time.length === 13) {
-              return new Date(parseInt(time)).toISOString();
-            }
-            const parsedTime = new Date(time);
-            if (isNaN(parsedTime.getTime())) {
-              return new Date().toISOString();
-            }
-            return parsedTime.toISOString();
-          } catch (error) {
-            return new Date().toISOString();
-          }
-        })() : 
-        new Date().toISOString()
+      timestamp: new Date().toISOString()
     };
     
     // Add price field if it exists
     if (price !== null && !isNaN(price)) {
       alertData.price = price;
-    }
-    
-    // Add HTF field if it exists (after database migration)
-    if (htf) {
-      alertData.htf = htf;
     }
     
     const { data: newAlert, error: insertError } = await supabase
@@ -448,7 +385,9 @@ app.post('/webhook', webhookAuth, express.text({ type: '*/*' }), asyncHandler(as
       id: newAlert.id,
       ticker: newAlert.ticker,
       price: newAlert.price || null,
-      timeframe: newAlert.timeframe
+      timeframe: newAlert.timeframe,
+      indicator: newAlert.indicator,
+      trigger: newAlert.trigger
     });
 
     // Evaluate strategies for this ticker

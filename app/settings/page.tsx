@@ -235,8 +235,8 @@ export default function SettingsPage() {
     })
     
     // Only auto-save if telegram is configured and we have an API base
-    // Also skip the first render to avoid saving default values
-    if (telegramConfigured && config?.apiBase && telegramBotToken && telegramChatId) {
+    // We don't need to check botToken since telegramConfigured already indicates it's set up
+    if (telegramConfigured && config?.apiBase && telegramChatId) {
       console.log('💾 Auto-saving telegram template...')
       const timeoutId = setTimeout(() => {
         handleSaveTelegram()

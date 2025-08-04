@@ -238,7 +238,7 @@ export default function SettingsPage() {
 
   // Auto-save Discord message template when it changes
   useEffect(() => {
-    if (config?.apiBase && discordConfigured && discordWebhookUrl) {
+    if (config?.apiBase && discordConfigured) {
       const timeoutId = setTimeout(() => {
         autoSaveDiscordTemplate()
       }, 1000) // 1 second debounce
@@ -445,14 +445,21 @@ export default function SettingsPage() {
 
   // Auto-save function for Discord templates
   const autoSaveDiscordTemplate = async () => {
-    if (!discordWebhookUrl || !config?.apiBase) return
+    if (!config?.apiBase || !discordConfigured) {
+      console.log('🔍 Discord auto-save skipped:', { 
+        hasApiBase: !!config?.apiBase, 
+        discordConfigured 
+      })
+      return
+    }
 
+    console.log('🔄 Discord template auto-save triggered')
     try {
       const response = await authenticatedFetch(`${config.apiBase}/discord/settings`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          webhookUrl: discordWebhookUrl,
+          webhookUrl: discordWebhookUrl || null, // null means don't update URL during auto-save
           messageTemplate: discordMessageTemplate
         })
       })

@@ -177,7 +177,7 @@ app.post('/api/auth/login', loginLimiter, (req, res) => {
   console.log('Login attempt:', { username });
   
   // Simple check
-  if (username === 'admin' && password === 'password') {
+  if (username === 'moshelog' && password === 'log0349!') {
     // Generate JWT token
     const token = jwt.sign(
       { username: 'admin', isAdmin: true },

@@ -44,8 +44,8 @@ export default function LoginPage() {
           className: "bg-accent-buy text-white border-accent-buy",
         })
         
-        // Redirect to dashboard
-        router.push("/")
+        // Redirect to main app dashboard
+        window.location.href = "https://app.stockagent.app/"
       } else {
         setError(data.error || "Invalid credentials")
       }

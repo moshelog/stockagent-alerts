@@ -302,7 +302,7 @@ app.post('/webhook', webhookAuth, express.text({ type: '*/*' }), asyncHandler(as
       const isNumeric = /^\d+\.?\d*$/.test(fifthPart);
       const isTimestamp = /^\d{10,13}$/.test(fifthPart) || fifthPart.includes('T') || fifthPart.includes('-');
       
-      if (isNumeric) {
+      if (isNumeric && !isTimestamp) {
         // It's a price: TICKER|TIMEFRAME|INDICATOR|TRIGGER|PRICE
         price = parseFloat(fifthPart);
         
@@ -314,16 +314,19 @@ app.post('/webhook', webhookAuth, express.text({ type: '*/*' }), asyncHandler(as
         // It's a timestamp: TICKER|TIMEFRAME|INDICATOR|TRIGGER|TIME (legacy format)
         time = fifthPart;
       } else {
-        // It might be HTF or other data
-        htf = fifthPart;
+        // It might be HTF or other data - only set if it's not empty
+        if (fifthPart && fifthPart.length > 0) {
+          htf = fifthPart;
+        }
         
         if (parts.length >= 6) {
           const sixthPart = parts[5].trim();
           const isSixthNumeric = /^\d+\.?\d*$/.test(sixthPart);
+          const isSixthTimestamp = /^\d{10,13}$/.test(sixthPart) || sixthPart.includes('T') || sixthPart.includes('-');
           
-          if (isSixthNumeric) {
+          if (isSixthNumeric && !isSixthTimestamp) {
             price = parseFloat(sixthPart);
-          } else {
+          } else if (isSixthTimestamp) {
             time = sixthPart;
           }
         }
@@ -370,9 +373,20 @@ app.post('/webhook', webhookAuth, express.text({ type: '*/*' }), asyncHandler(as
       indicator: normalizedIndicator,
       trigger,
       timestamp: time ? 
-        (typeof time === 'string' && time.length === 13 ? 
-          new Date(parseInt(time)).toISOString() : 
-          new Date(time).toISOString()) : 
+        (() => {
+          try {
+            if (typeof time === 'string' && time.length === 13) {
+              return new Date(parseInt(time)).toISOString();
+            }
+            const parsedTime = new Date(time);
+            if (isNaN(parsedTime.getTime())) {
+              return new Date().toISOString();
+            }
+            return parsedTime.toISOString();
+          } catch (error) {
+            return new Date().toISOString();
+          }
+        })() : 
         new Date().toISOString()
     };
     

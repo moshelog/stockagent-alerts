@@ -659,6 +659,21 @@ export default function SettingsPage() {
       }
       console.log('Sending webhook test with payload:', payload, 'to URL:', webhookUrl)
       
+      // First, test with simple endpoint
+      const testUrl = config.apiBase.replace('/api', '') + '/webhook-test'
+      console.log('Testing with simple endpoint first:', testUrl)
+      try {
+        const testResponse = await fetch(testUrl, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(payload)
+        })
+        const testData = await testResponse.json()
+        console.log('Test endpoint response:', testData)
+      } catch (testError) {
+        console.error('Test endpoint failed:', testError)
+      }
+      
       const response = await fetch(webhookUrl, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },

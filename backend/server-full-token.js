@@ -275,6 +275,12 @@ const validateAlertPayload = (req, res, next) => {
   next();
 };
 
+// Simple test endpoint
+app.post('/webhook-test', async (req, res) => {
+  console.log('Webhook-test endpoint hit with body:', req.body);
+  res.json({ success: true, message: 'Test endpoint working', received: req.body });
+});
+
 // Webhook endpoint for JSON format (used by test webhook button)
 app.post('/webhook-json', webhookLimiter, validateAlertPayload, async (req, res) => {
   console.log('Webhook-json endpoint hit with body:', req.body);

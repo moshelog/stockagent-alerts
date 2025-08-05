@@ -63,8 +63,18 @@ class TelegramNotifier {
    * @returns {string} Formatted message
    */
   formatMessage(data, template = {}) {
-    const { action, ticker, strategy, triggers, score, isTest } = data;
-    const timestamp = new Date().toLocaleString();
+    const { action, ticker, strategy, triggers, score, isTest, price } = data;
+    // Format timestamp in Bangkok timezone (UTC+7)
+    const timestamp = new Date().toLocaleString('en-US', {
+      timeZone: 'Asia/Bangkok',
+      year: 'numeric',
+      month: '2-digit',
+      day: '2-digit',
+      hour: '2-digit',
+      minute: '2-digit',
+      second: '2-digit',
+      hour12: false
+    });
     
     // Default template if none provided
     const defaultTemplate = {
@@ -113,7 +123,10 @@ class TelegramNotifier {
         message += `💎 <b>Ticker:</b> ${ticker}\n`;
       }
       if (config.showTimestamp) {
-        message += `⏰ <b>Time:</b> ${timestamp}\n`;
+        message += `⏰ <b>Time:</b> ${timestamp} (Bangkok)\n`;
+      }
+      if (price && price > 0) {
+        message += `🔥 <b>Price:</b> $${price.toFixed(2)}\n`;
       }
       if (config.showStrategy) {
         message += `🧠 <b>Strategy:</b> ${strategy}\n`;

@@ -186,13 +186,18 @@ class StrategyEvaluator {
 
       // Send notifications
       const triggers = foundRules.map(rule => rule.trigger);
+      
+      // Get the most recent alert with price information for this ticker
+      const alertWithPrice = recentAlerts.find(alert => alert.ticker === ticker && alert.price && alert.price > 0);
+      
       const notificationData = {
         action,
         ticker,
         strategy: strategy.name,
         triggers,
         score,
-        isTest: isTest
+        isTest: isTest,
+        price: alertWithPrice ? alertWithPrice.price : null
       };
 
       // Send Telegram notification

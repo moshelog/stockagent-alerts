@@ -67,8 +67,18 @@ class DiscordNotifier {
    * @returns {string} Formatted message
    */
   formatMessage(data, template = {}) {
-    const { action, ticker, strategy, triggers, score, isTest } = data;
-    const timestamp = new Date().toLocaleString();
+    const { action, ticker, strategy, triggers, score, isTest, price } = data;
+    // Format timestamp in Bangkok timezone (UTC+7)
+    const timestamp = new Date().toLocaleString('en-US', {
+      timeZone: 'Asia/Bangkok',
+      year: 'numeric',
+      month: '2-digit',
+      day: '2-digit',
+      hour: '2-digit',
+      minute: '2-digit',
+      second: '2-digit',
+      hour12: false
+    });
     
     // Default template if none provided
     const defaultTemplate = {
@@ -117,7 +127,10 @@ class DiscordNotifier {
         message += `💎 **Ticker:** ${ticker}\n`;
       }
       if (config.showTimestamp) {
-        message += `⏰ **Time:** ${timestamp}\n`;
+        message += `⏰ **Time:** ${timestamp} (Bangkok)\n`;
+      }
+      if (price && price > 0) {
+        message += `🔥 **Price:** $${price.toFixed(2)}\n`;
       }
       if (config.showStrategy) {
         message += `🧠 **Strategy:** ${strategy}\n`;

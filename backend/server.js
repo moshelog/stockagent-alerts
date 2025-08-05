@@ -2027,7 +2027,8 @@ app.get('/test-webhook', asyncHandler(async (req, res) => {
             • Select from ${indicators.length} available indicators<br>
             • Choose appropriate timeframe and trigger<br>
             • Click "Send Alert" to test webhook<br>
-            • Verify alert appears in dashboard and database
+            • Verify alert appears in dashboard and database<br>
+            ${process.env.WEBHOOK_SECRET ? '<br><strong>🔐 Webhook authentication is enabled</strong>' : '<br><strong>⚠️ Warning: WEBHOOK_SECRET not configured - webhooks are unprotected!</strong>'}
         </div>
 
         <form id="webhookForm">
@@ -2128,7 +2129,11 @@ app.get('/test-webhook', asyncHandler(async (req, res) => {
             try {
                 // Format as text: TICKER|TIMEFRAME|INDICATOR|TRIGGER
                 const textPayload = data.ticker + '|' + data.timeframe + '|' + data.indicator + '|' + data.trigger;
-                const response = await fetch('/webhook', {
+                // Check if webhook secret is configured
+                const webhookSecret = '${process.env.WEBHOOK_SECRET || ''}';
+                const webhookUrl = webhookSecret ? '/webhook?secret=' + webhookSecret : '/webhook';
+                
+                const response = await fetch(webhookUrl, {
                     method: 'POST',
                     headers: {
                         'Content-Type': 'text/plain',

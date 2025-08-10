@@ -56,6 +56,10 @@ export interface Config {
   scoring: {
     timeWindowMinutes: number
   }
+  alertTimeframes: {
+    globalDefault: number // minutes
+    overrides: Record<string, number> // timeframe -> minutes
+  }
 }
 
 // Helper function to construct API URLs consistently
@@ -135,7 +139,11 @@ export function useConfig() {
         method: "POST",
         body: JSON.stringify({
           ui: newConfig.ui,
-          scoring: newConfig.scoring || { timeWindowMinutes: 60 }
+          scoring: newConfig.scoring || { timeWindowMinutes: 60 },
+          alertTimeframes: newConfig.alertTimeframes || {
+            globalDefault: 30,
+            overrides: {}
+          }
         })
       })
 

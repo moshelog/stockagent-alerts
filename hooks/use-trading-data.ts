@@ -3,6 +3,7 @@
 import { useState, useEffect } from "react"
 import { useConfig } from "./use-config"
 import { authenticatedFetch } from "@/utils/api"
+import { filterAlertsByTimeframe } from "@/utils/alertFiltering"
 
 export interface Alert {
   id: string
@@ -206,7 +207,10 @@ export function useTradingData(timeWindowMinutes: number = 60, alertConfig?: any
           metrics: { netPL: 0, winRate: 0, drawdown: 0 } // Real metrics would come from actions table
         }))
 
-        setAlerts(transformedAlerts)
+        // Apply timeframe filtering before setting alerts
+        const filteredAlerts = filterAlertsByTimeframe(transformedAlerts, config.alertTimeframes)
+        
+        setAlerts(filteredAlerts)
         setScore(currentScore)
         setStrategies(transformedStrategies)
         setLoading(false)

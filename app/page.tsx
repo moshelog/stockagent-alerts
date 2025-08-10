@@ -11,7 +11,7 @@ import { useStrategies } from "@/hooks/use-strategies"
 import { useTotalAlerts } from "@/hooks/use-total-alerts"
 import { useClearAlerts } from "@/hooks/use-clear-alerts"
 import { CompactLiveScoring } from "@/components/CompactLiveScoring"
-import { EnhancedAlertsTable } from "@/components/EnhancedAlertsTable"
+import { GroupedAlertsTable } from "@/components/GroupedAlertsTable"
 import { StrategyManagerPanel } from "@/components/StrategyManagerPanel"
 import AvailableAlertsPanel from "@/components/AvailableAlertsPanel"
 import MobileAlertsAccordion from "@/components/MobileAlertsAccordion"
@@ -597,7 +597,12 @@ export default function Dashboard() {
             {/* Top Left - Recent Alerts (Flexible height) */}
             {config.ui.showAlertsTable && (
               <div className="flex-1 min-h-[400px]">
-                <EnhancedAlertsTable alerts={alerts} onClearAlerts={handleClearAlerts} showWeights={config.ui.showWeights} />
+                <GroupedAlertsTable 
+                  alerts={alerts} 
+                  onClearAlerts={handleClearAlerts} 
+                  showWeights={config.ui.showWeights}
+                  alertTimeframes={config.alertTimeframes}
+                />
               </div>
             )}
 

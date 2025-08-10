@@ -136,5 +136,12 @@
     "showScoreMeter": true,
     "showStrategyPanel": true,
     "showWeights": true
+  },
+  "scoring": {
+    "timeWindowMinutes": 60
+  },
+  "alertTimeframes": {
+    "globalDefault": 30,
+    "overrides": {}
   }
 }

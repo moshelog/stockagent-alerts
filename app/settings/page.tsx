@@ -1016,6 +1016,236 @@ export default function SettingsPage() {
             </div>
           </CollapsiblePanel>
 
+          {/* Alert Timeframe Windows */}
+          <CollapsiblePanel title="Alert Timeframe Windows" icon={<SettingsIcon className="w-5 h-5 text-accent-neutral" />}>
+            <div className="space-y-6">
+              <div className="bg-blue-500/10 border border-blue-500/20 rounded-lg p-4">
+                <h4 className="text-sm font-semibold mb-2 text-blue-400">Timeframe Window Settings</h4>
+                <p className="text-xs" style={{ color: "#A3A9B8" }}>
+                  Configure how long alerts remain visible for each timeframe. Alerts older than the configured window will be automatically removed from the Recent Alerts panel.
+                </p>
+              </div>
+
+              {/* Global Default */}
+              <div className="space-y-4">
+                <div>
+                  <Label className="text-sm font-medium" style={{ color: "#E0E6ED" }}>
+                    Global Default (minutes)
+                  </Label>
+                  <div className="flex items-center gap-4 mt-2">
+                    <Input
+                      type="number"
+                      min="1"
+                      max="1440"
+                      value={config.alertTimeframes?.globalDefault || 30}
+                      onChange={(e) => {
+                        const value = parseInt(e.target.value) || 30;
+                        updateConfig({
+                          alertTimeframes: {
+                            globalDefault: value,
+                            overrides: config.alertTimeframes?.overrides || {}
+                          }
+                        });
+                      }}
+                      className="w-32 bg-background border-gray-700"
+                    />
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => {
+                        const globalValue = config.alertTimeframes?.globalDefault || 30;
+                        updateConfig({
+                          alertTimeframes: {
+                            globalDefault: globalValue,
+                            overrides: {
+                              '1m': globalValue,
+                              '5m': globalValue,
+                              '15m': globalValue,
+                              '1h': globalValue,
+                              '4h': globalValue,
+                              '1d': globalValue
+                            }
+                          }
+                        });
+                      }}
+                      className="bg-transparent border-accent-buy text-accent-buy hover:bg-accent-buy/10"
+                    >
+                      Apply to All
+                    </Button>
+                  </div>
+                  <p className="text-xs mt-1" style={{ color: "#A3A9B8" }}>
+                    Default window for all timeframes (1-1440 minutes)
+                  </p>
+                </div>
+
+                {/* Timeframe-specific overrides */}
+                <div>
+                  <Label className="text-sm font-medium mb-3 block" style={{ color: "#E0E6ED" }}>
+                    Timeframe Overrides
+                  </Label>
+                  <div className="overflow-x-auto">
+                    <table className="w-full">
+                      <thead>
+                        <tr className="border-b border-gray-700">
+                          <th className="text-left text-sm font-medium py-2 px-4" style={{ color: "#A3A9B8" }}>
+                            Timeframe
+                          </th>
+                          <th className="text-left text-sm font-medium py-2 px-4" style={{ color: "#A3A9B8" }}>
+                            Window (minutes)
+                          </th>
+                          <th className="text-left text-sm font-medium py-2 px-4" style={{ color: "#A3A9B8" }}>
+                            Actions
+                          </th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {['1m', '5m', '15m', '1h', '4h', '1d'].map((timeframe) => {
+                          const currentValue = config.alertTimeframes?.overrides?.[timeframe] || config.alertTimeframes?.globalDefault || 30;
+                          const isOverride = config.alertTimeframes?.overrides?.[timeframe] !== undefined;
+                          
+                          return (
+                            <tr key={timeframe} className="border-b border-gray-800 hover:bg-gray-800/30">
+                              <td className="py-2 px-4">
+                                <span className="bg-blue-900/30 px-2 py-1 rounded text-xs font-mono text-blue-300">
+                                  {timeframe}
+                                </span>
+                              </td>
+                              <td className="py-2 px-4">
+                                <Input
+                                  type="number"
+                                  min="1"
+                                  max="1440"
+                                  value={currentValue}
+                                  onChange={(e) => {
+                                    const value = parseInt(e.target.value) || 30;
+                                    const newOverrides = { ...(config.alertTimeframes?.overrides || {}) };
+                                    newOverrides[timeframe] = value;
+                                    updateConfig({
+                                      alertTimeframes: {
+                                        globalDefault: config.alertTimeframes?.globalDefault || 30,
+                                        overrides: newOverrides
+                                      }
+                                    });
+                                  }}
+                                  className={`w-24 text-sm ${
+                                    isOverride 
+                                      ? 'bg-accent-buy/10 border-accent-buy/50' 
+                                      : 'bg-background border-gray-700'
+                                  }`}
+                                />
+                              </td>
+                              <td className="py-2 px-4">
+                                {isOverride ? (
+                                  <Button
+                                    variant="outline"
+                                    size="sm"
+                                    onClick={() => {
+                                      const newOverrides = { ...(config.alertTimeframes?.overrides || {}) };
+                                      delete newOverrides[timeframe];
+                                      updateConfig({
+                                        alertTimeframes: {
+                                          globalDefault: config.alertTimeframes?.globalDefault || 30,
+                                          overrides: newOverrides
+                                        }
+                                      });
+                                    }}
+                                    className="text-xs bg-transparent border-amber-500/50 text-amber-400 hover:bg-amber-500/10"
+                                  >
+                                    Reset
+                                  </Button>
+                                ) : (
+                                  <span className="text-xs text-gray-500">Using global default</span>
+                                )}
+                              </td>
+                            </tr>
+                          );
+                        })}
+                      </tbody>
+                    </table>
+                  </div>
+                </div>
+
+                {/* Quick presets */}
+                <div className="border-t border-gray-700 pt-4">
+                  <Label className="text-sm font-medium mb-3 block" style={{ color: "#E0E6ED" }}>
+                    Quick Presets
+                  </Label>
+                  <div className="flex flex-wrap gap-2">
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => {
+                        updateConfig({
+                          alertTimeframes: {
+                            globalDefault: 15,
+                            overrides: {
+                              '1m': 5,
+                              '5m': 15,
+                              '15m': 30,
+                              '1h': 120,
+                              '4h': 480,
+                              '1d': 1440
+                            }
+                          }
+                        });
+                      }}
+                      className="bg-transparent border-accent-neutral text-accent-neutral hover:bg-accent-neutral/10"
+                    >
+                      Scalping (Short)
+                    </Button>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => {
+                        updateConfig({
+                          alertTimeframes: {
+                            globalDefault: 30,
+                            overrides: {}
+                          }
+                        });
+                      }}
+                      className="bg-transparent border-accent-neutral text-accent-neutral hover:bg-accent-neutral/10"
+                    >
+                      Default (30min)
+                    </Button>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => {
+                        updateConfig({
+                          alertTimeframes: {
+                            globalDefault: 60,
+                            overrides: {
+                              '1m': 30,
+                              '5m': 60,
+                              '15m': 120,
+                              '1h': 240,
+                              '4h': 960,
+                              '1d': 1440
+                            }
+                          }
+                        });
+                      }}
+                      className="bg-transparent border-accent-neutral text-accent-neutral hover:bg-accent-neutral/10"
+                    >
+                      Swing Trading (Long)
+                    </Button>
+                  </div>
+                  <p className="text-xs mt-2" style={{ color: "#A3A9B8" }}>
+                    Apply common timeframe window configurations for different trading styles
+                  </p>
+                </div>
+
+                {saving && (
+                  <div className="flex items-center gap-2 text-sm bg-blue-500/10 p-3 rounded-lg">
+                    <RefreshCw className="w-4 h-4 animate-spin text-blue-400" />
+                    <span className="text-blue-400">Saving timeframe settings...</span>
+                  </div>
+                )}
+              </div>
+            </div>
+          </CollapsiblePanel>
+
           {/* OpenAI API Key */}
           <CollapsiblePanel title="OpenAI Integration" icon={<Brain className="w-5 h-5 text-accent-neutral" />}>
             <div className="space-y-6">

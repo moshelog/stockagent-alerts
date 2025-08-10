@@ -171,11 +171,57 @@ export function GroupedAlertsTable({
     return 'neutral'
   }
 
-  // Get dot color for individual alert based on weight
+  // Get dot color for individual alert based on trigger text semantics
   const getAlertDotColor = (alert: Alert) => {
-    if (alert.weight > 0) return 'bg-green-400' // Bullish = Green
-    if (alert.weight < 0) return 'bg-red-400'   // Bearish = Red
-    return 'bg-orange-400'                      // Neutral = Orange
+    const trigger = alert.trigger.toLowerCase()
+    
+    // Bullish indicators (Green)
+    const bullishKeywords = [
+      'bullish', 'bull', 'buy', 'long', 'up', 'upward', 'uptrend',
+      'support', 'bounce', 'breakout', 'golden', 'cross up',
+      'oversold', 'discount', 'bottom', 'reversal up', 'synergy up',
+      'buy signal', 'bullish divergence', 'bullish cross',
+      'order block bullish', 'fvg bullish', 'break of structure up',
+      'liquidity grab up', 'premium to discount', 'bullish candle',
+      'hammer', 'doji bullish', 'engulfing bullish'
+    ]
+    
+    // Bearish indicators (Red)  
+    const bearishKeywords = [
+      'bearish', 'bear', 'sell', 'short', 'down', 'downward', 'downtrend',
+      'resistance', 'rejection', 'breakdown', 'death', 'cross down',
+      'overbought', 'premium', 'top', 'reversal down', 'synergy down',
+      'sell signal', 'bearish divergence', 'bearish cross',
+      'order block bearish', 'fvg bearish', 'break of structure down',
+      'liquidity grab down', 'discount to premium', 'bearish candle',
+      'shooting star', 'doji bearish', 'engulfing bearish'
+    ]
+    
+    // Neutral indicators (Orange)
+    const neutralKeywords = [
+      'neutral', 'equilibrium', 'sideways', 'ranging', 'consolidation',
+      'indecision', 'doji', 'spinning', 'inside bar', 'flat'
+    ]
+    
+    // Check for bullish signals
+    if (bullishKeywords.some(keyword => trigger.includes(keyword))) {
+      return 'bg-green-400' // Bullish = Green
+    }
+    
+    // Check for bearish signals  
+    if (bearishKeywords.some(keyword => trigger.includes(keyword))) {
+      return 'bg-red-400' // Bearish = Red
+    }
+    
+    // Check for neutral signals
+    if (neutralKeywords.some(keyword => trigger.includes(keyword))) {
+      return 'bg-orange-400' // Neutral = Orange
+    }
+    
+    // Fallback: use weight if no semantic match
+    if (alert.weight > 0) return 'bg-green-400'
+    if (alert.weight < 0) return 'bg-red-400'
+    return 'bg-orange-400'
   }
 
   const toggleGroup = (groupKey: string) => {

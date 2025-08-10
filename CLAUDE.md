@@ -173,3 +173,70 @@ interface Strategy {
 - `GET /api/health` - System health check
 
 **Strategy Evaluation Logic**: When alerts arrive via webhook, the backend automatically evaluates all enabled strategies by checking if required alert combinations exist within the strategy timeframe. Complete strategies trigger BUY/SELL actions based on threshold values.
+
+## Specialized Subagents
+
+The StockAgent platform includes specialized AI subagents for enhanced functionality and optimization:
+
+### Trading Strategy Optimizer (`/subagents/trading-strategy-optimizer.md`)
+- **Purpose**: Strategy analysis, optimization, and validation
+- **Capabilities**: Performance metrics analysis, risk assessment, backtesting, weight optimization
+- **Usage**: Strategy performance analysis, mathematical optimization, risk-adjusted returns
+- **Activation**: Automatic on strategy performance degradation, manual via optimization commands
+
+### Realtime Data Validator (`/subagents/realtime-data-validator.md`)
+- **Purpose**: Webhook validation, data integrity, real-time synchronization monitoring
+- **Capabilities**: Payload validation, duplicate detection, temporal validation, consistency checks
+- **Usage**: Quality gate for trading data, webhook processing pipeline validation
+- **Activation**: All webhook processing, data integrity validation requests
+
+### Supabase Database Architect (`/subagents/supabase-database-architect.md`)
+- **Purpose**: Database optimization, schema management, query performance tuning
+- **Capabilities**: Index optimization, partitioning, real-time features, RLS policies
+- **Usage**: Database performance optimization, schema design, query optimization
+- **Activation**: Database performance issues, schema modifications, optimization requests
+
+### Performance Monitor (`/subagents/performance-monitor.md`)
+- **Purpose**: Application performance analysis and optimization
+- **Capabilities**: Bundle analysis, API response times, real-time update latency, resource monitoring
+- **Usage**: Frontend optimization, backend performance tuning, real-time system monitoring
+- **Activation**: Performance issues, optimization requests, monitoring alerts
+
+### UI/UX Trading Specialist (`/subagents/ui-ux-trading-specialist.md`)
+- **Purpose**: Trading interface optimization and user experience enhancement
+- **Capabilities**: Financial data visualization, workflow optimization, accessibility compliance
+- **Usage**: Dashboard interface improvements, trader workflow optimization, UX analysis
+- **Activation**: Interface improvements, accessibility updates, user experience optimization
+
+### Alert System Debugger (`/subagents/alert-system-debugger.md`)
+- **Purpose**: Webhook integration debugging and alert pipeline troubleshooting
+- **Capabilities**: Connection testing, flow tracing, error detection, pipeline monitoring
+- **Usage**: Webhook debugging, alert flow analysis, integration troubleshooting
+- **Activation**: Webhook failures, data flow issues, integration problems
+
+### Subagent Integration
+
+**Activation Patterns**:
+- **Automatic**: Based on system conditions, error patterns, and performance metrics
+- **Manual**: Via specialized commands and explicit requests
+- **Context-Aware**: Smart activation based on task type and system state
+
+**Coordination**: Subagents work together for comprehensive system optimization, sharing insights and coordinating improvements across the platform.
+
+**Usage Examples**:
+```bash
+# Strategy optimization
+/optimize-strategy "nautilus-combo" --performance --risk-analysis
+
+# Database performance tuning  
+/analyze --focus database --optimize-queries
+
+# UI/UX improvements
+/improve --focus interface --accessibility --trading-workflows
+
+# Webhook debugging
+/troubleshoot webhook --trace-flow --connectivity-test
+
+# Performance monitoring
+/monitor --performance --real-time --alerts
+```

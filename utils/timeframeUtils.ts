@@ -3,12 +3,21 @@
  */
 
 /**
- * Normalize timeframe strings: remove spaces and convert to uppercase
- * Examples: "5 m" → "5M", "1 h" → "1H"
+ * Normalize timeframe strings: remove spaces, convert to uppercase, and ensure unit letter
+ * Examples: "5 m" → "5M", "1 h" → "1H", "5" → "5M", "15" → "15M"
  */
 export function normalizeTimeframe(timeframe: string): string {
   if (!timeframe) return ''
-  return timeframe.replace(/\s+/g, '').toUpperCase()
+  
+  // Remove spaces and convert to uppercase
+  let normalized = timeframe.replace(/\s+/g, '').toUpperCase()
+  
+  // If it's just a number without a unit letter, assume minutes
+  if (/^\d+$/.test(normalized)) {
+    normalized += 'M'
+  }
+  
+  return normalized
 }
 
 /**

@@ -4,7 +4,7 @@ import { motion, AnimatePresence } from "framer-motion"
 import { TrendingUp, TrendingDown, Trash2, ChevronUp, ChevronDown, ChevronRight, Clock } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { useState, useMemo, useEffect } from "react"
-import { getExpiringAlerts, getTimeUntilExpiry } from "@/utils/alertFiltering"
+import { getExpiringAlerts, getTimeUntilExpiry, groupAlertsByTickerAndTimeframe } from "@/utils/alertFiltering"
 
 interface Alert {
   id: string
@@ -83,52 +83,15 @@ export function GroupedAlertsTable({
     })
   }, [alerts, alertTimeframes])
 
-  // Group alerts by ticker and timeframe
+  // Group alerts by ticker and timeframe using the utility function
   const groupedAlerts = useMemo(() => {
-    const groups: Record<string, AlertGroup> = {}
+    const groups = groupAlertsByTickerAndTimeframe(validAlerts)
     
-    validAlerts.forEach(alert => {
-      const key = `${alert.ticker}-${alert.timeframe}`
-      
-      if (!groups[key]) {
-        groups[key] = {
-          key,
-          ticker: alert.ticker,
-          timeframe: alert.timeframe,
-          alerts: [],
-          isExpanded: expandedGroups.has(key)
-        }
-      }
-      
-      groups[key].alerts.push(alert)
-    })
-
-    // Sort alerts within each group
-    Object.values(groups).forEach(group => {
-      group.alerts.sort((a, b) => {
-        const aTime = new Date(a.timestamp || a.time).getTime()
-        const bTime = new Date(b.timestamp || b.time).getTime()
-        return bTime - aTime // Newest first
-      })
-    })
-
-    // Sort groups alphabetically by ticker, then by timeframe
-    return Object.values(groups).sort((a, b) => {
-      if (a.ticker !== b.ticker) {
-        return a.ticker.localeCompare(b.ticker)
-      }
-      
-      // Sort timeframes in logical order: 1m, 5m, 15m, 1h, 4h, 1d
-      const timeframeOrder = ['1m', '5m', '15m', '1h', '4h', '1d']
-      const aIndex = timeframeOrder.indexOf(a.timeframe)
-      const bIndex = timeframeOrder.indexOf(b.timeframe)
-      
-      if (aIndex !== -1 && bIndex !== -1) {
-        return aIndex - bIndex
-      }
-      
-      return a.timeframe.localeCompare(b.timeframe)
-    })
+    // Apply expansion state to the groups
+    return groups.map(group => ({
+      ...group,
+      isExpanded: expandedGroups.has(group.key)
+    }))
   }, [validAlerts, expandedGroups])
 
   // Map display names back to webhook names

@@ -1,7 +1,7 @@
 "use client"
 
 import { motion, AnimatePresence } from "framer-motion"
-import { TrendingUp, TrendingDown, Trash2, ChevronUp, ChevronDown, ChevronRight, Clock, GripVertical } from "lucide-react"
+import { TrendingUp, TrendingDown, Trash2, ChevronUp, ChevronDown, ChevronRight, Clock, GripVertical, List, Grid3X3 } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { useState, useMemo, useEffect } from "react"
 import { getExpiringAlerts, getTimeUntilExpiry, groupAlertsByTicker } from "@/utils/alertFiltering"
@@ -55,6 +55,7 @@ export function GroupedAlertsTable({
   const [groupOrder, setGroupOrder] = useState<string[]>([])
   const [draggedGroup, setDraggedGroup] = useState<string | null>(null)
   const [dragOverGroup, setDragOverGroup] = useState<string | null>(null)
+  const [viewMode, setViewMode] = useState<'list' | 'card'>('list')
 
   // Update expiring alerts every second
   useEffect(() => {
@@ -86,7 +87,7 @@ export function GroupedAlertsTable({
     })
   }, [alerts, alertTimeframes])
 
-  // Load group order from localStorage on mount
+  // Load group order and view mode from localStorage on mount
   useEffect(() => {
     const savedOrder = localStorage.getItem('alerts-group-order')
     if (savedOrder) {
@@ -96,12 +97,24 @@ export function GroupedAlertsTable({
         console.error('Failed to parse saved group order:', error)
       }
     }
+    
+    const savedViewMode = localStorage.getItem('alerts-view-mode') as 'list' | 'card'
+    if (savedViewMode && (savedViewMode === 'list' || savedViewMode === 'card')) {
+      setViewMode(savedViewMode)
+    }
   }, [])
 
   // Save group order to localStorage
   const saveGroupOrder = (newOrder: string[]) => {
     setGroupOrder(newOrder)
     localStorage.setItem('alerts-group-order', JSON.stringify(newOrder))
+  }
+
+  // Toggle view mode and save to localStorage
+  const toggleViewMode = () => {
+    const newMode = viewMode === 'list' ? 'card' : 'list'
+    setViewMode(newMode)
+    localStorage.setItem('alerts-view-mode', newMode)
   }
 
   // Group alerts by ticker only using the new utility function
@@ -144,6 +157,16 @@ export function GroupedAlertsTable({
       'Market Waves Pro™': 'Wave'
     }
     return reverseMap[indicatorName] || indicatorName
+  }
+
+  // Analyze alert sentiment for card background colors
+  const getGroupSentiment = (alerts: Alert[]) => {
+    const totalWeight = alerts.reduce((sum, alert) => sum + alert.weight, 0)
+    const avgWeight = totalWeight / alerts.length
+    
+    if (avgWeight > 0.5) return 'bullish'
+    if (avgWeight < -0.5) return 'bearish'
+    return 'neutral'
   }
 
   const toggleGroup = (groupKey: string) => {
@@ -270,7 +293,23 @@ export function GroupedAlertsTable({
             Recent Alerts ({validAlerts.length})
           </h3>
           <div className="flex items-center gap-2">
-            {groupedAlerts.length > 0 && (
+            {/* View Mode Toggle */}
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={toggleViewMode}
+              className="bg-transparent border-gray-500/30 text-gray-400 hover:bg-gray-500/10"
+              title={`Switch to ${viewMode === 'list' ? 'Card' : 'List'} View`}
+            >
+              {viewMode === 'list' ? (
+                <><Grid3X3 className="w-4 h-4 mr-2" />Card</>
+              ) : (
+                <><List className="w-4 h-4 mr-2" />List</>
+              )}
+            </Button>
+            
+            {/* List View Controls */}
+            {viewMode === 'list' && groupedAlerts.length > 0 && (
               <>
                 <Button
                   variant="outline"
@@ -316,7 +355,134 @@ export function GroupedAlertsTable({
               Adjust timeframe window settings to see older alerts.
             </p>
           </div>
+        ) : viewMode === 'card' ? (
+          /* Card View */
+          <div className="p-4">
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
+              {groupedAlerts.map((group, groupIndex) => {
+                const sentiment = getGroupSentiment(group.alerts)
+                const latestAlerts = group.alerts.slice(0, 4) // Show top 4 alerts
+                const timeframes = [...new Set(group.alerts.map(alert => normalizeTimeframe(alert.timeframe)))]
+                
+                return (
+                  <motion.div
+                    key={group.key}
+                    className={`rounded-xl p-4 border transition-all duration-200 ${
+                      sentiment === 'bullish' 
+                        ? 'bg-green-500/10 border-green-500/30 hover:bg-green-500/15' 
+                        : sentiment === 'bearish'
+                        ? 'bg-red-500/10 border-red-500/30 hover:bg-red-500/15'
+                        : 'bg-gray-800/30 border-gray-700/50 hover:bg-gray-800/50'
+                    }`}
+                    initial={{ opacity: 0, y: 20 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    transition={{ duration: 0.3, delay: groupIndex * 0.1 }}
+                  >
+                    {/* Card Header */}
+                    <div className="flex items-center justify-between mb-3">
+                      <div className="flex items-center gap-2">
+                        <span className="font-bold text-lg" style={{ color: "#E0E6ED" }}>
+                          {group.ticker}
+                        </span>
+                        <span 
+                          className={`text-xs px-2 py-1 rounded-full ${
+                            sentiment === 'bullish' 
+                              ? 'bg-green-500/20 text-green-400' 
+                              : sentiment === 'bearish'
+                              ? 'bg-red-500/20 text-red-400'
+                              : 'bg-gray-500/20 text-gray-400'
+                          }`}
+                        >
+                          {group.alerts.length}
+                        </span>
+                      </div>
+                      
+                      {/* Timeframe indicators */}
+                      <div className="flex items-center gap-1">
+                        {timeframes.slice(0, 3).map((tf, i) => (
+                          <span 
+                            key={i}
+                            className="text-xs px-2 py-1 rounded bg-gray-700/50 text-gray-300"
+                          >
+                            {tf}
+                          </span>
+                        ))}
+                        {timeframes.length > 3 && (
+                          <span className="text-xs text-gray-400">+{timeframes.length - 3}</span>
+                        )}
+                      </div>
+                    </div>
+                    
+                    {/* Latest Alerts */}
+                    <div className="space-y-2">
+                      {latestAlerts.map((alert, alertIndex) => {
+                        const isExpiring = expiringAlerts.has(alert.id)
+                        return (
+                          <div 
+                            key={alert.id}
+                            className={`flex items-center justify-between py-1 px-2 rounded text-xs transition-opacity ${
+                              isExpiring ? 'opacity-60' : ''
+                            } ${
+                              alert.weight > 0 ? 'bg-green-500/10' : alert.weight < 0 ? 'bg-red-500/10' : 'bg-gray-500/10'
+                            }`}
+                          >
+                            <div className="flex items-center gap-2 flex-1 min-w-0">
+                              <span className="font-mono text-gray-400 shrink-0">
+                                {alert.time.split(' ')[0]} {/* Show only time part */}
+                              </span>
+                              <span className="text-gray-300 truncate">
+                                {getWebhookIndicatorName(alert.indicator)}
+                              </span>
+                              <span className="text-gray-400 truncate">
+                                {alert.trigger}
+                              </span>
+                            </div>
+                            
+                            <div className="flex items-center gap-1 shrink-0">
+                              {alert.weight > 0 ? (
+                                <TrendingUp className="w-3 h-3 text-green-400" />
+                              ) : (
+                                <TrendingDown className="w-3 h-3 text-red-400" />
+                              )}
+                              <span className={`font-bold ${alert.weight > 0 ? 'text-green-400' : 'text-red-400'}`}>
+                                {alert.weight > 0 ? '+' : ''}{alert.weight.toFixed(1)}
+                              </span>
+                            </div>
+                          </div>
+                        )
+                      })}
+                      
+                      {group.alerts.length > 4 && (
+                        <div className="text-center pt-1">
+                          <span className="text-xs text-gray-500">
+                            +{group.alerts.length - 4} more alerts
+                          </span>
+                        </div>
+                      )}
+                    </div>
+                    
+                    {/* Card Footer */}
+                    <div className="flex items-center justify-between mt-3 pt-2 border-t border-gray-700/30">
+                      <span className="text-xs text-gray-400">
+                        Latest: {group.alerts[0]?.time}
+                      </span>
+                      {showWeights && (
+                        <span className={`text-xs font-bold ${
+                          group.alerts.reduce((sum, alert) => sum + alert.weight, 0) > 0 
+                            ? 'text-green-400' 
+                            : 'text-red-400'
+                        }`}>
+                          Total: {group.alerts.reduce((sum, alert) => sum + alert.weight, 0).toFixed(1)}
+                        </span>
+                      )}
+                    </div>
+                  </motion.div>
+                )
+              })}
+            </div>
+          </div>
         ) : (
+          /* List View */
           <div className="space-y-1">
             {groupedAlerts.map((group, groupIndex) => (
               <div key={group.key}>

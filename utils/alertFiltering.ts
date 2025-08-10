@@ -134,7 +134,8 @@ export function groupAlertsByTickerAndTimeframe(alerts: Alert[]): AlertGroup[] {
 
 /**
  * Filter alerts to keep only the latest occurrence of each unique alert
- * Unique alerts are identified by: ticker + timeframe + indicator + trigger
+ * For HTF and RSI indicators: ticker + timeframe + indicator (ignore trigger)
+ * For other indicators: ticker + timeframe + indicator + trigger
  */
 function filterLatestAlerts(alerts: Alert[]): Alert[] {
   const { normalizeTimeframe } = require('./timeframeUtils')
@@ -143,7 +144,13 @@ function filterLatestAlerts(alerts: Alert[]): Alert[] {
   alerts.forEach(alert => {
     // Create unique key for alert combination
     const normalizedTimeframe = normalizeTimeframe(alert.timeframe)
-    const uniqueKey = `${alert.ticker}-${normalizedTimeframe}-${alert.indicator}-${alert.trigger}`
+    
+    // For HTF and RSI indicators, ignore the trigger (keep only latest regardless of trigger)
+    const isHTForRSI = alert.trigger.toLowerCase().includes('htf') || alert.trigger.toLowerCase().includes('rsi')
+    
+    const uniqueKey = isHTForRSI 
+      ? `${alert.ticker}-${normalizedTimeframe}-${alert.indicator}`
+      : `${alert.ticker}-${normalizedTimeframe}-${alert.indicator}-${alert.trigger}`
     
     const existing = latestAlerts[uniqueKey]
     if (!existing) {

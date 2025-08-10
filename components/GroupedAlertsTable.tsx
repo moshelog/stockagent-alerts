@@ -4,7 +4,8 @@ import { motion, AnimatePresence } from "framer-motion"
 import { TrendingUp, TrendingDown, Trash2, ChevronUp, ChevronDown, ChevronRight, Clock } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { useState, useMemo, useEffect } from "react"
-import { getExpiringAlerts, getTimeUntilExpiry, groupAlertsByTickerAndTimeframe } from "@/utils/alertFiltering"
+import { getExpiringAlerts, getTimeUntilExpiry, groupAlertsByTicker } from "@/utils/alertFiltering"
+import { normalizeTimeframe } from "@/utils/timeframeUtils"
 
 interface Alert {
   id: string
@@ -32,7 +33,6 @@ interface GroupedAlertsTableProps {
 interface AlertGroup {
   key: string
   ticker: string
-  timeframe: string
   alerts: Alert[]
   isExpanded: boolean
 }
@@ -83,9 +83,9 @@ export function GroupedAlertsTable({
     })
   }, [alerts, alertTimeframes])
 
-  // Group alerts by ticker and timeframe using the utility function
+  // Group alerts by ticker only using the new utility function
   const groupedAlerts = useMemo(() => {
-    const groups = groupAlertsByTickerAndTimeframe(validAlerts)
+    const groups = groupAlertsByTicker(validAlerts)
     
     // Apply expansion state to the groups
     return groups.map(group => ({
@@ -247,9 +247,6 @@ export function GroupedAlertsTable({
                         <span className="font-bold text-lg" style={{ color: "#E0E6ED" }}>
                           {group.ticker}
                         </span>
-                        <span className="bg-blue-900/30 px-2 py-1 rounded text-xs font-mono text-blue-300">
-                          [{group.timeframe}]
-                        </span>
                         <span className="text-sm" style={{ color: "#A3A9B8" }}>
                           ({group.alerts.length})
                         </span>
@@ -298,6 +295,9 @@ export function GroupedAlertsTable({
                                 Time
                               </th>
                               <th className="px-4 py-2 text-left text-xs font-medium" style={{ color: "#A3A9B8" }}>
+                                Timeframe
+                              </th>
+                              <th className="px-4 py-2 text-left text-xs font-medium" style={{ color: "#A3A9B8" }}>
                                 Price
                               </th>
                               <th className="px-4 py-2 text-left text-xs font-medium" style={{ color: "#A3A9B8" }}>
@@ -340,6 +340,9 @@ export function GroupedAlertsTable({
                                       </div>
                                     )}
                                   </div>
+                                </td>
+                                <td className="px-4 py-2 text-xs font-mono" style={{ color: "#A3A9B8" }}>
+                                  {normalizeTimeframe(alert.timeframe)}
                                 </td>
                                 <td className="px-4 py-2 text-xs" style={{ color: "#A3A9B8" }}>
                                   {alert.price ? `$${alert.price.toLocaleString()}` : '—'}

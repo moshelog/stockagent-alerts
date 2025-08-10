@@ -27,11 +27,15 @@ export function filterAlertsByTimeframe(
     return alerts
   }
 
+  const { normalizeTimeframe } = require('./timeframeUtils')
   const now = new Date()
   
   return alerts.filter(alert => {
+    // Normalize timeframe for consistent lookup
+    const normalizedTimeframe = normalizeTimeframe(alert.timeframe)
+    
     // Get the timeframe window in minutes
-    const timeframeWindow = alertTimeframes.overrides[alert.timeframe] || alertTimeframes.globalDefault
+    const timeframeWindow = alertTimeframes.overrides[normalizedTimeframe] || alertTimeframes.globalDefault
     const windowMs = timeframeWindow * 60 * 1000 // Convert to milliseconds
     
     // Parse the alert timestamp
@@ -56,11 +60,13 @@ export function getExpiringAlerts(
     return []
   }
 
+  const { normalizeTimeframe } = require('./timeframeUtils')
   const now = new Date()
   const fadeWindowMs = 30 * 1000 // 30 seconds before expiry
   
   return alerts.filter(alert => {
-    const timeframeWindow = alertTimeframes.overrides[alert.timeframe] || alertTimeframes.globalDefault
+    const normalizedTimeframe = normalizeTimeframe(alert.timeframe)
+    const timeframeWindow = alertTimeframes.overrides[normalizedTimeframe] || alertTimeframes.globalDefault
     const windowMs = timeframeWindow * 60 * 1000
     const alertTime = new Date(alert.timestamp || alert.time)
     const timeDiff = now.getTime() - alertTime.getTime()
@@ -127,6 +133,55 @@ export function groupAlertsByTickerAndTimeframe(alerts: Alert[]): AlertGroup[] {
 }
 
 /**
+ * Group alerts by ticker only (new function for ticker-only grouping)
+ */
+export interface TickerGroup {
+  key: string
+  ticker: string
+  alerts: Alert[]
+}
+
+export function groupAlertsByTicker(alerts: Alert[]): TickerGroup[] {
+  const { normalizeTimeframe, getTimeframeSortOrder } = require('./timeframeUtils')
+  const groups: Record<string, TickerGroup> = {}
+  
+  alerts.forEach(alert => {
+    const key = alert.ticker
+    
+    if (!groups[key]) {
+      groups[key] = {
+        key,
+        ticker: alert.ticker,
+        alerts: []
+      }
+    }
+    
+    groups[key].alerts.push(alert)
+  })
+
+  // Sort alerts within each group by timeframe, then by timestamp
+  Object.values(groups).forEach(group => {
+    group.alerts.sort((a, b) => {
+      // First sort by timeframe (ascending)
+      const aTimeframeOrder = getTimeframeSortOrder(a.timeframe)
+      const bTimeframeOrder = getTimeframeSortOrder(b.timeframe)
+      
+      if (aTimeframeOrder !== bTimeframeOrder) {
+        return aTimeframeOrder - bTimeframeOrder
+      }
+      
+      // Then sort by timestamp (newest first within same timeframe)
+      const aTime = new Date(a.timestamp || a.time).getTime()
+      const bTime = new Date(b.timestamp || b.time).getTime()
+      return bTime - aTime
+    })
+  })
+
+  // Sort groups alphabetically by ticker
+  return Object.values(groups).sort((a, b) => a.ticker.localeCompare(b.ticker))
+}
+
+/**
  * Get human-readable time remaining for an alert before it expires
  */
 export function getTimeUntilExpiry(
@@ -137,7 +192,9 @@ export function getTimeUntilExpiry(
     return 'Unknown'
   }
 
-  const timeframeWindow = alertTimeframes.overrides[alert.timeframe] || alertTimeframes.globalDefault
+  const { normalizeTimeframe } = require('./timeframeUtils')
+  const normalizedTimeframe = normalizeTimeframe(alert.timeframe)
+  const timeframeWindow = alertTimeframes.overrides[normalizedTimeframe] || alertTimeframes.globalDefault
   const windowMs = timeframeWindow * 60 * 1000
   const alertTime = new Date(alert.timestamp || alert.time)
   const now = new Date()

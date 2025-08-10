@@ -135,7 +135,8 @@
     "showAlertsTable": true,
     "showScoreMeter": true,
     "showStrategyPanel": true,
-    "showWeights": true
+    "showWeights": true,
+    "showVisualColors": false
   },
   "scoring": {
     "timeWindowMinutes": 60

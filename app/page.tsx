@@ -601,6 +601,7 @@ export default function Dashboard() {
                   alerts={alerts} 
                   onClearAlerts={handleClearAlerts} 
                   showWeights={config.ui.showWeights}
+                  showVisualColors={config.ui.showVisualColors}
                   alertTimeframes={config.alertTimeframes}
                 />
               </div>

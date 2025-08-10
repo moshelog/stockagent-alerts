@@ -24,6 +24,7 @@ interface GroupedAlertsTableProps {
   loading?: boolean
   onClearAlerts?: () => void
   showWeights?: boolean
+  showVisualColors?: boolean
   alertTimeframes?: {
     globalDefault: number
     overrides: Record<string, number>
@@ -45,6 +46,7 @@ export function GroupedAlertsTable({
   loading, 
   onClearAlerts, 
   showWeights = true,
+  showVisualColors = false,
   alertTimeframes
 }: GroupedAlertsTableProps) {
   const [isClearing, setIsClearing] = useState(false)
@@ -167,6 +169,13 @@ export function GroupedAlertsTable({
     if (avgWeight > 0.5) return 'bullish'
     if (avgWeight < -0.5) return 'bearish'
     return 'neutral'
+  }
+
+  // Get dot color for individual alert based on weight
+  const getAlertDotColor = (alert: Alert) => {
+    if (alert.weight > 0) return 'bg-green-400' // Bullish = Green
+    if (alert.weight < 0) return 'bg-red-400'   // Bearish = Red
+    return 'bg-orange-400'                      // Neutral = Orange
   }
 
   const toggleGroup = (groupKey: string) => {
@@ -429,6 +438,10 @@ export function GroupedAlertsTable({
                             }`}
                           >
                             <div className="flex items-center gap-2 flex-1 min-w-0">
+                              {/* Visual Color Dot */}
+                              {showVisualColors && (
+                                <div className={`w-2 h-2 rounded-full shrink-0 ${getAlertDotColor(alert)}`} />
+                              )}
                               <span className="font-mono text-gray-400 shrink-0">
                                 {alert.time.split(' ')[0]} {/* Show only time part */}
                               </span>
@@ -635,7 +648,13 @@ export function GroupedAlertsTable({
                                   {getWebhookIndicatorName(alert.indicator)}
                                 </td>
                                 <td className="px-4 py-2 text-xs" style={{ color: "#A3A9B8" }}>
-                                  {alert.trigger}
+                                  <div className="flex items-center gap-2">
+                                    {/* Visual Color Dot */}
+                                    {showVisualColors && (
+                                      <div className={`w-2 h-2 rounded-full shrink-0 ${getAlertDotColor(alert)}`} />
+                                    )}
+                                    {alert.trigger}
+                                  </div>
                                 </td>
                                 {showWeights && (
                                   <td className="px-4 py-2 text-xs text-right">

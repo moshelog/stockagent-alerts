@@ -1013,6 +1013,46 @@ export default function SettingsPage() {
                   )}
                 </div>
               </div>
+              
+              {/* Visual Colors Toggle */}
+              <div className="flex items-center justify-between">
+                <div>
+                  <Label className="text-sm font-medium" style={{ color: "#E0E6ED" }}>
+                    Stocks Visual Colors
+                  </Label>
+                  <p className="text-xs mt-1" style={{ color: "#A3A9B8" }}>
+                    Display colored dots next to alerts (Green=Bullish, Red=Bearish, Orange=Neutral)
+                  </p>
+                </div>
+                <div className="flex items-center gap-2">
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => {
+                      const newShowVisualColors = !config.ui.showVisualColors;
+                      updateConfig({
+                        ui: {
+                          ...config.ui,
+                          showVisualColors: newShowVisualColors
+                        }
+                      });
+                    }}
+                    className={`w-16 h-8 ${
+                      config.ui.showVisualColors 
+                        ? 'bg-accent-buy text-white border-accent-buy' 
+                        : 'bg-gray-700 text-gray-300 border-gray-600'
+                    }`}
+                  >
+                    {config.ui.showVisualColors ? 'ON' : 'OFF'}
+                  </Button>
+                  {saving && (
+                    <div className="flex items-center gap-1 text-xs" style={{ color: "#A3A9B8" }}>
+                      <RefreshCw className="w-3 h-3 animate-spin" />
+                      <span>Saving...</span>
+                    </div>
+                  )}
+                </div>
+              </div>
             </div>
           </CollapsiblePanel>
 

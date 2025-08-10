@@ -52,6 +52,7 @@ export interface Config {
     showScoreMeter: boolean
     showStrategyPanel: boolean
     showWeights: boolean
+    showVisualColors: boolean
   }
   scoring: {
     timeWindowMinutes: number

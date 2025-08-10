@@ -358,9 +358,9 @@ export function GroupedAlertsTable({
         ) : viewMode === 'card' ? (
           /* Card View */
           <div className="p-4">
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
               {groupedAlerts.map((group, groupIndex) => {
-                const sentiment = getGroupSentiment(group.alerts)
+                const sentiment = showWeights ? getGroupSentiment(group.alerts) : 'neutral'
                 const latestAlerts = group.alerts.slice(0, 4) // Show top 4 alerts
                 const timeframes = [...new Set(group.alerts.map(alert => normalizeTimeframe(alert.timeframe)))]
                 
@@ -423,7 +423,9 @@ export function GroupedAlertsTable({
                             className={`flex items-center justify-between py-1 px-2 rounded text-xs transition-opacity ${
                               isExpiring ? 'opacity-60' : ''
                             } ${
-                              alert.weight > 0 ? 'bg-green-500/10' : alert.weight < 0 ? 'bg-red-500/10' : 'bg-gray-500/10'
+                              showWeights 
+                                ? (alert.weight > 0 ? 'bg-green-500/10' : alert.weight < 0 ? 'bg-red-500/10' : 'bg-gray-500/10')
+                                : 'bg-gray-500/10'
                             }`}
                           >
                             <div className="flex items-center gap-2 flex-1 min-w-0">
@@ -438,16 +440,18 @@ export function GroupedAlertsTable({
                               </span>
                             </div>
                             
-                            <div className="flex items-center gap-1 shrink-0">
-                              {alert.weight > 0 ? (
-                                <TrendingUp className="w-3 h-3 text-green-400" />
-                              ) : (
-                                <TrendingDown className="w-3 h-3 text-red-400" />
-                              )}
-                              <span className={`font-bold ${alert.weight > 0 ? 'text-green-400' : 'text-red-400'}`}>
-                                {alert.weight > 0 ? '+' : ''}{alert.weight.toFixed(1)}
-                              </span>
-                            </div>
+                            {showWeights && (
+                              <div className="flex items-center gap-1 shrink-0">
+                                {alert.weight > 0 ? (
+                                  <TrendingUp className="w-3 h-3 text-green-400" />
+                                ) : (
+                                  <TrendingDown className="w-3 h-3 text-red-400" />
+                                )}
+                                <span className={`font-bold ${alert.weight > 0 ? 'text-green-400' : 'text-red-400'}`}>
+                                  {alert.weight > 0 ? '+' : ''}{alert.weight.toFixed(1)}
+                                </span>
+                              </div>
+                            )}
                           </div>
                         )
                       })}

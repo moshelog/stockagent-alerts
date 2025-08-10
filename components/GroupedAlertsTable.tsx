@@ -1,7 +1,7 @@
 "use client"
 
 import { motion, AnimatePresence } from "framer-motion"
-import { TrendingUp, TrendingDown, Trash2, ChevronUp, ChevronDown, ChevronRight, Clock } from "lucide-react"
+import { TrendingUp, TrendingDown, Trash2, ChevronUp, ChevronDown, ChevronRight, Clock, GripVertical } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { useState, useMemo, useEffect } from "react"
 import { getExpiringAlerts, getTimeUntilExpiry, groupAlertsByTicker } from "@/utils/alertFiltering"
@@ -52,6 +52,9 @@ export function GroupedAlertsTable({
   const [sortDirection, setSortDirection] = useState<SortDirection>('desc')
   const [expandedGroups, setExpandedGroups] = useState<Set<string>>(new Set())
   const [expiringAlerts, setExpiringAlerts] = useState<Set<string>>(new Set())
+  const [groupOrder, setGroupOrder] = useState<string[]>([])
+  const [draggedGroup, setDraggedGroup] = useState<string | null>(null)
+  const [dragOverGroup, setDragOverGroup] = useState<string | null>(null)
 
   // Update expiring alerts every second
   useEffect(() => {
@@ -83,16 +86,54 @@ export function GroupedAlertsTable({
     })
   }, [alerts, alertTimeframes])
 
+  // Load group order from localStorage on mount
+  useEffect(() => {
+    const savedOrder = localStorage.getItem('alerts-group-order')
+    if (savedOrder) {
+      try {
+        setGroupOrder(JSON.parse(savedOrder))
+      } catch (error) {
+        console.error('Failed to parse saved group order:', error)
+      }
+    }
+  }, [])
+
+  // Save group order to localStorage
+  const saveGroupOrder = (newOrder: string[]) => {
+    setGroupOrder(newOrder)
+    localStorage.setItem('alerts-group-order', JSON.stringify(newOrder))
+  }
+
   // Group alerts by ticker only using the new utility function
   const groupedAlerts = useMemo(() => {
     const groups = groupAlertsByTicker(validAlerts)
     
+    // Apply custom ordering if available
+    const orderedGroups = groupOrder.length > 0 
+      ? [...groups].sort((a, b) => {
+          const aIndex = groupOrder.indexOf(a.key)
+          const bIndex = groupOrder.indexOf(b.key)
+          
+          // If both are in the order array, sort by their position
+          if (aIndex !== -1 && bIndex !== -1) {
+            return aIndex - bIndex
+          }
+          
+          // If only one is in the order array, it comes first
+          if (aIndex !== -1) return -1
+          if (bIndex !== -1) return 1
+          
+          // If neither is in the order array, sort alphabetically
+          return a.ticker.localeCompare(b.ticker)
+        })
+      : groups
+    
     // Apply expansion state to the groups
-    return groups.map(group => ({
+    return orderedGroups.map(group => ({
       ...group,
       isExpanded: expandedGroups.has(group.key)
     }))
-  }, [validAlerts, expandedGroups])
+  }, [validAlerts, expandedGroups, groupOrder])
 
   // Map display names back to webhook names
   const getWebhookIndicatorName = (indicatorName: string) => {
@@ -121,6 +162,58 @@ export function GroupedAlertsTable({
 
   const collapseAllGroups = () => {
     setExpandedGroups(new Set())
+  }
+
+  // Drag and drop handlers
+  const handleDragStart = (e: React.DragEvent, groupKey: string) => {
+    setDraggedGroup(groupKey)
+    e.dataTransfer.effectAllowed = 'move'
+    e.dataTransfer.setData('text/plain', groupKey)
+  }
+
+  const handleDragOver = (e: React.DragEvent, groupKey: string) => {
+    e.preventDefault()
+    e.dataTransfer.dropEffect = 'move'
+    setDragOverGroup(groupKey)
+  }
+
+  const handleDragLeave = () => {
+    setDragOverGroup(null)
+  }
+
+  const handleDrop = (e: React.DragEvent, targetGroupKey: string) => {
+    e.preventDefault()
+    const sourceGroupKey = draggedGroup
+    
+    if (!sourceGroupKey || sourceGroupKey === targetGroupKey) {
+      setDraggedGroup(null)
+      setDragOverGroup(null)
+      return
+    }
+    
+    // Get current group keys in display order
+    const currentKeys = groupedAlerts.map(group => group.key)
+    
+    // Find indices
+    const sourceIndex = currentKeys.indexOf(sourceGroupKey)
+    const targetIndex = currentKeys.indexOf(targetGroupKey)
+    
+    if (sourceIndex === -1 || targetIndex === -1) {
+      setDraggedGroup(null)
+      setDragOverGroup(null)
+      return
+    }
+    
+    // Create new order array
+    const newOrder = [...currentKeys]
+    const [movedItem] = newOrder.splice(sourceIndex, 1)
+    newOrder.splice(targetIndex, 0, movedItem)
+    
+    // Save the new order
+    saveGroupOrder(newOrder)
+    
+    setDraggedGroup(null)
+    setDragOverGroup(null)
   }
 
   const handleSort = (field: SortField, groupKey: string) => {
@@ -229,21 +322,42 @@ export function GroupedAlertsTable({
               <div key={group.key}>
                 {/* Group Header */}
                 <motion.div
-                  className="bg-gray-800/30 hover:bg-gray-800/50 transition-colors cursor-pointer border-b border-gray-700/50"
-                  onClick={() => toggleGroup(group.key)}
+                  className={`bg-gray-800/30 hover:bg-gray-800/50 transition-colors border-b border-gray-700/50 ${
+                    draggedGroup === group.key ? 'opacity-50' : ''
+                  } ${
+                    dragOverGroup === group.key ? 'bg-blue-500/20 border-blue-500/50' : ''
+                  }`}
+                  draggable
+                  onDragStart={(e) => handleDragStart(e, group.key)}
+                  onDragOver={(e) => handleDragOver(e, group.key)}
+                  onDragLeave={handleDragLeave}
+                  onDrop={(e) => handleDrop(e, group.key)}
                   initial={{ opacity: 0 }}
-                  animate={{ opacity: 1 }}
+                  animate={{ opacity: draggedGroup === group.key ? 0.5 : 1 }}
                   transition={{ duration: 0.3, delay: groupIndex * 0.1 }}
                 >
                   <div className="px-4 py-3 flex items-center justify-between">
                     <div className="flex items-center gap-3">
+                      {/* Drag Handle */}
+                      <div 
+                        className="cursor-grab active:cursor-grabbing hover:bg-gray-700/50 rounded p-1 transition-colors"
+                        title="Drag to reorder"
+                      >
+                        <GripVertical className="w-4 h-4" style={{ color: "#6B7280" }} />
+                      </div>
+                      
                       <motion.div
                         animate={{ rotate: expandedGroups.has(group.key) ? 90 : 0 }}
                         transition={{ duration: 0.2 }}
+                        onClick={() => toggleGroup(group.key)}
+                        className="cursor-pointer"
                       >
                         <ChevronRight className="w-4 h-4" style={{ color: "#A3A9B8" }} />
                       </motion.div>
-                      <div className="flex items-center gap-3">
+                      <div 
+                        className="flex items-center gap-3 cursor-pointer"
+                        onClick={() => toggleGroup(group.key)}
+                      >
                         <span className="font-bold text-lg" style={{ color: "#E0E6ED" }}>
                           {group.ticker}
                         </span>

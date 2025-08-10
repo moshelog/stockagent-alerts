@@ -133,6 +133,36 @@ export function groupAlertsByTickerAndTimeframe(alerts: Alert[]): AlertGroup[] {
 }
 
 /**
+ * Filter alerts to keep only the latest occurrence of each unique alert
+ * Unique alerts are identified by: ticker + timeframe + indicator + trigger
+ */
+function filterLatestAlerts(alerts: Alert[]): Alert[] {
+  const { normalizeTimeframe } = require('./timeframeUtils')
+  const latestAlerts: Record<string, Alert> = {}
+  
+  alerts.forEach(alert => {
+    // Create unique key for alert combination
+    const normalizedTimeframe = normalizeTimeframe(alert.timeframe)
+    const uniqueKey = `${alert.ticker}-${normalizedTimeframe}-${alert.indicator}-${alert.trigger}`
+    
+    const existing = latestAlerts[uniqueKey]
+    if (!existing) {
+      latestAlerts[uniqueKey] = alert
+    } else {
+      // Compare timestamps to keep the latest one
+      const alertTime = new Date(alert.timestamp || alert.time).getTime()
+      const existingTime = new Date(existing.timestamp || existing.time).getTime()
+      
+      if (alertTime > existingTime) {
+        latestAlerts[uniqueKey] = alert
+      }
+    }
+  })
+  
+  return Object.values(latestAlerts)
+}
+
+/**
  * Group alerts by ticker only (new function for ticker-only grouping)
  */
 export interface TickerGroup {
@@ -143,9 +173,13 @@ export interface TickerGroup {
 
 export function groupAlertsByTicker(alerts: Alert[]): TickerGroup[] {
   const { normalizeTimeframe, getTimeframeSortOrder } = require('./timeframeUtils')
+  
+  // First, filter to keep only the latest occurrence of each unique alert
+  const uniqueAlerts = filterLatestAlerts(alerts)
+  
   const groups: Record<string, TickerGroup> = {}
   
-  alerts.forEach(alert => {
+  uniqueAlerts.forEach(alert => {
     const key = alert.ticker
     
     if (!groups[key]) {

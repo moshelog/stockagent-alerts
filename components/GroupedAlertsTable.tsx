@@ -176,48 +176,73 @@ export function GroupedAlertsTable({
     const trigger = alert.trigger.toLowerCase().trim()
     
     // Debug: log the trigger to understand what we're working with
-    console.log('Analyzing trigger:', trigger, 'Weight:', alert.weight)
+    console.log('🔍 Analyzing trigger:', `"${trigger}"`, 'Weight:', alert.weight)
     
     // Neutral indicators (Orange) - Check first to handle "RSI: Neutral" etc.
     if (trigger.includes('neutral')) {
-      console.log('-> Neutral (orange)')
+      console.log('🟠 -> Neutral (orange)')
       return 'bg-orange-400'
     }
     
-    // Bullish indicators (Green)
+    // Bullish indicators (Green) - More comprehensive patterns
     const bullishPatterns = [
+      // HTF patterns
       'synergy up', 'htf: synergy up',
-      'bullish', 'bull', 'buy', 'long', 'up', 'upward', 'uptrend',
-      'support', 'bounce', 'breakout', 'golden', 'oversold', 'discount', 'bottom'
+      // VWAP patterns  
+      'vwap touch from below', 'touch from below',
+      // General bullish
+      'bullish', 'buy', 'long', 'up', 
+      // Technical patterns
+      'support', 'bounce', 'breakout', 'oversold', 'discount', 'bottom',
+      // Order blocks and structure
+      'bullish ob touch', 'ob touch', 'order block touch',
+      // Other patterns
+      'golden', 'upward', 'uptrend'
     ]
     
-    // Bearish indicators (Red)  
+    // Bearish indicators (Red) - More comprehensive patterns
     const bearishPatterns = [
-      'synergy down', 'htf: synergy down', 
-      'bearish', 'bear', 'sell', 'short', 'down', 'downward', 'downtrend',
-      'resistance', 'rejection', 'breakdown', 'overbought', 'premium', 'top'
+      // HTF patterns
+      'synergy down', 'htf: synergy down',
+      // VWAP patterns
+      'vwap touch from above', 'touch from above', 
+      // General bearish
+      'bearish', 'sell', 'short', 'down',
+      // Technical patterns  
+      'resistance', 'rejection', 'breakdown', 'overbought', 'premium', 'top',
+      // Sell signals
+      'sell+', 'sell-',
+      // Other patterns
+      'downward', 'downtrend'
     ]
     
-    // Check for bullish signals
+    // Check for bullish signals first
     for (const pattern of bullishPatterns) {
       if (trigger.includes(pattern)) {
-        console.log('-> Bullish (green) - matched:', pattern)
+        console.log('🟢 -> Bullish (green) - matched:', `"${pattern}"`)
         return 'bg-green-400'
       }
     }
     
-    // Check for bearish signals  
+    // Then check for bearish signals  
     for (const pattern of bearishPatterns) {
       if (trigger.includes(pattern)) {
-        console.log('-> Bearish (red) - matched:', pattern)
+        console.log('🔴 -> Bearish (red) - matched:', `"${pattern}"`)
         return 'bg-red-400'
       }
     }
     
     // Fallback: use weight if no semantic match
-    console.log('-> Fallback to weight:', alert.weight)
-    if (alert.weight > 0) return 'bg-green-400'
-    if (alert.weight < 0) return 'bg-red-400'
+    console.log('⚖️ -> Fallback to weight:', alert.weight)
+    if (alert.weight > 0) {
+      console.log('🟢 -> Weight-based green')
+      return 'bg-green-400'
+    }
+    if (alert.weight < 0) {
+      console.log('🔴 -> Weight-based red')
+      return 'bg-red-400'
+    }
+    console.log('🟠 -> Weight-based orange (neutral)')
     return 'bg-orange-400'
   }
 

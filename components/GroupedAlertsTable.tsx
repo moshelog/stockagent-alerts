@@ -173,52 +173,49 @@ export function GroupedAlertsTable({
 
   // Get dot color for individual alert based on trigger text semantics
   const getAlertDotColor = (alert: Alert) => {
-    const trigger = alert.trigger.toLowerCase()
+    const trigger = alert.trigger.toLowerCase().trim()
+    
+    // Debug: log the trigger to understand what we're working with
+    console.log('Analyzing trigger:', trigger, 'Weight:', alert.weight)
+    
+    // Neutral indicators (Orange) - Check first to handle "RSI: Neutral" etc.
+    if (trigger.includes('neutral')) {
+      console.log('-> Neutral (orange)')
+      return 'bg-orange-400'
+    }
     
     // Bullish indicators (Green)
-    const bullishKeywords = [
+    const bullishPatterns = [
+      'synergy up', 'htf: synergy up',
       'bullish', 'bull', 'buy', 'long', 'up', 'upward', 'uptrend',
-      'support', 'bounce', 'breakout', 'golden', 'cross up',
-      'oversold', 'discount', 'bottom', 'reversal up', 'synergy up',
-      'buy signal', 'bullish divergence', 'bullish cross',
-      'order block bullish', 'fvg bullish', 'break of structure up',
-      'liquidity grab up', 'premium to discount', 'bullish candle',
-      'hammer', 'doji bullish', 'engulfing bullish'
+      'support', 'bounce', 'breakout', 'golden', 'oversold', 'discount', 'bottom'
     ]
     
     // Bearish indicators (Red)  
-    const bearishKeywords = [
+    const bearishPatterns = [
+      'synergy down', 'htf: synergy down', 
       'bearish', 'bear', 'sell', 'short', 'down', 'downward', 'downtrend',
-      'resistance', 'rejection', 'breakdown', 'death', 'cross down',
-      'overbought', 'premium', 'top', 'reversal down', 'synergy down',
-      'sell signal', 'bearish divergence', 'bearish cross',
-      'order block bearish', 'fvg bearish', 'break of structure down',
-      'liquidity grab down', 'discount to premium', 'bearish candle',
-      'shooting star', 'doji bearish', 'engulfing bearish'
-    ]
-    
-    // Neutral indicators (Orange)
-    const neutralKeywords = [
-      'neutral', 'equilibrium', 'sideways', 'ranging', 'consolidation',
-      'indecision', 'doji', 'spinning', 'inside bar', 'flat'
+      'resistance', 'rejection', 'breakdown', 'overbought', 'premium', 'top'
     ]
     
     // Check for bullish signals
-    if (bullishKeywords.some(keyword => trigger.includes(keyword))) {
-      return 'bg-green-400' // Bullish = Green
+    for (const pattern of bullishPatterns) {
+      if (trigger.includes(pattern)) {
+        console.log('-> Bullish (green) - matched:', pattern)
+        return 'bg-green-400'
+      }
     }
     
     // Check for bearish signals  
-    if (bearishKeywords.some(keyword => trigger.includes(keyword))) {
-      return 'bg-red-400' // Bearish = Red
-    }
-    
-    // Check for neutral signals
-    if (neutralKeywords.some(keyword => trigger.includes(keyword))) {
-      return 'bg-orange-400' // Neutral = Orange
+    for (const pattern of bearishPatterns) {
+      if (trigger.includes(pattern)) {
+        console.log('-> Bearish (red) - matched:', pattern)
+        return 'bg-red-400'
+      }
     }
     
     // Fallback: use weight if no semantic match
+    console.log('-> Fallback to weight:', alert.weight)
     if (alert.weight > 0) return 'bg-green-400'
     if (alert.weight < 0) return 'bg-red-400'
     return 'bg-orange-400'

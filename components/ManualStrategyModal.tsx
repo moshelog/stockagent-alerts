@@ -211,7 +211,7 @@ export default function ManualStrategyModal({ isOpen, onClose, onSave, editingSt
       alerts: [],
     },
   ])
-  const [threshold, setThreshold] = useState(0)
+  const [threshold, setThreshold] = useState(1)
   const [timeframe, setTimeframe] = useState("15m")
   const [interGroupOperator, setInterGroupOperator] = useState<"AND" | "OR">("OR")
 
@@ -366,7 +366,7 @@ export default function ManualStrategyModal({ isOpen, onClose, onSave, editingSt
             alerts: [],
           },
         ])
-        setThreshold(0)
+        setThreshold(1)
         setTimeframe("15m")
         setInterGroupOperator("OR")
       }
@@ -544,7 +544,7 @@ export default function ManualStrategyModal({ isOpen, onClose, onSave, editingSt
     // Join all group summaries
     const fullRule = groupSummaries.join(" ")
 
-    const action = threshold > 0 ? "BUY" : threshold < 0 ? "SELL" : "NEUTRAL"
+    const action = threshold > 0 ? "BUY" : "SELL"
     console.log("Generated rule:", `IF [${fullRule}] → ${action}`)
 
     return `IF [${fullRule}] → ${action}`
@@ -773,9 +773,7 @@ export default function ManualStrategyModal({ isOpen, onClose, onSave, editingSt
                   className={`text-sm font-bold px-2 py-1 rounded ${
                     threshold > 0
                       ? "bg-accent-buy/20 text-accent-buy" // Positive = Buy = Green
-                      : threshold < 0
-                        ? "bg-accent-sell/20 text-accent-sell" // Negative = Sell = Red
-                        : "bg-accent-neutral/20 text-accent-neutral"
+                      : "bg-accent-sell/20 text-accent-sell" // Negative = Sell = Red
                   }`}
                 >
                   {threshold}
@@ -783,7 +781,15 @@ export default function ManualStrategyModal({ isOpen, onClose, onSave, editingSt
               </div>
               <Slider
                 value={[threshold]}
-                onValueChange={(value) => setThreshold(value[0])}
+                onValueChange={(value) => {
+                  const newValue = value[0]
+                  // Skip 0 - if slider tries to set 0, set to 1 or -1 based on direction
+                  if (newValue === 0) {
+                    setThreshold(threshold > 0 ? 1 : -1)
+                  } else {
+                    setThreshold(newValue)
+                  }
+                }}
                 min={-10}
                 max={10}
                 step={1}
@@ -791,7 +797,6 @@ export default function ManualStrategyModal({ isOpen, onClose, onSave, editingSt
               />
               <div className="flex justify-between text-xs mt-2" style={{ color: "#A3A9B8" }}>
                 <span>-10 (Strong Sell)</span>
-                <span>0 (Neutral)</span>
                 <span>+10 (Strong Buy)</span>
               </div>
             </div>

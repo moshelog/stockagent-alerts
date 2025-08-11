@@ -635,7 +635,7 @@ export default function Dashboard() {
                       const apiFormat = {
                         name: strategyData.name,
                         timeframe: parseInt(strategyData.timeframe?.replace('m', '')) || 15,
-                        threshold: strategyData.threshold || 0,
+                        threshold: strategyData.threshold || 1,
                         rules: strategyData.ruleGroups ? 
                           strategyData.ruleGroups.flatMap((group: any) => 
                             group.alerts.map((alert: any) => ({
@@ -665,7 +665,7 @@ export default function Dashboard() {
                         timeframe: typeof updates.timeframe === 'string' 
                           ? parseInt(updates.timeframe.replace('m', '')) || 15
                           : updates.timeframe || 15,
-                        threshold: updates.threshold || 0,
+                        threshold: updates.threshold || 1,
                         rules: updates.ruleGroups ? 
                           updates.ruleGroups.flatMap((group: any) => 
                             group.alerts.map((alert: any) => ({

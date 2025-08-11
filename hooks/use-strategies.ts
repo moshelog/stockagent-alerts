@@ -89,8 +89,8 @@ export function useStrategies() {
             rule_groups: parsedRuleGroups, // Database field
             ruleGroups: parsedRuleGroups, // Frontend alias for compatibility
             // Add frontend compatibility fields
-            summary: `${parsedRules.length} alerts • ${strategy.timeframe} • ${strategy.threshold > 0 ? 'SELL' : 'BUY'} threshold`,
-            rule: `IF ${parsedRules.map((r: any) => `${r.indicator}: ${r.trigger}`).join(' + ')} THEN ${strategy.threshold > 0 ? 'SELL' : 'BUY'}`,
+            summary: `${parsedRules.length} alerts • ${strategy.timeframe}m • ${strategy.threshold > 0 ? 'BUY' : 'SELL'} threshold`,
+            rule: `IF ${parsedRules.map((r: any) => `${r.indicator}: ${r.trigger}`).join(' + ')} THEN ${strategy.threshold > 0 ? 'BUY' : 'SELL'}`,
             components: {},
             alertDetails: parsedRules.map((r: any, index: number) => ({
               id: `${r.indicator.toLowerCase().replace(/[^a-z0-9]/g, '_')}_${r.trigger.toLowerCase().replace(/[^a-z0-9]/g, '_')}`,
@@ -188,8 +188,8 @@ export function useStrategies() {
         rules: parsedRules, // Use parsed rules
         rule_groups: parsedRuleGroups, // Database field
         ruleGroups: parsedRuleGroups, // Frontend alias
-        summary: `${parsedRules.length} alerts • ${newStrategy.timeframe}m • ${newStrategy.threshold > 0 ? 'SELL' : 'BUY'} threshold`,
-        rule: `IF ${parsedRules.map((r: any) => `${r.indicator}: ${r.trigger}`).join(' + ')} THEN ${newStrategy.threshold > 0 ? 'SELL' : 'BUY'}`,
+        summary: `${parsedRules.length} alerts • ${newStrategy.timeframe}m • ${newStrategy.threshold > 0 ? 'BUY' : 'SELL'} threshold`,
+        rule: `IF ${parsedRules.map((r: any) => `${r.indicator}: ${r.trigger}`).join(' + ')} THEN ${newStrategy.threshold > 0 ? 'BUY' : 'SELL'}`,
         components: {},
         alertDetails: parsedRules.map((r: any) => ({
           id: `${r.indicator.toLowerCase().replace(/[^a-z0-9]/g, '_')}_${r.trigger.toLowerCase().replace(/[^a-z0-9]/g, '_')}`,
@@ -273,8 +273,8 @@ export function useStrategies() {
         rules: parsedRules, // Use parsed rules
         rule_groups: parsedRuleGroups, // Database field
         ruleGroups: parsedRuleGroups, // Frontend alias
-        summary: `${parsedRules.length} alerts • ${updatedStrategy.timeframe}m • ${updatedStrategy.threshold > 0 ? 'SELL' : 'BUY'} threshold`,
-        rule: `IF ${parsedRules.map((r: any) => `${r.indicator}: ${r.trigger}`).join(' + ')} THEN ${updatedStrategy.threshold > 0 ? 'SELL' : 'BUY'}`,
+        summary: `${parsedRules.length} alerts • ${updatedStrategy.timeframe}m • ${updatedStrategy.threshold > 0 ? 'BUY' : 'SELL'} threshold`,
+        rule: `IF ${parsedRules.map((r: any) => `${r.indicator}: ${r.trigger}`).join(' + ')} THEN ${updatedStrategy.threshold > 0 ? 'BUY' : 'SELL'}`,
         components: {},
         alertDetails: parsedRules.map((r: any) => ({
           id: `${r.indicator.toLowerCase().replace(/[^a-z0-9]/g, '_')}_${r.trigger.toLowerCase().replace(/[^a-z0-9]/g, '_')}`,

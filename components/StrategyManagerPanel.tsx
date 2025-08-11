@@ -166,7 +166,7 @@ export function StrategyManagerPanel({
       })
 
       const fullRule = groupSummaries.join(" ")
-      const action = strategy.threshold > 0 ? "BUY" : strategy.threshold < 0 ? "SELL" : "NEUTRAL"
+      const action = strategy.threshold > 0 ? "BUY" : "SELL"
       const timeframeDisplay = strategy.timeframe ? ` (${String(strategy.timeframe).replace('m', '')})` : ""
 
       return `IF [${fullRule}] → ${action}${timeframeDisplay}`
@@ -254,7 +254,7 @@ export function StrategyManagerPanel({
       })
 
       const summary = ruleParts.join(" + ")
-      const action = strategy.threshold > 0 ? "BUY" : strategy.threshold < 0 ? "SELL" : "NEUTRAL"
+      const action = strategy.threshold > 0 ? "BUY" : "SELL"
       const timeframeDisplay = strategy.timeframe ? ` (${String(strategy.timeframe).replace('m', '')})` : ""
       return `IF [${summary}] → ${action}${timeframeDisplay}`
     }
@@ -269,7 +269,7 @@ export function StrategyManagerPanel({
 
     const alertsText = componentNames.map((name) => name.replace(/_/g, " ")).join(" + ")
     const moreText = moreCount > 0 ? ` +${moreCount} more` : ""
-    const action = strategy.threshold > 0 ? "BUY" : strategy.threshold < 0 ? "SELL" : "NEUTRAL"
+    const action = strategy.threshold > 0 ? "BUY" : "SELL"
     const timeframeDisplay = strategy.timeframe ? ` (${strategy.timeframe})` : ""
 
     return `IF [${alertsText}${moreText}] → ${action}${timeframeDisplay}`

@@ -737,11 +737,7 @@ export function GroupedAlertsTable({
                         {timeframes.map((tf, i) => (
                           <button
                             key={i}
-                            onClick={(e) => {
-                              e.stopPropagation()
-                              handleCardTimeframeSelect(group.key, tf)
-                            }}
-                            onMouseDown={(e) => e.stopPropagation()}
+                            onClick={() => handleCardTimeframeSelect(group.key, tf)}
                             className={`text-xs px-2 py-1 rounded cursor-pointer transition-colors ${
                               tf === selectedTimeframe
                                 ? 'bg-blue-500/20 border border-blue-500/40 text-blue-300'

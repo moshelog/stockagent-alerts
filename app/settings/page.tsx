@@ -742,7 +742,11 @@ export default function SettingsPage() {
 
     try {
       // Use the actual webhook endpoint to test price parsing
-      const testUrl = `${config.apiBase}/webhook`
+      const testUrl = config.webhookUrl
+      
+      if (!testUrl) {
+        throw new Error('Webhook URL not configured')
+      }
       
       // Generate a random test price
       const testPrice = (Math.random() * 90000 + 10000).toFixed(2) // Random price between $10,000-$100,000

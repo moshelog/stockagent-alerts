@@ -134,11 +134,33 @@ class StrategyEvaluator {
    */
   async recordStrategyCompletion(strategy, ticker, foundRules, missingRules, threshold, isTest = false, recentAlerts = []) {
     try {
-      // Determine action based on strategy name and threshold
-      // Buy confirmation strategies should generate BUY signals
-      // Sell confirmation strategies should generate SELL signals
-      const isBuyStrategy = strategy.name.toLowerCase().includes('buy') || strategy.name.toLowerCase().includes('discount');
+      // Determine action based on strategy name and triggers
+      // Analyze both strategy name and triggers to determine BUY vs SELL
+      const strategyNameLower = strategy.name.toLowerCase();
+      
+      // Check triggers for bullish/bearish signals
+      const triggersText = foundRules.map(rule => rule.trigger.toLowerCase()).join(' ');
+      const hasBullishTriggers = triggersText.includes('bullish') || triggersText.includes('discount') || triggersText.includes('oversold');
+      const hasBearishTriggers = triggersText.includes('bearish') || triggersText.includes('premium') || triggersText.includes('overbought');
+      
+      // Determine if this is a buy strategy based on name and triggers
+      const isBuyStrategy = strategyNameLower.includes('buy') || 
+                           strategyNameLower.includes('discount') ||
+                           strategyNameLower.includes('equilibrium') ||
+                           hasBullishTriggers ||
+                           (!hasBearishTriggers && strategyNameLower.includes('reversal'));
+      
       const action = isBuyStrategy ? 'BUY' : 'SELL';
+      
+      // Debug logging for action determination
+      console.log(`🎯 Action determination for "${strategy.name}":`, {
+        strategyName: strategy.name,
+        triggersText,
+        hasBullishTriggers,
+        hasBearishTriggers,
+        isBuyStrategy,
+        finalAction: action
+      });
       
       // Calculate score (for future use - sum of weights from found rules)
       const score = await this.calculateScore(foundRules);

@@ -239,7 +239,35 @@ export function GroupedAlertsTable({
 
   // Group alerts by ticker and timeframe using the utility function
   const groupedAlerts = useMemo(() => {
+    // Debug BTCUSDT.P grouping
+    const btcAlerts = validAlerts.filter(alert => alert.ticker === 'BTCUSDT.P')
+    if (btcAlerts.length > 0) {
+      console.log('🔍 BTCUSDT.P alerts before grouping:', btcAlerts.map(alert => ({
+        ticker: alert.ticker,
+        timeframe: alert.timeframe,
+        timeframeLength: alert.timeframe.length,
+        timeframeChars: [...alert.timeframe].map(c => c.charCodeAt(0)),
+        indicator: alert.indicator,
+        trigger: alert.trigger,
+        time: alert.time
+      })))
+    }
+    
     const groups = groupAlertsByTickerAndTimeframe(validAlerts)
+    
+    // Debug BTCUSDT.P groups
+    const btcGroups = groups.filter(group => group.ticker === 'BTCUSDT.P')
+    if (btcGroups.length > 0) {
+      console.log('🔍 BTCUSDT.P groups after grouping:', btcGroups.map(group => ({
+        key: group.key,
+        ticker: group.ticker,
+        timeframe: group.timeframe,
+        timeframeLength: group.timeframe.length,
+        timeframeChars: [...group.timeframe].map(c => c.charCodeAt(0)),
+        alertCount: group.alerts.length,
+        alerts: group.alerts.map(a => ({ indicator: a.indicator, trigger: a.trigger, time: a.time }))
+      })))
+    }
     
     // Filter by selected timeframes if any are selected
     const filteredGroups = selectedTimeframes.size > 0 

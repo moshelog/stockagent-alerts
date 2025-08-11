@@ -119,10 +119,12 @@ export function CompactLiveScoring({
       {/* Ticker Table */}
       <div 
         className="border border-gray-700/30 rounded relative"
-        style={{ height: "280px" }}
+        style={{ 
+          height: tickerData.length === 0 ? "80px" : `${Math.min(280, Math.max(80, (tickerData.length + 1) * 40 + 40))}px`
+        }}
       >
         <div 
-          className="absolute inset-0 overflow-y-scroll overflow-x-auto"
+          className="absolute inset-0 overflow-y-auto overflow-x-auto"
           style={{
             scrollbarWidth: "thin",
             scrollbarColor: "#4B5563 #1F2937"
@@ -207,14 +209,6 @@ export function CompactLiveScoring({
                   </td>
                 )}
               </motion.tr>
-                )),
-                // Add extra rows to ensure scrollbar is always visible
-                ...Array(5).fill(null).map((_, index) => (
-                  <tr key={`spacer-${index}`} className="border-b border-gray-800/50">
-                    <td className="px-3 py-3 text-xs text-transparent" colSpan={6}>
-                      &nbsp;
-                    </td>
-                  </tr>
                 ))
               ]
             )}

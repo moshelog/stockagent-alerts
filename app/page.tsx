@@ -604,7 +604,7 @@ export default function Dashboard() {
                 <CompactLiveScoring
                   lastAction={lastAction}
                   tickerData={tickerData}
-                  totalAlerts={totalAlertsCount}
+                  totalAlerts={alerts.length}
                   activeStrategies={dbStrategies.filter((s) => s.enabled).length}
                   timeWindowMinutes={timeWindowMinutes}
                   onTimeWindowChange={setTimeWindowMinutes}

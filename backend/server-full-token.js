@@ -658,18 +658,46 @@ app.get('/api/alerts', requireAuth, async (req, res) => {
     if (!supabase) {
       return res.json([]);
     }
-
-    const { data, error } = await supabase
+    
+    const limit = Math.min(parseInt(req.query.limit) || 200, 500); // Max 500 alerts for time window support
+    const timeWindowMinutes = parseInt(req.query.timeWindow) || null; // Optional time window in minutes
+    
+    let query = supabase
       .from('alerts')
       .select('*')
-      .order('timestamp', { ascending: false })
-      .limit(100);
+      .order('timestamp', { ascending: false });
+      
+    // Apply time window filter if specified
+    if (timeWindowMinutes && timeWindowMinutes > 0) {
+      const cutoffTime = new Date(Date.now() - (timeWindowMinutes * 60 * 1000)).toISOString();
+      query = query.gte('timestamp', cutoffTime);
+      if (logger && logger.info) {
+        logger.info(`Filtering alerts to last ${timeWindowMinutes} minutes (since ${cutoffTime})`);
+      }
+    }
+    
+    const { data, error } = await query.limit(limit);
 
     if (error) {
       if (logger && logger.error) {
         logger.error('Failed to fetch alerts', { error: error.message });
       }
       return res.status(500).json({ error: 'Failed to fetch alerts' });
+    }
+    
+    // DEBUG: Log BTCUSDT.P alerts being returned
+    const btcAlerts = (data || []).filter(alert => alert.ticker === 'BTCUSDT.P');
+    if (btcAlerts.length > 0) {
+      console.log('🎯 *** BACKEND RETURNING BTCUSDT.P ALERTS ***');
+      console.log('🎯 Total alerts returned:', data?.length || 0);
+      console.log('🎯 BTCUSDT.P alerts returned:', btcAlerts.length);
+      btcAlerts.forEach((alert, i) => {
+        console.log(`🎯 [${i+1}] ${alert.timestamp} - ${alert.indicator}:${alert.trigger}`);
+      });
+    } else {
+      console.log('🎯 *** NO BTCUSDT.P ALERTS RETURNED BY BACKEND ***');
+      console.log('🎯 Total alerts returned:', data?.length || 0);
+      console.log('🎯 All tickers returned:', [...new Set((data || []).map(a => a.ticker))]);
     }
 
     res.json(data || []);

@@ -614,7 +614,7 @@ export default function Dashboard() {
             )}
 
             {/* Middle Right - Available Alerts Panel */}
-            <div className="hidden lg:block flex-1 min-h-0">
+            <div className="hidden lg:block flex-shrink-0">
               <AvailableAlertsPanel alertConfig={alertConfig} onUpdateWeight={updateWeight} showWeights={config.ui.showWeights} />
             </div>
 

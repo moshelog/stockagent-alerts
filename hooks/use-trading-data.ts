@@ -154,15 +154,17 @@ export function useTradingData(timeWindowMinutes: number = 60, alertConfig?: any
           const key = `${normalizedIndicator}|${normalizedTrigger}`
           const weight = weightMap.get(key) || 0
           
-          console.log(`🔍 Weight lookup for alert:`, {
-            originalIndicator: alert.indicator,
-            normalizedIndicator,
-            originalTrigger: alert.trigger,
-            normalizedTrigger,
-            lookupKey: key,
-            foundWeight: weight,
-            availableKeys: Array.from(weightMap.keys()).slice(0, 10)
-          })
+          // Only log weight lookups for BTCUSDT.P to reduce console noise
+          if (alert.ticker === 'BTCUSDT.P') {
+            console.log(`🎯 BTCUSDT.P Weight lookup:`, {
+              originalIndicator: alert.indicator,
+              normalizedIndicator,
+              originalTrigger: alert.trigger,
+              normalizedTrigger,
+              lookupKey: key,
+              foundWeight: weight
+            })
+          }
           
           return {
             id: alert.id,

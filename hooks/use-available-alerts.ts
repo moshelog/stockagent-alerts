@@ -34,11 +34,9 @@ export function useAvailableAlerts() {
     const fetchAvailableAlerts = async () => {
       try {
         setLoading(true)
-        console.log(`📡 Fetching available alerts from: ${config.apiBase}/available-alerts`)
+        // Fetching available alerts
         const response = await authenticatedFetch(`${config.apiBase}/available-alerts`)
         const data = await response.json()
-
-        console.log(`📋 Raw API data (first 3):`, data.slice(0, 3))
 
         // Transform API data to component format
         const transformed: AlertConfig = {
@@ -54,13 +52,6 @@ export function useAvailableAlerts() {
             name: alert.trigger,
             weight: alert.weight
           }
-
-          console.log(`🔄 Processing alert:`, { 
-            indicator: alert.indicator, 
-            trigger: alert.trigger, 
-            weight: alert.weight,
-            generatedId: alertObj.id 
-          })
 
           // Map indicators to keys
           switch (alert.indicator) {
@@ -80,12 +71,7 @@ export function useAvailableAlerts() {
           }
         })
 
-        console.log(`📊 Transformed data:`, {
-          nautilus: transformed.nautilus.length,
-          market_core: transformed.market_core.length,
-          market_waves: transformed.market_waves.length,
-          extreme_zones: transformed.extreme_zones.length
-        })
+        // Removed verbose logging - keeping only summary
 
         setAlertConfig(transformed)
         setError(null)

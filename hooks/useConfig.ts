@@ -99,7 +99,7 @@ export function useConfig() {
       // Now try to load user settings from database using the backend URL
       try {
         const settingsUrl = constructApiUrl(baseConfig.apiBase, '/api/settings')
-        console.log('📥 Loading settings from URL:', settingsUrl)
+        // Loading settings
         const settingsResponse = await authenticatedFetch(settingsUrl)
         if (settingsResponse.ok) {
           const userSettings = await settingsResponse.json()
@@ -133,8 +133,7 @@ export function useConfig() {
       setSaving(true)
       
       const settingsUrl = constructApiUrl(newConfig.apiBase, '/api/settings')
-      console.log('🔄 Saving settings to URL:', settingsUrl)
-      console.log('🔄 Settings data:', { ui: newConfig.ui, scoring: newConfig.scoring })
+      // Saving settings
       
       const response = await authenticatedFetch(settingsUrl, {
         method: "POST",
@@ -153,8 +152,7 @@ export function useConfig() {
         console.error("❌ Failed to save settings:", response.status, errorText)
         throw new Error(`HTTP ${response.status}: ${errorText}`)
       } else {
-        const result = await response.json()
-        console.log('✅ Settings saved successfully:', result)
+        await response.json() // Settings saved successfully
       }
     } catch (err) {
       console.error("❌ Error saving settings:", err)

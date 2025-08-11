@@ -74,14 +74,7 @@ export default function Dashboard() {
     updateThreshold
   } = useStrategies()
 
-  // ✅ DEBUGGING VERSION DEPLOYED - Railway Deploy v5 - FINAL WEIGHT FIX
-  console.log('🔍 Strategy Manager Debug - FINAL WEIGHT FIX v5:')
-  console.log('  📊 dbStrategies:', dbStrategies)
-  console.log('  ⏳ strategiesLoading:', strategiesLoading)  
-  console.log('  ❌ strategiesError:', strategiesError)
-  console.log('  ⚙️ config:', config)
-  console.log('  📈 apiStrategies:', apiStrategies)
-  console.log('🚨 DEBUGGING: If you see this message, debugging version is LIVE!')
+  // Debug removed for cleaner console
 
   const [enabledAlerts, setEnabledAlerts] = useState([
     { id: "nautilus_divergence", name: "Divergence", indicator: "Nautilus™", weight: -2.5 },
@@ -528,15 +521,7 @@ export default function Dashboard() {
   const hasActiveStrategies = tickerData.some(ticker => ticker.missingAlerts.length === 0)
   const lastAction = hasActiveStrategies ? (extractLastActionFromScore(score) || scoringLastAction) : null
   
-  console.log('🎯 Scoring Debug:', {
-    alertsCount: alerts.length,
-    strategiesCount: dbStrategies.length,
-    activeStrategies: dbStrategies.filter(s => s.enabled).length,
-    tickerDataCount: tickerData.length,
-    lastAction,
-    backendScore: score,
-    sampleTickers: tickerData.slice(0, 3)
-  })
+  // Scoring debug removed for cleaner console
 
   return (
     <ErrorBoundary>
@@ -645,8 +630,6 @@ export default function Dashboard() {
                   onDeleteStrategy={deleteStrategy}
                   onBacktestStrategy={() => {}}
                   onCreateManualStrategy={async (strategyData: any) => {
-                    console.log('🚀 Strategy creation started:', strategyData)
-                    
                     try {
                       // Transform frontend format to API format
                       const apiFormat = {
@@ -663,28 +646,16 @@ export default function Dashboard() {
                         ruleGroups: strategyData.ruleGroups // Preserve UI group structure
                       }
                       
-                      console.log('📡 API Format:', apiFormat)
-                      console.log('🎯 Rule Groups being sent:', strategyData.ruleGroups)
-                      
-                      console.log('✅ Validation passed, calling createStrategy...')
                       const result = await createStrategy(apiFormat)
-                      console.log('📥 createStrategy result:', result)
                       
-                      if (result) {
-                        console.log('✅ Strategy created successfully:', result.name)
-                        // Success - no popup needed, strategy appears in list automatically
-                      } else {
-                        console.error('❌ Strategy creation failed - no result returned')
+                      if (!result) {
                         alert('Failed to create strategy. Please try again.')
                       }
                     } catch (error) {
-                      console.error('💥 Strategy creation error:', error)
                       alert('Error creating strategy: ' + (error instanceof Error ? error.message : 'Unknown error'))
                     }
                   }}
                   onUpdateStrategy={(id: string, updates: any) => {
-                    console.log('🔄 Strategy update started:', updates)
-                    
                     // Transform frontend format to API format (same as create strategy)
                     const apiFormat = {
                       name: updates.name,
@@ -700,8 +671,6 @@ export default function Dashboard() {
                       ruleGroups: updates.ruleGroups // Preserve UI group structure
                     }
                     
-                    console.log('📡 Update API Format:', apiFormat)
-                    console.log('🎯 Rule Groups being updated:', updates.ruleGroups)
                     updateDbStrategy(id, apiFormat)
                   }}
                   enabledAlerts={enabledAlerts}

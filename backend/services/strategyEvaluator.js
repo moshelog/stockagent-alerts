@@ -67,54 +67,46 @@ class StrategyEvaluator {
       // Parse rules from JSON (if it's a string, otherwise use as is)
       const strategyRules = typeof rules === 'string' ? JSON.parse(rules) : rules;
       
-      // Calculate time window (timeframe minutes ago)
-      const windowStart = new Date(Date.now() - timeframe * 60 * 1000);
+      // Handle different timeframe logic
+      let isComplete = false;
+      let foundRules = [];
+      let missingRules = [];
+      let completedTimeframe = null;
       
-      // Get all alerts for this ticker within the timeframe
-      const { data: recentAlerts, error: alertsError } = await supabase
-        .from('alerts')
-        .select('*')
-        .eq('ticker', ticker)
-        .gte('timestamp', windowStart.toISOString())
-        .order('timestamp', { ascending: false });
-
-      if (alertsError) {
-        throw new Error(`Failed to fetch recent alerts: ${alertsError.message}`);
-      }
-
-      // Check which rules are satisfied
-      const foundRules = [];
-      const missingRules = [];
-
-      for (const rule of strategyRules) {
-        // Map the simplified indicator name to the full name used in alerts
-        const fullIndicatorName = this.mapIndicatorName(rule.indicator);
+      if (timeframe === 0) {
+        // "Any timeframe" - check each supported timeframe separately
+        const supportedTimeframes = ['1m', '5m', '15m', '1h', '4h', '1D'];
         
-        const ruleFound = recentAlerts.some(alert => 
-          alert.indicator === fullIndicatorName && 
-          alert.trigger === rule.trigger
-        );
-
-        if (ruleFound) {
-          foundRules.push(rule);
-        } else {
-          missingRules.push(rule);
+        for (const tf of supportedTimeframes) {
+          const result = await this.checkStrategyInTimeframe(ticker, strategyRules, tf);
+          if (result.isComplete) {
+            isComplete = true;
+            foundRules = result.foundRules;
+            missingRules = result.missingRules;
+            completedTimeframe = tf;
+            break; // Strategy completed in this timeframe, no need to check others
+          }
         }
+      } else {
+        // Specific timeframe - convert timeframe minutes to timeframe string
+        const timeframeStr = this.convertMinutesToTimeframe(timeframe);
+        const result = await this.checkStrategyInTimeframe(ticker, strategyRules, timeframeStr);
+        isComplete = result.isComplete;
+        foundRules = result.foundRules;
+        missingRules = result.missingRules;
+        completedTimeframe = timeframeStr;
       }
-
-      // Check if strategy is complete (all rules found)
-      const isComplete = missingRules.length === 0;
       
       console.log(`📈 Strategy "${name}" for ${ticker}:`, {
         complete: isComplete,
         found: foundRules.length,
         missing: missingRules.length,
-        timeframe: `${timeframe}m`
+        timeframe: completedTimeframe || (timeframe === 0 ? 'any' : `${timeframe}m`)
       });
 
       // If strategy is complete, record the action
       if (isComplete) {
-        await this.recordStrategyCompletion(strategy, ticker, foundRules, missingRules, threshold, newAlert.isTest, recentAlerts);
+        await this.recordStrategyCompletion(strategy, ticker, foundRules, missingRules, threshold, newAlert.isTest, []);
       }
 
     } catch (error) {
@@ -454,6 +446,90 @@ class StrategyEvaluator {
     } catch (error) {
       console.error(`❌ Error calculating strategy score for ${strategy.name}:`, error.message);
       return null;
+    }
+  }
+
+  /**
+   * Convert timeframe in minutes to timeframe string
+   * @param {number} minutes - Timeframe in minutes
+   * @returns {string} Timeframe string (e.g., '5m', '1h', '1D')
+   */
+  convertMinutesToTimeframe(minutes) {
+    const timeframeMap = {
+      1: '1m',
+      5: '5m', 
+      15: '15m',
+      60: '1h',
+      240: '4h',
+      1440: '1D'
+    };
+    
+    return timeframeMap[minutes] || '15m'; // Default to 15m if not found
+  }
+
+  /**
+   * Check if a strategy is complete within a specific timeframe
+   * @param {string} ticker - The ticker symbol
+   * @param {Array} strategyRules - Rules for the strategy
+   * @param {string} timeframe - Timeframe string (e.g., '5m', '1h')
+   * @returns {Object} Result with isComplete, foundRules, missingRules
+   */
+  async checkStrategyInTimeframe(ticker, strategyRules, timeframe) {
+    try {
+      // Calculate time window (last 24 hours should be enough for all timeframes)
+      const windowStart = new Date(Date.now() - 24 * 60 * 60 * 1000);
+      
+      // Get alerts for this ticker and timeframe within time window
+      const { data: timeframeAlerts, error: alertsError } = await supabase
+        .from('alerts')
+        .select('*')
+        .eq('ticker', ticker)
+        .eq('timeframe', timeframe)
+        .gte('timestamp', windowStart.toISOString())
+        .order('timestamp', { ascending: false });
+
+      if (alertsError) {
+        throw new Error(`Failed to fetch alerts for ${timeframe}: ${alertsError.message}`);
+      }
+
+      // Check which rules are satisfied within this specific timeframe
+      const foundRules = [];
+      const missingRules = [];
+
+      for (const rule of strategyRules) {
+        // Map the simplified indicator name to the full name used in alerts
+        const fullIndicatorName = this.mapIndicatorName(rule.indicator);
+        
+        const ruleFound = timeframeAlerts.some(alert => 
+          alert.indicator === fullIndicatorName && 
+          alert.trigger === rule.trigger
+        );
+
+        if (ruleFound) {
+          foundRules.push(rule);
+        } else {
+          missingRules.push(rule);
+        }
+      }
+
+      // Strategy is complete if all rules are found within this single timeframe
+      const isComplete = missingRules.length === 0;
+      
+      return {
+        isComplete,
+        foundRules,
+        missingRules,
+        timeframe
+      };
+
+    } catch (error) {
+      console.error(`❌ Error checking strategy in ${timeframe}:`, error.message);
+      return {
+        isComplete: false,
+        foundRules: [],
+        missingRules: strategyRules,
+        timeframe
+      };
     }
   }
 }

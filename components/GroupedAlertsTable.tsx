@@ -80,16 +80,27 @@ export function GroupedAlertsTable({
     if (!alertTimeframes || !alerts.length) return alerts
 
     const now = new Date()
+    console.log('🎯 *** FILTERING ALL ALERTS ***', {
+      totalAlerts: alerts.length,
+      currentTime: now.toISOString(),
+      alertTimeframes: alertTimeframes,
+      sampleAlerts: alerts.slice(0, 3).map(a => ({ ticker: a.ticker, time: a.time, timeframe: a.timeframe }))
+    })
     
     // Log BTCUSDT.P alerts being processed
     const btcAlerts = alerts.filter(alert => alert.ticker === 'BTCUSDT.P')
     if (btcAlerts.length > 0) {
+      console.log('🎯 *** BTCUSDT.P ALERTS FROM BACKEND ***')
       console.log('🎯 Processing BTCUSDT.P alerts:', btcAlerts.map(alert => ({
         time: alert.time,
         timeframe: alert.timeframe,
         indicator: alert.indicator,
-        trigger: alert.trigger
+        trigger: alert.trigger,
+        timestamp: alert.timestamp
       })))
+      console.log('🎯 Total BTCUSDT.P alerts received from backend:', btcAlerts.length)
+    } else {
+      console.log('🎯 *** NO BTCUSDT.P ALERTS FROM BACKEND ***')
     }
     
     return alerts.filter(alert => {

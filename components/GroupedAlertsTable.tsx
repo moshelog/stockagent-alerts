@@ -342,6 +342,7 @@ export function GroupedAlertsTable({
       'support', 'bounce', 'breakout', 'oversold', 'discount', 'bottom',
       // Order blocks and structure
       'bullish ob touch', 'ob touch', 'order block touch',
+      'bullish ob breakout',
       // Extreme zones reversed (bullish reversal)
       'premium zone reversed', 'extreme premium zone reversed',
       // Other patterns
@@ -360,6 +361,8 @@ export function GroupedAlertsTable({
       'resistance', 'rejection', 'breakdown', 'overbought', 'premium', 'top',
       // Volume patterns
       'bearish volume cross', 'volume cross',
+      // Order Block patterns
+      'bearish ob breakout', 'ob breakout',
       // Sell signals
       'sell+', 'sell-',
       // Other patterns

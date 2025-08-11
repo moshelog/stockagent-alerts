@@ -317,6 +317,59 @@ export function GroupedAlertsTable({
     }
   }
 
+  // Get synergy status from the latest HTF synergy alert in the group
+  const getSynergyStatus = (groupAlerts: Alert[]) => {
+    // Find the most recent synergy alert (they're already sorted by time desc)
+    const synergyAlert = groupAlerts.find(alert => 
+      (alert.indicator === 'Extreme Zones' && alert.trigger.includes('Synergy')) ||
+      alert.trigger.toLowerCase().includes('synergy')
+    )
+    
+    if (synergyAlert) {
+      const trigger = synergyAlert.trigger.toLowerCase()
+      if (trigger.includes('synergy up') || trigger.includes('htf: synergy up')) return 'up'
+      if (trigger.includes('synergy down') || trigger.includes('htf: synergy down')) return 'down'
+      if (trigger.includes('no synergy') || trigger.includes('htf: no synergy')) return 'none'
+    }
+    
+    // Fallback: look for any synergy mentions in HTF field
+    const htfSynergyAlert = groupAlerts.find(alert => 
+      alert.htf && alert.htf.toLowerCase().includes('synergy')
+    )
+    
+    if (htfSynergyAlert) {
+      const htf = htfSynergyAlert.htf?.toLowerCase() || ''
+      if (htf.includes('synergy up')) return 'up'
+      if (htf.includes('synergy down')) return 'down'
+      if (htf.includes('no synergy')) return 'none'
+    }
+    
+    // Default to none if no synergy data found
+    return 'none'
+  }
+
+  // Get synergy tag color and text based on status
+  const getSynergyTag = (status: string) => {
+    switch (status) {
+      case 'up':
+        return { 
+          text: 'S↑', 
+          className: 'bg-green-500/20 text-green-400 border-green-500/30' 
+        }
+      case 'down':
+        return { 
+          text: 'S↓', 
+          className: 'bg-red-500/20 text-red-400 border-red-500/30' 
+        }
+      case 'none':
+      default:
+        return { 
+          text: 'S–', 
+          className: 'bg-gray-500/20 text-gray-400 border-gray-500/30' 
+        }
+    }
+  }
+
   // Get dot color for individual alert based on trigger text semantics
   const getAlertDotColor = (alert: Alert) => {
     const trigger = alert.trigger.toLowerCase().trim()
@@ -665,6 +718,18 @@ export function GroupedAlertsTable({
                             </span>
                           )
                         })()}
+                        {/* Synergy Status Tag */}
+                        {(() => {
+                          const synergyStatus = getSynergyStatus(group.alerts)
+                          const synergyTag = getSynergyTag(synergyStatus)
+                          return (
+                            <span 
+                              className={`text-xs px-2 py-1 rounded border ${synergyTag.className}`}
+                            >
+                              {synergyTag.text}
+                            </span>
+                          )
+                        })()}
                       </div>
                     </div>
                     
@@ -827,6 +892,20 @@ export function GroupedAlertsTable({
                               className={`text-xs px-2 py-1 rounded border ${getRSITagColor(rsiStatus)}`}
                             >
                               {rsiStatus}
+                            </span>
+                          </div>
+                        )
+                      })()}
+                      {/* Synergy Status Tag for List View */}
+                      {(() => {
+                        const synergyStatus = getSynergyStatus(group.alerts)
+                        const synergyTag = getSynergyTag(synergyStatus)
+                        return (
+                          <div className="flex items-center gap-2">
+                            <span 
+                              className={`text-xs px-2 py-1 rounded border ${synergyTag.className}`}
+                            >
+                              {synergyTag.text}
                             </span>
                           </div>
                         )

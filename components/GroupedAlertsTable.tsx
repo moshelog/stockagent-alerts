@@ -102,18 +102,54 @@ export function GroupedAlertsTable({
         return true // Keep alerts with invalid times
       }
       
-      const timeframeWindow = alertTimeframes.overrides[alert.timeframe] || alertTimeframes.globalDefault
+      // Enhanced flexible timeframe normalization to handle all format variations
+      const originalTimeframe = alert.timeframe
+      const cleanedTimeframe = originalTimeframe.toLowerCase().replace(/\s+/g, '') // Remove all spaces
+      
+      // Generate comprehensive list of possible keys to check
+      const possibleKeys = [
+        originalTimeframe, // Original format (e.g., "5M", "5 M")
+        cleanedTimeframe, // Space-cleaned (e.g., "5m")
+        cleanedTimeframe.replace(/m$/, ''), // Remove trailing 'm' (e.g., "5")
+        cleanedTimeframe.replace(/m$/, '') + 'm', // Ensure 'm' suffix (e.g., "5m")
+        cleanedTimeframe.replace(/m$/, '') + 'M', // Uppercase M (e.g., "5M")
+        cleanedTimeframe.replace(/m$/i, '') + 'min', // Add 'min' suffix (e.g., "5min")
+        cleanedTimeframe.replace(/m$/i, '') + ' M', // Add space + M (e.g., "5 M")
+        cleanedTimeframe.replace(/m$/i, '') + ' m', // Add space + m (e.g., "5 m")
+      ]
+      
+      // Remove duplicates while preserving order
+      const uniqueKeys = [...new Set(possibleKeys)]
+      
+      let timeframeWindow = alertTimeframes.globalDefault
+      let matchedKey = null
+      
+      for (const key of uniqueKeys) {
+        if (alertTimeframes.overrides[key] !== undefined) {
+          timeframeWindow = alertTimeframes.overrides[key]
+          matchedKey = key
+          break
+        }
+      }
       const windowMs = timeframeWindow * 60 * 1000 // Convert minutes to milliseconds
       const timeDiff = now.getTime() - alertTime.getTime()
       
-      console.log('Alert filtering debug:', {
+      console.log('🕒 Enhanced Alert filtering debug:', {
         ticker: alert.ticker,
+        originalTimeframe: originalTimeframe,
+        cleanedTimeframe: cleanedTimeframe,
+        possibleKeys: uniqueKeys,
+        matchedKey: matchedKey,
+        timeframeWindow: timeframeWindow,
+        usingGlobalDefault: matchedKey === null,
         time: alert.time,
         alertTime: alertTime.toISOString(),
         now: now.toISOString(),
-        timeDiff: timeDiff,
+        timeDiffMinutes: Math.round(timeDiff / 60000),
+        windowMinutes: timeframeWindow,
         windowMs: windowMs,
-        isValid: timeDiff <= windowMs
+        isValid: timeDiff <= windowMs,
+        overrides: alertTimeframes.overrides
       })
       
       return timeDiff <= windowMs
@@ -490,7 +526,7 @@ export function GroupedAlertsTable({
         </div>
       </div>
 
-      <div className="max-h-[600px] overflow-y-auto">
+      <div className="max-h-[1320px] overflow-y-auto">
         {groupedAlerts.length === 0 ? (
           <div className="p-8 text-center">
             <p style={{ color: "#A3A9B8" }} className="text-sm">

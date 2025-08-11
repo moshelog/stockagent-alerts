@@ -591,12 +591,12 @@ export default function Dashboard() {
         <MobileAlertsAccordion alertConfig={alertConfig} onUpdateWeight={updateWeight} showWeights={config.ui.showWeights} />
 
         {/* Desktop Grid Layout */}
-        <div className="grid grid-cols-1 lg:grid-cols-[55%_45%] gap-6 min-h-[800px]">
+        <div className="grid grid-cols-1 lg:grid-cols-[55%_45%] gap-6 min-h-[1320px]">
           {/* Left Column */}
-          <div className="flex flex-col h-full space-y-4">
-            {/* Top Left - Recent Alerts (Flexible height) */}
+          <div className="flex flex-col h-full">
+            {/* Recent Alerts (Full height) */}
             {config.ui.showAlertsTable && (
-              <div className="flex-1 min-h-[400px]">
+              <div className="flex-1 min-h-[1320px]">
                 <GroupedAlertsTable 
                   alerts={alerts} 
                   onClearAlerts={handleClearAlerts} 
@@ -604,82 +604,6 @@ export default function Dashboard() {
                   showVisualColors={config.ui.showVisualColors}
                   alertTimeframes={config.alertTimeframes}
                 />
-              </div>
-            )}
-
-            {/* Bottom Left - Strategy Manager (Fixed height) */}
-            {config.ui.showStrategyPanel && (
-              <div className="flex-shrink-0">
-              <StrategyManagerPanel
-                strategies={dbStrategies}
-                alertConfig={alertConfig}
-                showWeights={config.ui.showWeights}
-                onToggleStrategy={toggleStrategy}
-                onUpdateThreshold={updateThreshold}
-                onDeleteStrategy={deleteStrategy}
-                onBacktestStrategy={() => {}}
-                onCreateManualStrategy={async (strategyData: any) => {
-                  console.log('🚀 Strategy creation started:', strategyData)
-                  
-                  try {
-                    // Transform frontend format to API format
-                    const apiFormat = {
-                      name: strategyData.name,
-                      timeframe: parseInt(strategyData.timeframe?.replace('m', '')) || 15,
-                      threshold: strategyData.threshold || 0,
-                      rules: strategyData.ruleGroups ? 
-                        strategyData.ruleGroups.flatMap((group: any) => 
-                          group.alerts.map((alert: any) => ({
-                            indicator: alert.indicator,
-                            trigger: alert.name
-                          }))
-                        ) : [],
-                      ruleGroups: strategyData.ruleGroups // Preserve UI group structure
-                    }
-                    
-                    console.log('📡 API Format:', apiFormat)
-                    console.log('🎯 Rule Groups being sent:', strategyData.ruleGroups)
-                    
-                    console.log('✅ Validation passed, calling createStrategy...')
-                    const result = await createStrategy(apiFormat)
-                    console.log('📥 createStrategy result:', result)
-                    
-                    if (result) {
-                      console.log('✅ Strategy created successfully:', result.name)
-                      // Success - no popup needed, strategy appears in list automatically
-                    } else {
-                      console.error('❌ Strategy creation failed - no result returned')
-                      alert('Failed to create strategy. Please try again.')
-                    }
-                  } catch (error) {
-                    console.error('💥 Strategy creation error:', error)
-                    alert('Error creating strategy: ' + (error instanceof Error ? error.message : 'Unknown error'))
-                  }
-                }}
-                onUpdateStrategy={(id: string, updates: any) => {
-                  console.log('🔄 Strategy update started:', updates)
-                  
-                  // Transform frontend format to API format (same as create strategy)
-                  const apiFormat = {
-                    name: updates.name,
-                    timeframe: parseInt(updates.timeframe?.replace('m', '')) || 15,
-                    threshold: updates.threshold || 0,
-                    rules: updates.ruleGroups ? 
-                      updates.ruleGroups.flatMap((group: any) => 
-                        group.alerts.map((alert: any) => ({
-                          indicator: alert.indicator,
-                          trigger: alert.name
-                        }))
-                      ) : [],
-                    ruleGroups: updates.ruleGroups // Preserve UI group structure
-                  }
-                  
-                  console.log('📡 Update API Format:', apiFormat)
-                  console.log('🎯 Rule Groups being updated:', updates.ruleGroups)
-                  updateDbStrategy(id, apiFormat)
-                }}
-                enabledAlerts={enabledAlerts}
-              />
               </div>
             )}
           </div>
@@ -704,10 +628,86 @@ export default function Dashboard() {
               </div>
             )}
 
-            {/* Bottom Right - Available Alerts Panel (Expanded) */}
+            {/* Middle Right - Available Alerts Panel */}
             <div className="hidden lg:block flex-1 min-h-0">
               <AvailableAlertsPanel alertConfig={alertConfig} onUpdateWeight={updateWeight} showWeights={config.ui.showWeights} />
             </div>
+
+            {/* Bottom Right - Strategy Manager */}
+            {config.ui.showStrategyPanel && (
+              <div className="flex-shrink-0">
+                <StrategyManagerPanel
+                  strategies={dbStrategies}
+                  alertConfig={alertConfig}
+                  showWeights={config.ui.showWeights}
+                  onToggleStrategy={toggleStrategy}
+                  onUpdateThreshold={updateThreshold}
+                  onDeleteStrategy={deleteStrategy}
+                  onBacktestStrategy={() => {}}
+                  onCreateManualStrategy={async (strategyData: any) => {
+                    console.log('🚀 Strategy creation started:', strategyData)
+                    
+                    try {
+                      // Transform frontend format to API format
+                      const apiFormat = {
+                        name: strategyData.name,
+                        timeframe: parseInt(strategyData.timeframe?.replace('m', '')) || 15,
+                        threshold: strategyData.threshold || 0,
+                        rules: strategyData.ruleGroups ? 
+                          strategyData.ruleGroups.flatMap((group: any) => 
+                            group.alerts.map((alert: any) => ({
+                              indicator: alert.indicator,
+                              trigger: alert.name
+                            }))
+                          ) : [],
+                        ruleGroups: strategyData.ruleGroups // Preserve UI group structure
+                      }
+                      
+                      console.log('📡 API Format:', apiFormat)
+                      console.log('🎯 Rule Groups being sent:', strategyData.ruleGroups)
+                      
+                      console.log('✅ Validation passed, calling createStrategy...')
+                      const result = await createStrategy(apiFormat)
+                      console.log('📥 createStrategy result:', result)
+                      
+                      if (result) {
+                        console.log('✅ Strategy created successfully:', result.name)
+                        // Success - no popup needed, strategy appears in list automatically
+                      } else {
+                        console.error('❌ Strategy creation failed - no result returned')
+                        alert('Failed to create strategy. Please try again.')
+                      }
+                    } catch (error) {
+                      console.error('💥 Strategy creation error:', error)
+                      alert('Error creating strategy: ' + (error instanceof Error ? error.message : 'Unknown error'))
+                    }
+                  }}
+                  onUpdateStrategy={(id: string, updates: any) => {
+                    console.log('🔄 Strategy update started:', updates)
+                    
+                    // Transform frontend format to API format (same as create strategy)
+                    const apiFormat = {
+                      name: updates.name,
+                      timeframe: parseInt(updates.timeframe?.replace('m', '')) || 15,
+                      threshold: updates.threshold || 0,
+                      rules: updates.ruleGroups ? 
+                        updates.ruleGroups.flatMap((group: any) => 
+                          group.alerts.map((alert: any) => ({
+                            indicator: alert.indicator,
+                            trigger: alert.name
+                          }))
+                        ) : [],
+                      ruleGroups: updates.ruleGroups // Preserve UI group structure
+                    }
+                    
+                    console.log('📡 Update API Format:', apiFormat)
+                    console.log('🎯 Rule Groups being updated:', updates.ruleGroups)
+                    updateDbStrategy(id, apiFormat)
+                  }}
+                  enabledAlerts={enabledAlerts}
+                />
+              </div>
+            )}
           </div>
         </div>
       </main>

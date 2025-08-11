@@ -143,6 +143,12 @@
   },
   "alertTimeframes": {
     "globalDefault": 30,
-    "overrides": {}
+    "overrides": {
+      "5m": 30,
+      "5M": 30,
+      "5 M": 30,
+      "5 m": 30,
+      "5": 30
+    }
   }
 }

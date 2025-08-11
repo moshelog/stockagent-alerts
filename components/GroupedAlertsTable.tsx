@@ -4,7 +4,7 @@ import { motion, AnimatePresence } from "framer-motion"
 import { TrendingUp, TrendingDown, Trash2, ChevronUp, ChevronDown, ChevronRight, Clock, GripVertical, List, Grid3X3 } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { useState, useMemo, useEffect } from "react"
-import { getExpiringAlerts, getTimeUntilExpiry, groupAlertsByTickerAndTimeframe, AlertGroup } from "@/utils/alertFiltering"
+import { getExpiringAlerts, getTimeUntilExpiry, groupAlertsByTicker } from "@/utils/alertFiltering"
 import { normalizeTimeframe } from "@/utils/timeframeUtils"
 
 interface Alert {
@@ -59,7 +59,6 @@ export function GroupedAlertsTable({
   const [dragOverGroup, setDragOverGroup] = useState<string | null>(null)
   const [viewMode, setViewMode] = useState<'list' | 'card'>('card')
   const [expandedCards, setExpandedCards] = useState<Set<string>>(new Set())
-  const [selectedTimeframes, setSelectedTimeframes] = useState<Set<string>>(new Set())
 
   // Update expiring alerts every second
   useEffect(() => {
@@ -224,59 +223,13 @@ export function GroupedAlertsTable({
     setExpandedCards(newExpanded)
   }
 
-  // Handle timeframe filter toggle
-  const handleTimeframeToggle = (timeframe: string) => {
-    setSelectedTimeframes(prev => {
-      const newSelected = new Set(prev)
-      if (newSelected.has(timeframe)) {
-        newSelected.delete(timeframe)
-      } else {
-        newSelected.add(timeframe)
-      }
-      return newSelected
-    })
-  }
-
-  // Group alerts by ticker and timeframe using the utility function
+  // Group alerts by ticker only using the utility function
   const groupedAlerts = useMemo(() => {
-    // Debug BTCUSDT.P grouping
-    const btcAlerts = validAlerts.filter(alert => alert.ticker === 'BTCUSDT.P')
-    if (btcAlerts.length > 0) {
-      console.log('🔍 BTCUSDT.P alerts before grouping:', btcAlerts.map(alert => ({
-        ticker: alert.ticker,
-        timeframe: alert.timeframe,
-        timeframeLength: alert.timeframe.length,
-        timeframeChars: [...alert.timeframe].map(c => c.charCodeAt(0)),
-        indicator: alert.indicator,
-        trigger: alert.trigger,
-        time: alert.time
-      })))
-    }
-    
-    const groups = groupAlertsByTickerAndTimeframe(validAlerts)
-    
-    // Debug BTCUSDT.P groups
-    const btcGroups = groups.filter(group => group.ticker === 'BTCUSDT.P')
-    if (btcGroups.length > 0) {
-      console.log('🔍 BTCUSDT.P groups after grouping:', btcGroups.map(group => ({
-        key: group.key,
-        ticker: group.ticker,
-        timeframe: group.timeframe,
-        timeframeLength: group.timeframe.length,
-        timeframeChars: [...group.timeframe].map(c => c.charCodeAt(0)),
-        alertCount: group.alerts.length,
-        alerts: group.alerts.map(a => ({ indicator: a.indicator, trigger: a.trigger, time: a.time }))
-      })))
-    }
-    
-    // Filter by selected timeframes if any are selected
-    const filteredGroups = selectedTimeframes.size > 0 
-      ? groups.filter(group => selectedTimeframes.has(group.timeframe))
-      : groups
+    const groups = groupAlertsByTicker(validAlerts)
     
     // Apply custom ordering if available
     const orderedGroups = groupOrder.length > 0 
-      ? [...filteredGroups].sort((a, b) => {
+      ? [...groups].sort((a, b) => {
           const aIndex = groupOrder.indexOf(a.key)
           const bIndex = groupOrder.indexOf(b.key)
           
@@ -289,20 +242,17 @@ export function GroupedAlertsTable({
           if (aIndex !== -1) return -1
           if (bIndex !== -1) return 1
           
-          // If neither is in the order array, sort alphabetically by ticker then timeframe
-          if (a.ticker !== b.ticker) {
-            return a.ticker.localeCompare(b.ticker)
-          }
-          return a.timeframe.localeCompare(b.timeframe)
+          // If neither is in the order array, sort alphabetically
+          return a.ticker.localeCompare(b.ticker)
         })
-      : filteredGroups
+      : groups
     
     // Apply expansion state to the groups
     return orderedGroups.map(group => ({
       ...group,
       isExpanded: expandedGroups.has(group.key)
     }))
-  }, [validAlerts, expandedGroups, groupOrder, selectedTimeframes])
+  }, [validAlerts, expandedGroups, groupOrder])
 
   // Map display names back to webhook names
   const getWebhookIndicatorName = (indicatorName: string) => {
@@ -652,30 +602,6 @@ export function GroupedAlertsTable({
                 <><List className="w-4 h-4 mr-2" />List</>
               )}
             </Button>
-
-            {/* Active Timeframe Filters */}
-            {selectedTimeframes.size > 0 && (
-              <div className="flex items-center gap-1">
-                <span className="text-xs text-gray-400">Filters:</span>
-                {Array.from(selectedTimeframes).map(timeframe => (
-                  <span
-                    key={timeframe}
-                    className="text-xs px-2 py-1 rounded bg-blue-500/20 border border-blue-500/40 text-blue-300 cursor-pointer"
-                    onClick={() => handleTimeframeToggle(timeframe)}
-                    title={`Remove ${timeframe} filter`}
-                  >
-                    {normalizeTimeframe(timeframe)} ×
-                  </span>
-                ))}
-                <button
-                  onClick={() => setSelectedTimeframes(new Set())}
-                  className="text-xs text-gray-400 hover:text-gray-300 ml-1"
-                  title="Clear all filters"
-                >
-                  Clear
-                </button>
-              </div>
-            )}
             
             {/* List View Controls */}
             {viewMode === 'list' && groupedAlerts.length > 0 && (
@@ -733,6 +659,8 @@ export function GroupedAlertsTable({
                 const isCardExpanded = expandedCards.has(group.key)
                 const displayAlerts = isCardExpanded ? group.alerts : group.alerts.slice(0, 4)
                 const hasMore = group.alerts.length > 4
+                const timeframes = [...new Set(group.alerts.map(alert => normalizeTimeframe(alert.timeframe)))]
+                
                 return (
                   <motion.div
                     key={group.key}
@@ -766,19 +694,19 @@ export function GroupedAlertsTable({
                         </span>
                       </div>
                       
-                      {/* Timeframe indicator and RSI status */}
+                      {/* Timeframe indicators and RSI status */}
                       <div className="flex items-center gap-1 flex-wrap">
-                        <button
-                          onClick={() => handleTimeframeToggle(group.timeframe)}
-                          className={`text-xs px-2 py-1 rounded cursor-pointer transition-colors ${
-                            selectedTimeframes.has(group.timeframe)
-                              ? 'bg-blue-500/20 border border-blue-500/40 text-blue-300'
-                              : 'bg-gray-700/50 text-gray-300 hover:bg-gray-600/50'
-                          }`}
-                          title={`Filter by ${group.timeframe} timeframe`}
-                        >
-                          {normalizeTimeframe(group.timeframe)}
-                        </button>
+                        {timeframes.slice(0, 3).map((tf, i) => (
+                          <span 
+                            key={i}
+                            className="text-xs px-2 py-1 rounded bg-gray-700/50 text-gray-300"
+                          >
+                            {tf}
+                          </span>
+                        ))}
+                        {timeframes.length > 3 && (
+                          <span className="text-xs text-gray-400">+{timeframes.length - 3}</span>
+                        )}
                         {/* RSI Status Tag */}
                         {(() => {
                           const rsiStatus = getRSIStatus(group.alerts)
@@ -1066,18 +994,8 @@ export function GroupedAlertsTable({
                                     )}
                                   </div>
                                 </td>
-                                <td className="px-4 py-2 text-xs font-mono">
-                                  <button
-                                    onClick={() => handleTimeframeToggle(alert.timeframe)}
-                                    className={`px-2 py-1 rounded cursor-pointer transition-colors ${
-                                      selectedTimeframes.has(alert.timeframe)
-                                        ? 'bg-blue-500/20 border border-blue-500/40 text-blue-300'
-                                        : 'text-gray-400 hover:text-gray-300 hover:bg-gray-700/50'
-                                    }`}
-                                    title={`Filter by ${alert.timeframe} timeframe`}
-                                  >
-                                    {normalizeTimeframe(alert.timeframe)}
-                                  </button>
+                                <td className="px-4 py-2 text-xs font-mono" style={{ color: "#A3A9B8" }}>
+                                  {normalizeTimeframe(alert.timeframe)}
                                 </td>
                                 <td className="px-4 py-2 text-xs" style={{ color: "#A3A9B8" }}>
                                   {alert.price ? `$${alert.price.toLocaleString()}` : '—'}

@@ -91,14 +91,10 @@ export function GroupedAlertsTable({
     const btcAlerts = alerts.filter(alert => alert.ticker === 'BTCUSDT.P')
     if (btcAlerts.length > 0) {
       console.log('🎯 *** BTCUSDT.P ALERTS FROM BACKEND ***')
-      console.log('🎯 Processing BTCUSDT.P alerts:', btcAlerts.map(alert => ({
-        time: alert.time,
-        timeframe: alert.timeframe,
-        indicator: alert.indicator,
-        trigger: alert.trigger,
-        timestamp: alert.timestamp
-      })))
       console.log('🎯 Total BTCUSDT.P alerts received from backend:', btcAlerts.length)
+      btcAlerts.forEach(alert => {
+        console.log('🎯 Alert:', alert.time, alert.indicator, alert.trigger)
+      })
     } else {
       console.log('🎯 *** NO BTCUSDT.P ALERTS FROM BACKEND ***')
     }
@@ -321,8 +317,10 @@ export function GroupedAlertsTable({
   const getAlertDotColor = (alert: Alert) => {
     const trigger = alert.trigger.toLowerCase().trim()
     
-    // Debug: log the trigger to understand what we're working with
-    console.log('🔍 Analyzing trigger:', `"${trigger}"`, 'Weight:', alert.weight)
+    // Debug: log the trigger to understand what we're working with (only for problematic cases)
+    if (trigger.includes('bearish') && trigger.includes('breakout')) {
+      console.log('🔍 BEARISH OB BREAKOUT DEBUG:', `"${trigger}"`, 'Weight:', alert.weight)
+    }
     
     // Neutral indicators (Yellow) - Check first to handle "RSI: Neutral" etc.
     if (trigger.includes('neutral')) {
@@ -339,7 +337,7 @@ export function GroupedAlertsTable({
       // General bullish
       'bullish', 'buy', 'long', 'up', 
       // Technical patterns
-      'support', 'bounce', 'breakout', 'oversold', 'discount', 'bottom',
+      'support', 'bounce', 'bullish breakout', 'oversold', 'discount', 'bottom',
       // Order blocks and structure
       'bullish ob touch', 'ob touch', 'order block touch',
       'bullish ob breakout',
@@ -358,7 +356,7 @@ export function GroupedAlertsTable({
       // General bearish
       'bearish', 'sell', 'short', 'down',
       // Technical patterns  
-      'resistance', 'rejection', 'breakdown', 'overbought', 'premium', 'top',
+      'resistance', 'rejection', 'bearish breakdown', 'breakdown', 'overbought', 'premium', 'top',
       // Volume patterns
       'bearish volume cross', 'volume cross',
       // Order Block patterns
@@ -369,7 +367,17 @@ export function GroupedAlertsTable({
       'downward', 'downtrend'
     ]
     
-    // Check for bullish signals first
+    // Check for specific bearish patterns FIRST (before general patterns)
+    if (trigger.includes('bearish')) {
+      for (const pattern of bearishPatterns) {
+        if (trigger.includes(pattern)) {
+          console.log('🔴 -> Bearish (red) - matched:', `"${pattern}"`)
+          return 'bg-red-400'
+        }
+      }
+    }
+    
+    // Then check for bullish signals  
     for (const pattern of bullishPatterns) {
       if (trigger.includes(pattern)) {
         console.log('🟢 -> Bullish (green) - matched:', `"${pattern}"`)
@@ -377,7 +385,7 @@ export function GroupedAlertsTable({
       }
     }
     
-    // Then check for bearish signals  
+    // Finally check for general bearish patterns
     for (const pattern of bearishPatterns) {
       if (trigger.includes(pattern)) {
         console.log('🔴 -> Bearish (red) - matched:', `"${pattern}"`)

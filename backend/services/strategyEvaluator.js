@@ -134,24 +134,6 @@ class StrategyEvaluator {
    */
   async recordStrategyCompletion(strategy, ticker, foundRules, missingRules, threshold, isTest = false, recentAlerts = []) {
     try {
-      // Check if this strategy+ticker combination was already completed recently (within 5 minutes)
-      const fiveMinutesAgo = new Date(Date.now() - 5 * 60 * 1000).toISOString();
-      const { data: recentActions, error: recentError } = await supabase
-        .from('actions')
-        .select('*')
-        .eq('strategy_id', strategy.id)
-        .eq('ticker', ticker)
-        .gte('timestamp', fiveMinutesAgo)
-        .order('timestamp', { ascending: false })
-        .limit(1);
-
-      if (recentError) {
-        console.error('Error checking recent actions:', recentError.message);
-      } else if (recentActions && recentActions.length > 0) {
-        console.log(`⚠️ Strategy "${strategy.name}" for ${ticker} already completed recently, skipping duplicate notification`);
-        return recentActions[0]; // Return existing action instead of creating new one
-      }
-
       // Determine action based on strategy name and threshold
       // Buy confirmation strategies should generate BUY signals
       // Sell confirmation strategies should generate SELL signals

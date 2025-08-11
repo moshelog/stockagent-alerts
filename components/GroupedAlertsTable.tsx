@@ -80,6 +80,18 @@ export function GroupedAlertsTable({
     if (!alertTimeframes || !alerts.length) return alerts
 
     const now = new Date()
+    
+    // Log BTCUSDT.P alerts being processed
+    const btcAlerts = alerts.filter(alert => alert.ticker === 'BTCUSDT.P')
+    if (btcAlerts.length > 0) {
+      console.log('🎯 Processing BTCUSDT.P alerts:', btcAlerts.map(alert => ({
+        time: alert.time,
+        timeframe: alert.timeframe,
+        indicator: alert.indicator,
+        trigger: alert.trigger
+      })))
+    }
+    
     return alerts.filter(alert => {
       let alertTime: Date
       
@@ -134,23 +146,26 @@ export function GroupedAlertsTable({
       const windowMs = timeframeWindow * 60 * 1000 // Convert minutes to milliseconds
       const timeDiff = now.getTime() - alertTime.getTime()
       
-      console.log('🕒 Enhanced Alert filtering debug:', {
-        ticker: alert.ticker,
-        originalTimeframe: originalTimeframe,
-        cleanedTimeframe: cleanedTimeframe,
-        possibleKeys: uniqueKeys,
-        matchedKey: matchedKey,
-        timeframeWindow: timeframeWindow,
-        usingGlobalDefault: matchedKey === null,
-        time: alert.time,
-        alertTime: alertTime.toISOString(),
-        now: now.toISOString(),
-        timeDiffMinutes: Math.round(timeDiff / 60000),
-        windowMinutes: timeframeWindow,
-        windowMs: windowMs,
-        isValid: timeDiff <= windowMs,
-        overrides: alertTimeframes.overrides
-      })
+      // Only log debug info for BTCUSDT.P to reduce console noise
+      if (alert.ticker === 'BTCUSDT.P') {
+        console.log('🎯 BTCUSDT.P Alert filtering debug:', {
+          ticker: alert.ticker,
+          originalTimeframe: originalTimeframe,
+          cleanedTimeframe: cleanedTimeframe,
+          possibleKeys: uniqueKeys,
+          matchedKey: matchedKey,
+          timeframeWindow: timeframeWindow,
+          usingGlobalDefault: matchedKey === null,
+          time: alert.time,
+          alertTime: alertTime.toISOString(),
+          now: now.toISOString(),
+          timeDiffMinutes: Math.round(timeDiff / 60000),
+          windowMinutes: timeframeWindow,
+          windowMs: windowMs,
+          isValid: timeDiff <= windowMs,
+          overrides: alertTimeframes.overrides
+        })
+      }
       
       return timeDiff <= windowMs
     })

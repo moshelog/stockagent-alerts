@@ -93,8 +93,8 @@ export function GroupedAlertsTable({
     if (btcAlerts.length > 0) {
       console.log('🎯 *** BTCUSDT.P ALERTS FROM BACKEND ***')
       console.log('🎯 Total BTCUSDT.P alerts received from backend:', btcAlerts.length)
-      btcAlerts.forEach(alert => {
-        console.log('🎯 Alert:', alert.time, alert.indicator, alert.trigger)
+      btcAlerts.forEach((alert, i) => {
+        console.log(`🎯 Alert [${i+1}]:`, alert.time, alert.indicator, alert.trigger)
       })
     } else {
       console.log('🎯 *** NO BTCUSDT.P ALERTS FROM BACKEND ***')
@@ -154,9 +154,12 @@ export function GroupedAlertsTable({
       const windowMs = timeframeWindow * 60 * 1000 // Convert minutes to milliseconds
       const timeDiff = now.getTime() - alertTime.getTime()
       
+      const isValid = timeDiff <= windowMs
+      
       // Only log debug info for BTCUSDT.P to reduce console noise
       if (alert.ticker === 'BTCUSDT.P') {
-        console.log('🎯 BTCUSDT.P Alert filtering debug:', {
+        const status = isValid ? '✅ KEPT' : '❌ FILTERED OUT'
+        console.log(`🎯 ${status}: ${alert.time} ${alert.indicator} - ${alert.trigger}`, {
           ticker: alert.ticker,
           originalTimeframe: originalTimeframe,
           cleanedTimeframe: cleanedTimeframe,
@@ -170,12 +173,12 @@ export function GroupedAlertsTable({
           timeDiffMinutes: Math.round(timeDiff / 60000),
           windowMinutes: timeframeWindow,
           windowMs: windowMs,
-          isValid: timeDiff <= windowMs,
+          isValid: isValid,
           overrides: alertTimeframes.overrides
         })
       }
       
-      return timeDiff <= windowMs
+      return isValid
     })
   }, [alerts, alertTimeframes])
 

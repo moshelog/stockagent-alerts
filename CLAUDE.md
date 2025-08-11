@@ -240,3 +240,27 @@ The StockAgent platform includes specialized AI subagents for enhanced functiona
 # Performance monitoring
 /monitor --performance --real-time --alerts
 ```
+
+## Railway Deployment Instructions
+
+### Frontend Deployment (app.stockagent.app)
+```bash
+cd "/Users/moshelugasi/Downloads/Github/stockagent alerts"
+railway service amused-growth
+railway up
+```
+
+### Backend Deployment (api.stockagent.app)
+```bash
+cd "/Users/moshelugasi/Downloads/Github/stockagent alerts"
+railway service stockagent-backend
+railway up
+```
+
+**IMPORTANT DEPLOYMENT NOTES**:
+- **Always deploy from the main project directory** (not from `/backend` subdirectory)
+- **Frontend service**: `amused-growth` → `app.stockagent.app`
+- **Backend service**: `stockagent-backend` → `api.stockagent.app`
+- Railway expects backend code to be in `/backend` subdirectory from project root
+- Use `railway service [service-name]` to switch between services before deploying
+- Never deploy backend from inside the `/backend` directory - it causes "Could not find root directory: /backend" errors

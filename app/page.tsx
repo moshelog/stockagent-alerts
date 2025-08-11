@@ -655,23 +655,40 @@ export default function Dashboard() {
                       alert('Error creating strategy: ' + (error instanceof Error ? error.message : 'Unknown error'))
                     }
                   }}
-                  onUpdateStrategy={(id: string, updates: any) => {
-                    // Transform frontend format to API format (same as create strategy)
-                    const apiFormat = {
-                      name: updates.name,
-                      timeframe: parseInt(updates.timeframe?.replace('m', '')) || 15,
-                      threshold: updates.threshold || 0,
-                      rules: updates.ruleGroups ? 
-                        updates.ruleGroups.flatMap((group: any) => 
-                          group.alerts.map((alert: any) => ({
-                            indicator: alert.indicator,
-                            trigger: alert.name
-                          }))
-                        ) : [],
-                      ruleGroups: updates.ruleGroups // Preserve UI group structure
+                  onUpdateStrategy={async (id: string, updates: any) => {
+                    try {
+                      console.log('🔄 Frontend: Starting strategy update', { id, updates });
+                      
+                      // Transform frontend format to API format (same as create strategy)
+                      const apiFormat = {
+                        name: updates.name,
+                        timeframe: typeof updates.timeframe === 'string' 
+                          ? parseInt(updates.timeframe.replace('m', '')) || 15
+                          : updates.timeframe || 15,
+                        threshold: updates.threshold || 0,
+                        rules: updates.ruleGroups ? 
+                          updates.ruleGroups.flatMap((group: any) => 
+                            group.alerts.map((alert: any) => ({
+                              indicator: alert.indicator,
+                              trigger: alert.name
+                            }))
+                          ) : [],
+                        ruleGroups: updates.ruleGroups // Preserve UI group structure
+                      }
+                      
+                      console.log('🔄 Frontend: Transformed API format', apiFormat);
+                      
+                      const result = await updateDbStrategy(id, apiFormat);
+                      if (!result) {
+                        console.error('❌ Frontend: Strategy update failed');
+                        alert('Failed to update strategy. Check console for details.');
+                      } else {
+                        console.log('✅ Frontend: Strategy updated successfully');
+                      }
+                    } catch (error) {
+                      console.error('❌ Frontend: Strategy update error:', error);
+                      alert('Error updating strategy: ' + (error instanceof Error ? error.message : 'Unknown error'));
                     }
-                    
-                    updateDbStrategy(id, apiFormat)
                   }}
                   enabledAlerts={enabledAlerts}
                 />

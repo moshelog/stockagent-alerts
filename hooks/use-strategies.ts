@@ -231,16 +231,27 @@ export function useStrategies() {
     }>
     interGroupOperator: "AND" | "OR"
   }>) => {
-    if (!config) return false
+    if (!config) {
+      console.error('❌ No config available for updateStrategy')
+      return false
+    }
 
     try {
+      console.log('🔄 Updating strategy with data:', { id, updates })
+      console.log('🌐 API endpoint:', `${config.apiBase}/strategies/${id}`)
+      
       const response = await authenticatedFetch(`${config.apiBase}/strategies/${id}`, {
         method: 'PUT',
         body: JSON.stringify(updates)
       })
 
+      console.log('📡 Update Response status:', response.status, response.statusText)
+      console.log('📡 Update Response ok:', response.ok)
+
       if (!response.ok) {
-        throw new Error('Failed to update strategy')
+        const errorText = await response.text()
+        console.error('❌ Update API Error Response:', errorText)
+        throw new Error(`Failed to update strategy: ${response.status} ${errorText}`)
       }
 
       const updatedStrategy = await response.json()
@@ -281,7 +292,13 @@ export function useStrategies() {
       setStrategies(prev => prev.map(s => s.id === id ? transformedStrategy : s))
       return true
     } catch (err) {
-      console.error('Failed to update strategy:', err)
+      console.error('❌ Failed to update strategy:', err)
+      console.error('❌ Error details:', {
+        message: err instanceof Error ? err.message : 'Unknown error',
+        stack: err instanceof Error ? err.stack : 'No stack trace',
+        id,
+        updates
+      })
       setError(err instanceof Error ? err.message : 'Failed to update strategy')
       return false
     }

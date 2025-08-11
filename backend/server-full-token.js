@@ -874,14 +874,27 @@ app.put('/api/strategies/:id', requireAuth, async (req, res) => {
     }
 
     const { id } = req.params;
-    const updates = req.body;
+    const { name, timeframe, rules, threshold, enabled, ruleGroups } = req.body;
+
+    // Build update data with proper type conversion (same as CREATE)
+    const updateData = {
+      updated_at: new Date().toISOString()
+    };
+
+    if (name !== undefined) updateData.name = name;
+    if (timeframe !== undefined) updateData.timeframe = parseInt(timeframe);
+    if (rules !== undefined) updateData.rules = JSON.stringify(rules);
+    if (threshold !== undefined) updateData.threshold = parseFloat(threshold) || 0;
+    if (enabled !== undefined) updateData.enabled = enabled;
+
+    // Add rule_groups if provided (same as CREATE)
+    if (ruleGroups && Array.isArray(ruleGroups)) {
+      updateData.rule_groups = JSON.stringify(ruleGroups);
+    }
 
     const { data, error } = await supabase
       .from('strategies')
-      .update({
-        ...updates,
-        updated_at: new Date().toISOString()
-      })
+      .update(updateData)
       .eq('id', id)
       .select();
 

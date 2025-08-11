@@ -114,7 +114,7 @@ class StrategyEvaluator {
 
       // If strategy is complete, record the action
       if (isComplete) {
-        await this.recordStrategyCompletion(strategy, ticker, foundRules, missingRules, threshold, newAlert.isTest);
+        await this.recordStrategyCompletion(strategy, ticker, foundRules, missingRules, threshold, newAlert.isTest, recentAlerts);
       }
 
     } catch (error) {
@@ -130,8 +130,9 @@ class StrategyEvaluator {
    * @param {Array} missingRules - Rules that were not satisfied (should be empty)
    * @param {number} threshold - Strategy threshold for determining action
    * @param {boolean} isTest - Whether this is a test signal
+   * @param {Array} recentAlerts - Recent alerts for this ticker (for price lookup)
    */
-  async recordStrategyCompletion(strategy, ticker, foundRules, missingRules, threshold, isTest = false) {
+  async recordStrategyCompletion(strategy, ticker, foundRules, missingRules, threshold, isTest = false, recentAlerts = []) {
     try {
       // Check if this strategy+ticker combination was already completed recently (within 5 minutes)
       const fiveMinutesAgo = new Date(Date.now() - 5 * 60 * 1000).toISOString();

@@ -599,7 +599,7 @@ export default function Dashboard() {
             {config.ui.showScoreMeter && (
               <div className="flex-shrink-0">
                 <div className="mb-4">
-                  <h2 className="text-lg font-semibold text-white">Scoring System</h2>
+                  <h2 className="text-lg font-semibold text-white">Active Signal Monitor</h2>
                 </div>
                 <CompactLiveScoring
                   lastAction={lastAction}

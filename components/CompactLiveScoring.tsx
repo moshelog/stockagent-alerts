@@ -87,34 +87,6 @@ export function CompactLiveScoring({
       animate={{ opacity: 1, scale: 1 }}
       transition={{ duration: 0.5 }}
     >
-      {/* Header - Recent Action and Time Window */}
-      <div className="p-4">
-        <div className="flex items-center justify-between">
-          <div className="text-sm" style={{ color: "#E0E6ED" }}>
-            {lastAction ? (
-              <>
-                Recent Action:{" "}
-                <span className={`font-bold ${getActionColor(lastAction.action)}`}>
-                  {lastAction.action} {lastAction.ticker}
-                </span>
-                {lastAction.strategy && (
-                  <span className="text-xs ml-2 px-2 py-1 bg-gray-700 rounded-full" style={{ color: "#A3A9B8" }}>
-                    {lastAction.strategy}
-                  </span>
-                )}
-              </>
-            ) : (
-              <>
-                Recent Action: <span className="font-bold text-gray-400">None</span>
-              </>
-            )}
-          </div>
-          
-        </div>
-      </div>
-
-      {/* Divider */}
-      <div className="border-t border-gray-700/50" />
 
       {/* Ticker Table */}
       <div 

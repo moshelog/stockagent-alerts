@@ -59,6 +59,7 @@ export function GroupedAlertsTable({
   const [dragOverGroup, setDragOverGroup] = useState<string | null>(null)
   const [viewMode, setViewMode] = useState<'list' | 'card'>('card')
   const [expandedCards, setExpandedCards] = useState<Set<string>>(new Set())
+  const [selectedTimeframePerCard, setSelectedTimeframePerCard] = useState<Record<string, string>>({})
 
   // Update expiring alerts every second
   useEffect(() => {
@@ -221,6 +222,36 @@ export function GroupedAlertsTable({
       newExpanded.add(cardKey)
     }
     setExpandedCards(newExpanded)
+  }
+
+  // Handle timeframe selection within a card
+  const handleCardTimeframeSelect = (cardKey: string, timeframe: string) => {
+    setSelectedTimeframePerCard(prev => ({
+      ...prev,
+      [cardKey]: timeframe
+    }))
+  }
+
+  // Get the selected timeframe for a card (default to 5M or lowest available)
+  const getSelectedTimeframe = (cardKey: string, availableTimeframes: string[]) => {
+    const selected = selectedTimeframePerCard[cardKey]
+    if (selected && availableTimeframes.includes(selected)) {
+      return selected
+    }
+    
+    // Default priority: 5M, 1M, 15M, 1H, 4H, 1D
+    const timeframePriority = ['5m', '1m', '15m', '1h', '4h', '1d']
+    const normalizedAvailable = availableTimeframes.map(tf => normalizeTimeframe(tf).toLowerCase())
+    
+    for (const priority of timeframePriority) {
+      const index = normalizedAvailable.indexOf(priority)
+      if (index !== -1) {
+        return availableTimeframes[index]
+      }
+    }
+    
+    // Fallback to first available
+    return availableTimeframes[0] || '5m'
   }
 
   // Group alerts by ticker only using the utility function
@@ -655,11 +686,18 @@ export function GroupedAlertsTable({
           <div className="p-4">
             <div className="grid grid-cols-1 gap-4">
               {groupedAlerts.map((group, groupIndex) => {
-                const sentiment = showWeights ? getGroupSentiment(group.alerts) : 'neutral'
-                const isCardExpanded = expandedCards.has(group.key)
-                const displayAlerts = isCardExpanded ? group.alerts : group.alerts.slice(0, 4)
-                const hasMore = group.alerts.length > 4
                 const timeframes = [...new Set(group.alerts.map(alert => normalizeTimeframe(alert.timeframe)))]
+                const selectedTimeframe = getSelectedTimeframe(group.key, timeframes)
+                
+                // Filter alerts by selected timeframe
+                const filteredAlerts = group.alerts.filter(alert => 
+                  normalizeTimeframe(alert.timeframe) === selectedTimeframe
+                )
+                
+                const sentiment = showWeights ? getGroupSentiment(filteredAlerts) : 'neutral'
+                const isCardExpanded = expandedCards.has(group.key)
+                const displayAlerts = isCardExpanded ? filteredAlerts : filteredAlerts.slice(0, 4)
+                const hasMore = filteredAlerts.length > 4
                 
                 return (
                   <motion.div
@@ -690,26 +728,29 @@ export function GroupedAlertsTable({
                               : 'bg-gray-500/20 text-gray-400'
                           }`}
                         >
-                          {group.alerts.length}
+                          {filteredAlerts.length}
                         </span>
                       </div>
                       
                       {/* Timeframe indicators and RSI status */}
                       <div className="flex items-center gap-1 flex-wrap">
-                        {timeframes.slice(0, 3).map((tf, i) => (
-                          <span 
+                        {timeframes.map((tf, i) => (
+                          <button
                             key={i}
-                            className="text-xs px-2 py-1 rounded bg-gray-700/50 text-gray-300"
+                            onClick={() => handleCardTimeframeSelect(group.key, tf)}
+                            className={`text-xs px-2 py-1 rounded cursor-pointer transition-colors ${
+                              tf === selectedTimeframe
+                                ? 'bg-blue-500/20 border border-blue-500/40 text-blue-300'
+                                : 'bg-gray-700/50 text-gray-300 hover:bg-gray-600/50'
+                            }`}
+                            title={`Show ${tf} alerts`}
                           >
                             {tf}
-                          </span>
+                          </button>
                         ))}
-                        {timeframes.length > 3 && (
-                          <span className="text-xs text-gray-400">+{timeframes.length - 3}</span>
-                        )}
                         {/* RSI Status Tag */}
                         {(() => {
-                          const rsiStatus = getRSIStatus(group.alerts)
+                          const rsiStatus = getRSIStatus(filteredAlerts)
                           return (
                             <span 
                               className={`text-xs px-2 py-1 rounded border ${getRSITagColor(rsiStatus)}`}
@@ -720,7 +761,7 @@ export function GroupedAlertsTable({
                         })()}
                         {/* Synergy Status Tag */}
                         {(() => {
-                          const synergyStatus = getSynergyStatus(group.alerts)
+                          const synergyStatus = getSynergyStatus(filteredAlerts)
                           const synergyTag = getSynergyTag(synergyStatus)
                           return (
                             <span 
@@ -786,7 +827,7 @@ export function GroupedAlertsTable({
                             onClick={() => toggleCardExpansion(group.key)}
                             className="text-xs text-blue-400 hover:text-blue-300 transition-colors cursor-pointer"
                           >
-                            +{group.alerts.length - 4} more alerts
+                            +{filteredAlerts.length - 4} more alerts
                           </button>
                         </div>
                       )}
@@ -870,7 +911,7 @@ export function GroupedAlertsTable({
                           {group.ticker}
                         </span>
                         <span className="text-sm" style={{ color: "#A3A9B8" }}>
-                          ({group.alerts.length})
+                          ({filteredAlerts.length})
                         </span>
                       </div>
                     </div>
@@ -898,7 +939,7 @@ export function GroupedAlertsTable({
                       })()}
                       {/* Synergy Status Tag for List View */}
                       {(() => {
-                        const synergyStatus = getSynergyStatus(group.alerts)
+                        const synergyStatus = getSynergyStatus(filteredAlerts)
                         const synergyTag = getSynergyTag(synergyStatus)
                         return (
                           <div className="flex items-center gap-2">

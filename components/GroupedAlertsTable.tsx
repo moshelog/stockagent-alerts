@@ -80,11 +80,12 @@ export function GroupedAlertsTable({
     if (!alertTimeframes || !alerts.length) return alerts
 
     const now = new Date()
-    console.log('🎯 *** FILTERING ALL ALERTS ***', {
+    
+    // IMMEDIATE DEBUG - Always show this
+    console.log('🚨 ALERT FILTERING STARTED', {
       totalAlerts: alerts.length,
-      currentTime: now.toISOString(),
-      alertTimeframes: alertTimeframes,
-      sampleAlerts: alerts.slice(0, 3).map(a => ({ ticker: a.ticker, time: a.time, timeframe: a.timeframe }))
+      btcCount: alerts.filter(a => a.ticker === 'BTCUSDT.P').length,
+      currentTime: now.toISOString()
     })
     
     // Log BTCUSDT.P alerts being processed

@@ -752,7 +752,7 @@ export default function SettingsPage() {
       const testPrice = (Math.random() * 90000 + 10000).toFixed(2) // Random price between $10,000-$100,000
       
       // Create webhook payload in the format: TICKER|PRICE|TIMEFRAME|INDICATOR|TRIGGER
-      const payload = `${webhookTesterTicker}|${testPrice}|15|Extreme|${webhookTesterTrigger}`
+      const payload = `${webhookTesterTicker}|${testPrice}|15|TEST|${webhookTesterTrigger}`
       
       console.log('🧪 Testing webhook with payload:', payload)
       
@@ -764,11 +764,11 @@ export default function SettingsPage() {
 
       if (response.ok) {
         const result = await response.json()
-        const successMessage = `Test webhook sent with price $${testPrice}! Check Recent Alerts table to see if price appears.`
+        const successMessage = `Test webhook sent with price $${testPrice}! Look for "TEST" indicator in Recent Alerts table.`
         setWebhookTestStatus({ type: "success", message: successMessage })
         toast({
           title: "Test Webhook Sent!",
-          description: `Alert created with price $${testPrice}. Check the Recent Alerts table!`,
+          description: `Alert created with "TEST" indicator and price $${testPrice}. Check Recent Alerts!`,
           className: "bg-accent-buy text-white border-accent-buy",
         })
       } else {

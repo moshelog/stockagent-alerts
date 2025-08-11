@@ -275,24 +275,42 @@ export function GroupedAlertsTable({
     return 'neutral'
   }
 
-  // Generate mock RSI status for ticker/timeframe combinations
-  const getRSIStatus = (ticker: string, timeframe: string) => {
-    // Create deterministic but varied RSI statuses based on ticker and timeframe
-    const seed = ticker.charCodeAt(0) + timeframe.charCodeAt(0)
-    const statuses = ['Over Sold', 'Bullish', 'Natural', 'Bearish', 'Over Bought']
-    return statuses[seed % statuses.length]
+  // Get actual RSI status from the latest RSI alert in the group
+  const getRSIStatus = (groupAlerts: Alert[]) => {
+    // Find the most recent RSI alert (they're already sorted by time desc)
+    const rsiAlert = groupAlerts.find(alert => 
+      alert.trigger.toLowerCase().includes('rsi:') || 
+      alert.indicator === 'Extreme Zones' && alert.trigger.includes('RSI:')
+    )
+    
+    if (rsiAlert) {
+      // Extract RSI status from trigger text
+      const trigger = rsiAlert.trigger.toLowerCase()
+      if (trigger.includes('oversold')) return 'Over Sold'
+      if (trigger.includes('overbought')) return 'Over Bought' 
+      if (trigger.includes('bullish')) return 'Bullish'
+      if (trigger.includes('bearish')) return 'Bearish'
+      if (trigger.includes('neutral')) return 'Neutral'
+      if (trigger.includes('extremely oversold')) return 'Extreme Over Sold'
+      if (trigger.includes('extremely overbought')) return 'Extreme Over Bought'
+    }
+    
+    // Fallback to neutral if no RSI alert found
+    return 'Neutral'
   }
 
   // Get RSI tag color based on status
   const getRSITagColor = (status: string) => {
     switch (status) {
       case 'Over Sold':
+      case 'Extreme Over Sold':
       case 'Bullish':
         return 'bg-green-500/20 text-green-400 border-green-500/30'
-      case 'Natural':
+      case 'Neutral':
         return 'bg-orange-500/20 text-orange-400 border-orange-500/30'
       case 'Bearish':
       case 'Over Bought':
+      case 'Extreme Over Bought':
         return 'bg-red-500/20 text-red-400 border-red-500/30'
       default:
         return 'bg-gray-500/20 text-gray-400 border-gray-500/30'
@@ -340,6 +358,8 @@ export function GroupedAlertsTable({
       'bearish', 'sell', 'short', 'down',
       // Technical patterns  
       'resistance', 'rejection', 'breakdown', 'overbought', 'premium', 'top',
+      // Volume patterns
+      'bearish volume cross', 'volume cross',
       // Sell signals
       'sell+', 'sell-',
       // Other patterns
@@ -621,8 +641,7 @@ export function GroupedAlertsTable({
                         )}
                         {/* RSI Status Tag */}
                         {(() => {
-                          const primaryTimeframe = timeframes[0] || '15m'
-                          const rsiStatus = getRSIStatus(group.ticker, primaryTimeframe)
+                          const rsiStatus = getRSIStatus(group.alerts)
                           return (
                             <span 
                               className={`text-xs px-2 py-1 rounded border ${getRSITagColor(rsiStatus)}`}
@@ -786,8 +805,7 @@ export function GroupedAlertsTable({
                       </div>
                       {/* RSI Status Tag for List View */}
                       {(() => {
-                        const primaryTimeframe = [...new Set(group.alerts.map(alert => normalizeTimeframe(alert.timeframe)))][0] || '15m'
-                        const rsiStatus = getRSIStatus(group.ticker, primaryTimeframe)
+                        const rsiStatus = getRSIStatus(group.alerts)
                         return (
                           <div className="flex items-center gap-2">
                             <span 

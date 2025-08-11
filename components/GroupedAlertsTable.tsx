@@ -1,7 +1,7 @@
 "use client"
 
 import { motion, AnimatePresence } from "framer-motion"
-import { TrendingUp, TrendingDown, Trash2, ChevronUp, ChevronDown, ChevronRight, Clock, GripVertical, List, Grid3X3 } from "lucide-react"
+import { TrendingUp, TrendingDown, Trash2, ChevronUp, ChevronDown, ChevronRight, Clock, GripVertical } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { useState, useMemo, useEffect } from "react"
 import { getExpiringAlerts, getTimeUntilExpiry, groupAlertsByTicker } from "@/utils/alertFiltering"
@@ -57,7 +57,7 @@ export function GroupedAlertsTable({
   const [groupOrder, setGroupOrder] = useState<string[]>([])
   const [draggedGroup, setDraggedGroup] = useState<string | null>(null)
   const [dragOverGroup, setDragOverGroup] = useState<string | null>(null)
-  const [viewMode, setViewMode] = useState<'list' | 'card'>('card')
+  const viewMode = 'card' // Force card view only
   const [expandedCards, setExpandedCards] = useState<Set<string>>(new Set())
   const [selectedTimeframePerCard, setSelectedTimeframePerCard] = useState<Record<string, string>>({})
 
@@ -194,10 +194,6 @@ export function GroupedAlertsTable({
       }
     }
     
-    const savedViewMode = localStorage.getItem('alerts-view-mode') as 'list' | 'card'
-    if (savedViewMode && (savedViewMode === 'list' || savedViewMode === 'card')) {
-      setViewMode(savedViewMode)
-    }
   }, [])
 
   // Save group order to localStorage
@@ -207,11 +203,6 @@ export function GroupedAlertsTable({
   }
 
   // Toggle view mode and save to localStorage
-  const toggleViewMode = () => {
-    const newMode = viewMode === 'list' ? 'card' : 'list'
-    setViewMode(newMode)
-    localStorage.setItem('alerts-view-mode', newMode)
-  }
 
   // Toggle card expansion
   const toggleCardExpansion = (cardKey: string) => {
@@ -619,42 +610,6 @@ export function GroupedAlertsTable({
             Recent Alerts
           </h3>
           <div className="flex items-center gap-2">
-            {/* View Mode Toggle */}
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={toggleViewMode}
-              className="bg-transparent border-gray-500/30 text-gray-400 hover:bg-gray-500/10"
-              title={`Switch to ${viewMode === 'list' ? 'Card' : 'List'} View`}
-            >
-              {viewMode === 'list' ? (
-                <><Grid3X3 className="w-4 h-4 mr-2" />Card</>
-              ) : (
-                <><List className="w-4 h-4 mr-2" />List</>
-              )}
-            </Button>
-            
-            {/* List View Controls */}
-            {viewMode === 'list' && groupedAlerts.length > 0 && (
-              <>
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={expandAllGroups}
-                  className="bg-transparent border-blue-500/30 text-blue-400 hover:bg-blue-500/10"
-                >
-                  Expand All
-                </Button>
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={collapseAllGroups}
-                  className="bg-transparent border-blue-500/30 text-blue-400 hover:bg-blue-500/10"
-                >
-                  Collapse All
-                </Button>
-              </>
-            )}
             {onClearAlerts && validAlerts.length > 0 && (
               <Button
                 variant="outline"

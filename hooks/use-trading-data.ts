@@ -51,8 +51,9 @@ export function useTradingData(timeWindowMinutes: number = 60, alertConfig?: any
 
     const fetchData = async () => {
       try {
-        // Fetch real alerts from backend API
-        const alertsResponse = await authenticatedFetch(`${config.apiBase}/alerts`)
+        // Fetch real alerts from backend API with extended time window to support all timeframe overrides
+        // Use 60-minute window to ensure we capture alerts for all configured timeframes
+        const alertsResponse = await authenticatedFetch(`${config.apiBase}/alerts?timeWindow=60`)
         if (!alertsResponse.ok) {
           throw new Error(`Failed to fetch alerts: ${alertsResponse.status}`)
         }

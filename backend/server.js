@@ -893,16 +893,25 @@ app.use('/api', (req, res, next) => {
 });
 
 /**
- * GET /api/alerts - Get recent alerts
+ * GET /api/alerts - Get recent alerts with optional time window filtering
  */
 app.get('/api/alerts', asyncHandler(async (req, res) => {
-  const limit = Math.min(parseInt(req.query.limit) || 50, 200); // Max 200 alerts
+  const limit = Math.min(parseInt(req.query.limit) || 200, 500); // Max 500 alerts for time window support
+  const timeWindowMinutes = parseInt(req.query.timeWindow) || null; // Optional time window in minutes
   
-  const { data, error } = await supabase
+  let query = supabase
     .from('alerts')
     .select('*')
-    .order('timestamp', { ascending: false })
-    .limit(limit);
+    .order('timestamp', { ascending: false });
+    
+  // Apply time window filter if specified
+  if (timeWindowMinutes && timeWindowMinutes > 0) {
+    const cutoffTime = new Date(Date.now() - (timeWindowMinutes * 60 * 1000)).toISOString();
+    query = query.gte('timestamp', cutoffTime);
+    logger.info(`Filtering alerts to last ${timeWindowMinutes} minutes (since ${cutoffTime})`);
+  }
+  
+  const { data, error } = await query.limit(limit);
   
   if (error) {
     return res.status(500).json({ error: error.message });

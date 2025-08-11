@@ -57,7 +57,8 @@ export function GroupedAlertsTable({
   const [groupOrder, setGroupOrder] = useState<string[]>([])
   const [draggedGroup, setDraggedGroup] = useState<string | null>(null)
   const [dragOverGroup, setDragOverGroup] = useState<string | null>(null)
-  const [viewMode, setViewMode] = useState<'list' | 'card'>('list')
+  const [viewMode, setViewMode] = useState<'list' | 'card'>('card')
+  const [expandedCards, setExpandedCards] = useState<Set<string>>(new Set())
 
   // Update expiring alerts every second
   useEffect(() => {
@@ -80,10 +81,40 @@ export function GroupedAlertsTable({
 
     const now = new Date()
     return alerts.filter(alert => {
-      const alertTime = new Date(alert.timestamp || alert.time)
+      let alertTime: Date
+      
+      if (alert.timestamp) {
+        // Use timestamp if available
+        alertTime = new Date(alert.timestamp)
+      } else if (alert.time) {
+        // Parse time string like "10:00:05" - assume it's today
+        const today = new Date()
+        const [hours, minutes, seconds] = alert.time.split(':').map(Number)
+        alertTime = new Date(today.getFullYear(), today.getMonth(), today.getDate(), hours, minutes, seconds)
+      } else {
+        // No valid time, keep the alert
+        return true
+      }
+      
+      // Check if alertTime is valid
+      if (isNaN(alertTime.getTime())) {
+        console.warn('Invalid alert time:', alert.time || alert.timestamp)
+        return true // Keep alerts with invalid times
+      }
+      
       const timeframeWindow = alertTimeframes.overrides[alert.timeframe] || alertTimeframes.globalDefault
       const windowMs = timeframeWindow * 60 * 1000 // Convert minutes to milliseconds
       const timeDiff = now.getTime() - alertTime.getTime()
+      
+      console.log('Alert filtering debug:', {
+        ticker: alert.ticker,
+        time: alert.time,
+        alertTime: alertTime.toISOString(),
+        now: now.toISOString(),
+        timeDiff: timeDiff,
+        windowMs: windowMs,
+        isValid: timeDiff <= windowMs
+      })
       
       return timeDiff <= windowMs
     })
@@ -117,6 +148,17 @@ export function GroupedAlertsTable({
     const newMode = viewMode === 'list' ? 'card' : 'list'
     setViewMode(newMode)
     localStorage.setItem('alerts-view-mode', newMode)
+  }
+
+  // Toggle card expansion
+  const toggleCardExpansion = (cardKey: string) => {
+    const newExpanded = new Set(expandedCards)
+    if (newExpanded.has(cardKey)) {
+      newExpanded.delete(cardKey)
+    } else {
+      newExpanded.add(cardKey)
+    }
+    setExpandedCards(newExpanded)
   }
 
   // Group alerts by ticker only using the new utility function
@@ -171,6 +213,30 @@ export function GroupedAlertsTable({
     return 'neutral'
   }
 
+  // Generate mock RSI status for ticker/timeframe combinations
+  const getRSIStatus = (ticker: string, timeframe: string) => {
+    // Create deterministic but varied RSI statuses based on ticker and timeframe
+    const seed = ticker.charCodeAt(0) + timeframe.charCodeAt(0)
+    const statuses = ['Over Sold', 'Bullish', 'Natural', 'Bearish', 'Over Bought']
+    return statuses[seed % statuses.length]
+  }
+
+  // Get RSI tag color based on status
+  const getRSITagColor = (status: string) => {
+    switch (status) {
+      case 'Over Sold':
+      case 'Bullish':
+        return 'bg-green-500/20 text-green-400 border-green-500/30'
+      case 'Natural':
+        return 'bg-orange-500/20 text-orange-400 border-orange-500/30'
+      case 'Bearish':
+      case 'Over Bought':
+        return 'bg-red-500/20 text-red-400 border-red-500/30'
+      default:
+        return 'bg-gray-500/20 text-gray-400 border-gray-500/30'
+    }
+  }
+
   // Get dot color for individual alert based on trigger text semantics
   const getAlertDotColor = (alert: Alert) => {
     const trigger = alert.trigger.toLowerCase().trim()
@@ -178,10 +244,10 @@ export function GroupedAlertsTable({
     // Debug: log the trigger to understand what we're working with
     console.log('🔍 Analyzing trigger:', `"${trigger}"`, 'Weight:', alert.weight)
     
-    // Neutral indicators (Orange) - Check first to handle "RSI: Neutral" etc.
+    // Neutral indicators (Yellow) - Check first to handle "RSI: Neutral" etc.
     if (trigger.includes('neutral')) {
-      console.log('🟠 -> Neutral (orange)')
-      return 'bg-orange-400'
+      console.log('🟡 -> Neutral (yellow)')
+      return 'bg-yellow-400'
     }
     
     // Bullish indicators (Green) - More comprehensive patterns
@@ -196,6 +262,8 @@ export function GroupedAlertsTable({
       'support', 'bounce', 'breakout', 'oversold', 'discount', 'bottom',
       // Order blocks and structure
       'bullish ob touch', 'ob touch', 'order block touch',
+      // Extreme zones reversed (bullish reversal)
+      'premium zone reversed', 'extreme premium zone reversed',
       // Other patterns
       'golden', 'upward', 'uptrend'
     ]
@@ -242,8 +310,8 @@ export function GroupedAlertsTable({
       console.log('🔴 -> Weight-based red')
       return 'bg-red-400'
     }
-    console.log('🟠 -> Weight-based orange (neutral)')
-    return 'bg-orange-400'
+    console.log('🟡 -> Weight-based yellow (neutral)')
+    return 'bg-yellow-400'
   }
 
   const toggleGroup = (groupKey: string) => {
@@ -367,7 +435,7 @@ export function GroupedAlertsTable({
       <div className="p-4 border-b border-gray-700">
         <div className="flex items-center justify-between">
           <h3 className="text-lg font-semibold" style={{ color: "#E0E6ED" }}>
-            Recent Alerts ({validAlerts.length})
+            Recent Alerts
           </h3>
           <div className="flex items-center gap-2">
             {/* View Mode Toggle */}
@@ -435,10 +503,12 @@ export function GroupedAlertsTable({
         ) : viewMode === 'card' ? (
           /* Card View */
           <div className="p-4">
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+            <div className="grid grid-cols-1 gap-4">
               {groupedAlerts.map((group, groupIndex) => {
                 const sentiment = showWeights ? getGroupSentiment(group.alerts) : 'neutral'
-                const latestAlerts = group.alerts.slice(0, 4) // Show top 4 alerts
+                const isCardExpanded = expandedCards.has(group.key)
+                const displayAlerts = isCardExpanded ? group.alerts : group.alerts.slice(0, 4)
+                const hasMore = group.alerts.length > 4
                 const timeframes = [...new Set(group.alerts.map(alert => normalizeTimeframe(alert.timeframe)))]
                 
                 return (
@@ -474,8 +544,8 @@ export function GroupedAlertsTable({
                         </span>
                       </div>
                       
-                      {/* Timeframe indicators */}
-                      <div className="flex items-center gap-1">
+                      {/* Timeframe indicators and RSI status */}
+                      <div className="flex items-center gap-1 flex-wrap">
                         {timeframes.slice(0, 3).map((tf, i) => (
                           <span 
                             key={i}
@@ -487,12 +557,24 @@ export function GroupedAlertsTable({
                         {timeframes.length > 3 && (
                           <span className="text-xs text-gray-400">+{timeframes.length - 3}</span>
                         )}
+                        {/* RSI Status Tag */}
+                        {(() => {
+                          const primaryTimeframe = timeframes[0] || '15m'
+                          const rsiStatus = getRSIStatus(group.ticker, primaryTimeframe)
+                          return (
+                            <span 
+                              className={`text-xs px-2 py-1 rounded border ${getRSITagColor(rsiStatus)}`}
+                            >
+                              {rsiStatus}
+                            </span>
+                          )
+                        })()}
                       </div>
                     </div>
                     
                     {/* Latest Alerts */}
                     <div className="space-y-2">
-                      {latestAlerts.map((alert, alertIndex) => {
+                      {displayAlerts.map((alert, alertIndex) => {
                         const isExpiring = expiringAlerts.has(alert.id)
                         return (
                           <div 
@@ -537,11 +619,25 @@ export function GroupedAlertsTable({
                         )
                       })}
                       
-                      {group.alerts.length > 4 && (
+                      {hasMore && !isCardExpanded && (
                         <div className="text-center pt-1">
-                          <span className="text-xs text-gray-500">
+                          <button 
+                            onClick={() => toggleCardExpansion(group.key)}
+                            className="text-xs text-blue-400 hover:text-blue-300 transition-colors cursor-pointer"
+                          >
                             +{group.alerts.length - 4} more alerts
-                          </span>
+                          </button>
+                        </div>
+                      )}
+                      
+                      {isCardExpanded && hasMore && (
+                        <div className="text-center pt-1">
+                          <button 
+                            onClick={() => toggleCardExpansion(group.key)}
+                            className="text-xs text-blue-400 hover:text-blue-300 transition-colors cursor-pointer"
+                          >
+                            Show less
+                          </button>
                         </div>
                       )}
                     </div>
@@ -626,6 +722,20 @@ export function GroupedAlertsTable({
                           {group.alerts[0]?.time}
                         </span>
                       </div>
+                      {/* RSI Status Tag for List View */}
+                      {(() => {
+                        const primaryTimeframe = [...new Set(group.alerts.map(alert => normalizeTimeframe(alert.timeframe)))][0] || '15m'
+                        const rsiStatus = getRSIStatus(group.ticker, primaryTimeframe)
+                        return (
+                          <div className="flex items-center gap-2">
+                            <span 
+                              className={`text-xs px-2 py-1 rounded border ${getRSITagColor(rsiStatus)}`}
+                            >
+                              {rsiStatus}
+                            </span>
+                          </div>
+                        )
+                      })()}
                       {showWeights && (
                         <div className="flex items-center gap-2">
                           <span style={{ color: "#A3A9B8" }}>Total Weight:</span>
@@ -695,6 +805,10 @@ export function GroupedAlertsTable({
                               >
                                 <td className="px-4 py-2 text-xs font-mono" style={{ color: "#E0E6ED" }}>
                                   <div className="flex items-center gap-2">
+                                    {/* Visual Color Dot */}
+                                    {showVisualColors && (
+                                      <div className={`w-2 h-2 rounded-full shrink-0 ${getAlertDotColor(alert)}`} />
+                                    )}
                                     {alert.time}
                                     {isExpiring && (
                                       <div className="flex items-center gap-1 text-amber-400">
@@ -716,13 +830,7 @@ export function GroupedAlertsTable({
                                   {getWebhookIndicatorName(alert.indicator)}
                                 </td>
                                 <td className="px-4 py-2 text-xs" style={{ color: "#A3A9B8" }}>
-                                  <div className="flex items-center gap-2">
-                                    {/* Visual Color Dot */}
-                                    {showVisualColors && (
-                                      <div className={`w-2 h-2 rounded-full shrink-0 ${getAlertDotColor(alert)}`} />
-                                    )}
-                                    {alert.trigger}
-                                  </div>
+                                  {alert.trigger}
                                 </td>
                                 {showWeights && (
                                   <td className="px-4 py-2 text-xs text-right">

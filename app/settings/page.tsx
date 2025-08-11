@@ -1021,7 +1021,7 @@ export default function SettingsPage() {
                     Stocks Visual Colors
                   </Label>
                   <p className="text-xs mt-1" style={{ color: "#A3A9B8" }}>
-                    Display colored dots next to alerts (Green=Bullish, Red=Bearish, Orange=Neutral)
+                    Display colored dots next to alerts (Green=Bullish, Red=Bearish, Yellow=Neutral)
                   </p>
                 </div>
                 <div className="flex items-center gap-2">

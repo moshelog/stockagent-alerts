@@ -917,6 +917,21 @@ app.get('/api/alerts', asyncHandler(async (req, res) => {
     return res.status(500).json({ error: error.message });
   }
   
+  // DEBUG: Log BTCUSDT.P alerts being returned
+  const btcAlerts = (data || []).filter(alert => alert.ticker === 'BTCUSDT.P');
+  if (btcAlerts.length > 0) {
+    console.log('🎯 *** BACKEND RETURNING BTCUSDT.P ALERTS ***');
+    console.log('🎯 Total alerts returned:', data?.length || 0);
+    console.log('🎯 BTCUSDT.P alerts returned:', btcAlerts.length);
+    btcAlerts.forEach((alert, i) => {
+      console.log(`🎯 [${i+1}] ${alert.timestamp} - ${alert.indicator}:${alert.trigger}`);
+    });
+  } else {
+    console.log('🎯 *** NO BTCUSDT.P ALERTS RETURNED BY BACKEND ***');
+    console.log('🎯 Total alerts returned:', data?.length || 0);
+    console.log('🎯 All tickers returned:', [...new Set((data || []).map(a => a.ticker))]);
+  }
+  
   res.json(data);
 }));
 

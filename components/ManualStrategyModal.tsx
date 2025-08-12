@@ -224,11 +224,11 @@ export default function ManualStrategyModal({ isOpen, onClose, onSave, editingSt
     { value: "1D", label: "1 Day" },
   ]
 
-  // Indicator options - now using data from useAvailableAlerts hook
+  // Indicator options - using same display names as Available Alerts panel
   const currentIndicatorOptions = [
-    { value: "nautilus", label: "Nautilus™" },
-    { value: "market_core", label: "Market Core Pro™" },
-    { value: "market_waves", label: "Market Waves Pro™" },
+    { value: "nautilus", label: "Oscillator" },
+    { value: "market_core", label: "SMC" },
+    { value: "market_waves", label: "Waves" },
     { value: "extreme_zones", label: "Extreme Zones" },
   ]
 

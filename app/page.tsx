@@ -639,7 +639,11 @@ export default function Dashboard() {
                         rules: strategyData.ruleGroups ? 
                           strategyData.ruleGroups.flatMap((group: any) => 
                             group.alerts.map((alert: any) => ({
-                              indicator: alert.indicator,
+                              indicator: alert.indicator === "nautilus" ? "Nautilus™" :
+                                        alert.indicator === "market_core" ? "Market Core Pro™" :
+                                        alert.indicator === "market_waves" ? "Market Waves Pro™" :
+                                        alert.indicator === "extreme_zones" ? "Extreme Zones" :
+                                        alert.indicator,
                               trigger: alert.name
                             }))
                           ) : [],
@@ -669,7 +673,11 @@ export default function Dashboard() {
                         rules: updates.ruleGroups ? 
                           updates.ruleGroups.flatMap((group: any) => 
                             group.alerts.map((alert: any) => ({
-                              indicator: alert.indicator,
+                              indicator: alert.indicator === "nautilus" ? "Nautilus™" :
+                                        alert.indicator === "market_core" ? "Market Core Pro™" :
+                                        alert.indicator === "market_waves" ? "Market Waves Pro™" :
+                                        alert.indicator === "extreme_zones" ? "Extreme Zones" :
+                                        alert.indicator,
                               trigger: alert.name
                             }))
                           ) : [],

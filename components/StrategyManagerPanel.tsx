@@ -359,9 +359,9 @@ export function StrategyManagerPanel({
               <div className="flex items-center gap-3 flex-1 min-w-0">
                 <h4 className="font-semibold truncate" style={{ color: "#E0E6ED" }}>
                   {strategy.name}
-                  {strategy.timeframe && (
+                  {strategy.timeframe !== undefined && (
                     <span className="ml-2 text-sm font-normal" style={{ color: "#A3A9B8" }}>
-                      ({String(strategy.timeframe).replace('m', '')})
+                      ({strategy.timeframe === -1 ? 'any' : `${strategy.timeframe}m`})
                     </span>
                   )}
                 </h4>

@@ -634,7 +634,7 @@ export default function Dashboard() {
                       // Transform frontend format to API format
                       const apiFormat = {
                         name: strategyData.name,
-                        timeframe: strategyData.timeframe === "0" ? 0 : parseInt(strategyData.timeframe?.replace('m', '')) || 15,
+                        timeframe: parseInt(strategyData.timeframe?.replace('m', '')) || 15,
                         threshold: strategyData.threshold || 1,
                         rules: strategyData.ruleGroups ? 
                           strategyData.ruleGroups.flatMap((group: any) => 
@@ -667,7 +667,7 @@ export default function Dashboard() {
                       const apiFormat = {
                         name: updates.name,
                         timeframe: typeof updates.timeframe === 'string' 
-                          ? (updates.timeframe === "0" ? 0 : parseInt(updates.timeframe.replace('m', '')) || 15)
+                          ? parseInt(updates.timeframe.replace('m', '')) || 15
                           : updates.timeframe || 15,
                         threshold: updates.threshold || 1,
                         rules: updates.ruleGroups ? 

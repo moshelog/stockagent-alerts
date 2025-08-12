@@ -219,7 +219,7 @@ export default function AdminPage() {
     try {
       const response = await fetch(`${config.apiBase}/available-alerts`, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: getAuthHeaders(),
         body: JSON.stringify(newAlert)
       })
 
@@ -251,7 +251,7 @@ export default function AdminPage() {
     try {
       const response = await fetch(`${config.apiBase}/available-alerts/${id}`, {
         method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
+        headers: getAuthHeaders(),
         body: JSON.stringify(updates)
       })
 

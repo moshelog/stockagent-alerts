@@ -758,12 +758,14 @@ export function GroupedAlertsTable({
                               <span className="text-gray-400 truncate">
                                 {alert.trigger}
                               </span>
-                              {alert.price && (
-                                <span className="text-blue-400 font-mono text-sm shrink-0">
-                                  ${alert.price.toLocaleString()}
-                                </span>
-                              )}
                             </div>
+                            
+                            {/* Price on the right side */}
+                            {alert.price && (
+                              <div className="text-blue-400 font-mono text-sm shrink-0 mr-2">
+                                ${alert.price.toLocaleString()}
+                              </div>
+                            )}
                             
                             {showWeights && (
                               <div className="flex items-center gap-1 shrink-0">

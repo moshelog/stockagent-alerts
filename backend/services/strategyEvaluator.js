@@ -436,7 +436,7 @@ class StrategyEvaluator {
       return {
         strategy: name,
         ticker: bestTicker || 'N/A',
-        timeframe: `${timeframe}m`,
+        timeframe: timeframe === 0 ? 'any' : `${timeframe}m`,
         timestamp: new Date().toLocaleTimeString(),
         alertsFound: bestTickerFoundRules,
         missingAlerts: bestTickerMissingRules,

@@ -7,6 +7,10 @@ const discordNotifier = require('./discordNotifier');
  * Evaluates if strategies are completed when new alerts arrive
  */
 class StrategyEvaluator {
+  constructor() {
+    // Track last notified action to prevent duplicate notifications
+    this.lastNotifiedActionId = null;
+  }
   
   /**
    * Evaluate all enabled strategies for a ticker when new alert arrives
@@ -257,63 +261,8 @@ class StrategyEvaluator {
         completedTimeframe: completedTimeframe ? `${completedTimeframe}m` : 'unknown'
       });
 
-      // Send notifications
-      const triggers = foundRules.map(rule => rule.trigger);
-      
-      // Get the most recent alert with price information for this ticker
-      const alertWithPrice = recentAlerts.find(alert => alert.ticker === ticker && alert.price && alert.price > 0);
-      
-      const notificationData = {
-        action,
-        ticker,
-        strategy: strategy.name,
-        triggers,
-        score,
-        isTest: isTest,
-        price: alertWithPrice ? alertWithPrice.price : null,
-        timeframe: completedTimeframe ? `${completedTimeframe}m` : 'any'
-      };
-
-      // Send Telegram notification
-      try {
-        const telegramConfig = await telegramNotifier.getTelegramConfig();
-        console.log('🔔 Telegram config check:', {
-          enabled: telegramConfig.enabled,
-          hasBotToken: !!telegramConfig.botToken,
-          hasChatId: !!telegramConfig.chatId
-        });
-        
-        if (telegramConfig.enabled && telegramConfig.botToken && telegramConfig.chatId) {
-          console.log('📤 Sending Telegram notification for:', notificationData.action, notificationData.ticker);
-          const result = await telegramNotifier.sendNotification(notificationData, telegramConfig);
-          console.log('✅ Telegram notification result:', result.success ? 'SUCCESS' : 'FAILED', result.message);
-        } else {
-          console.log('⚠️ Telegram notification skipped - config incomplete');
-        }
-      } catch (notificationError) {
-        console.error('❌ Failed to send Telegram notification:', notificationError.message);
-        // Continue even if notification fails
-      }
-
-      // Send Discord notification
-      try {
-        const discordConfig = await discordNotifier.getDiscordConfig();
-        console.log('🔔 Discord config check:', {
-          enabled: discordConfig.enabled,
-          hasWebhookUrl: !!discordConfig.webhookUrl
-        });
-        
-        if (discordConfig.enabled && discordConfig.webhookUrl) {
-          console.log('📤 Sending Discord notification for:', notificationData.action, notificationData.ticker);
-          const result = await discordNotifier.sendNotification(notificationData, discordConfig);
-          console.log('✅ Discord notification result:', result.success ? 'SUCCESS' : 'FAILED', result.message);
-        } else {
-          console.log('⚠️ Discord notification skipped - config incomplete');
-        }
-      } catch (notificationError) {
-        console.error('❌ Failed to send Discord notification:', notificationError.message);
-        // Continue even if notification fails
-      }
+      // NOTE: Notifications are now handled by the scoring system when strategies appear in Active Signal Monitor
+      // This ensures notifications only trigger when strategies are actually visible to users
 
       return data[0];
 
@@ -356,6 +305,7 @@ class StrategyEvaluator {
 
   /**
    * Get the latest action across all strategies (within last 24 hours)
+   * Also handles notifications for new actions that appear in Active Signal Monitor
    * @returns {Object|null} Latest action or null
    */
   async getLatestAction() {
@@ -380,11 +330,104 @@ class StrategyEvaluator {
         throw new Error(`Failed to fetch latest action: ${error.message}`);
       }
 
-      return data.length > 0 ? data[0] : null;
+      const latestAction = data.length > 0 ? data[0] : null;
+
+      // Check if this is a new action that should trigger notifications
+      if (latestAction && latestAction.id !== this.lastNotifiedActionId) {
+        console.log(`🔔 New action detected in Active Signal Monitor: ${latestAction.action} ${latestAction.ticker}`);
+        
+        // Send notifications for this action since it's visible in Active Signal Monitor
+        await this.sendNotificationsForAction(latestAction);
+        
+        // Update the last notified action ID to prevent duplicates
+        this.lastNotifiedActionId = latestAction.id;
+      }
+
+      return latestAction;
 
     } catch (error) {
       console.error('❌ Error fetching latest action:', error.message);
       return null;
+    }
+  }
+
+  /**
+   * Send notifications for an action that appears in Active Signal Monitor
+   * @param {Object} action - The action object from database
+   */
+  async sendNotificationsForAction(action) {
+    try {
+      // Get strategy details
+      const strategyName = action.strategies?.name || 'Unknown Strategy';
+      const timeframe = action.strategies?.timeframe || 15;
+      
+      // Parse found rules to get triggers
+      const foundRules = Array.isArray(action.found) ? action.found : [];
+      const triggers = foundRules.map(rule => rule.trigger || rule.name || 'Unknown trigger');
+      
+      // Get the most recent alert with price information for this ticker
+      const { data: recentAlerts } = await supabase
+        .from('alerts')
+        .select('*')
+        .eq('ticker', action.ticker)
+        .order('timestamp', { ascending: false })
+        .limit(5);
+      
+      const alertWithPrice = recentAlerts?.find(alert => alert.price && alert.price > 0);
+      
+      const notificationData = {
+        action: action.action,
+        ticker: action.ticker,
+        strategy: strategyName,
+        triggers,
+        score: action.score || 0,
+        isTest: false, // Actions in Active Signal Monitor are real signals
+        price: alertWithPrice ? alertWithPrice.price : null,
+        timeframe: timeframe === -1 ? 'any' : `${timeframe}m`,
+        timestamp: action.timestamp
+      };
+
+      console.log('📤 Sending notifications for Active Signal Monitor action:', {
+        action: notificationData.action,
+        ticker: notificationData.ticker,
+        strategy: notificationData.strategy,
+        timeframe: notificationData.timeframe
+      });
+
+      // Send Telegram notification
+      try {
+        const telegramNotifier = require('./telegramNotifier');
+        const telegramConfig = await telegramNotifier.getTelegramConfig();
+        
+        if (telegramConfig.enabled && telegramConfig.botToken && telegramConfig.chatId) {
+          console.log('📤 Sending Telegram notification for Active Signal Monitor');
+          const result = await telegramNotifier.sendNotification(notificationData, telegramConfig);
+          console.log('✅ Telegram notification result:', result.success ? 'SUCCESS' : 'FAILED', result.message);
+        } else {
+          console.log('⚠️ Telegram notification skipped - config incomplete');
+        }
+      } catch (notificationError) {
+        console.error('❌ Failed to send Telegram notification:', notificationError.message);
+      }
+
+      // Send Discord notification
+      try {
+        const discordNotifier = require('./discordNotifier');
+        const discordConfig = await discordNotifier.getDiscordConfig();
+        
+        if (discordConfig.enabled && discordConfig.webhookUrl) {
+          console.log('📤 Sending Discord notification for Active Signal Monitor');
+          const result = await discordNotifier.sendNotification(notificationData, discordConfig);
+          console.log('✅ Discord notification result:', result.success ? 'SUCCESS' : 'FAILED', result.message);
+        } else {
+          console.log('⚠️ Discord notification skipped - config incomplete');
+        }
+      } catch (notificationError) {
+        console.error('❌ Failed to send Discord notification:', notificationError.message);
+      }
+
+    } catch (error) {
+      console.error('❌ Error sending notifications for action:', error.message);
     }
   }
 

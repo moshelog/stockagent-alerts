@@ -55,7 +55,7 @@ class StrategyEvaluator {
   }
 
   /**
-   * Evaluate a single strategy for completion
+   * Evaluate a single strategy for completion with timeframe-specific logic
    * @param {Object} strategy - The strategy to evaluate
    * @param {string} ticker - The ticker symbol
    * @param {Object} newAlert - The new alert that triggered evaluation
@@ -67,10 +67,66 @@ class StrategyEvaluator {
       // Parse rules from JSON (if it's a string, otherwise use as is)
       const strategyRules = typeof rules === 'string' ? JSON.parse(rules) : rules;
       
-      // Calculate time window (timeframe minutes ago)
-      const windowStart = new Date(Date.now() - timeframe * 60 * 1000);
+      console.log(`📈 Evaluating strategy "${name}" for ${ticker} with timeframe: ${timeframe === -1 ? 'ANY' : timeframe + 'm'}`);
       
-      // Get all alerts for this ticker within the timeframe
+      let isComplete = false;
+      let foundRules = [];
+      let completedTimeframe = null;
+      
+      if (timeframe === -1) {
+        // ANY TIMEFRAME: Check each timeframe individually
+        const timeframesToCheck = [5, 15, 60, 240, 1440]; // 5m, 15m, 1h, 4h, 1d
+        
+        for (const tf of timeframesToCheck) {
+          const result = await this.evaluateStrategyForSpecificTimeframe(strategy, ticker, strategyRules, tf);
+          
+          if (result.isComplete) {
+            isComplete = true;
+            foundRules = result.foundRules;
+            completedTimeframe = tf;
+            console.log(`✅ Strategy "${name}" completed on ${tf}m timeframe for ${ticker}`);
+            break; // Stop at first completed timeframe
+          }
+        }
+        
+        if (!isComplete) {
+          console.log(`❌ Strategy "${name}" not completed on any timeframe for ${ticker}`);
+        }
+        
+      } else {
+        // SPECIFIC TIMEFRAME: Check only the specified timeframe
+        const result = await this.evaluateStrategyForSpecificTimeframe(strategy, ticker, strategyRules, timeframe);
+        isComplete = result.isComplete;
+        foundRules = result.foundRules;
+        completedTimeframe = timeframe;
+        
+        console.log(`📊 Strategy "${name}" on ${timeframe}m: ${isComplete ? 'COMPLETED' : 'NOT COMPLETED'} for ${ticker}`);
+      }
+
+      // If strategy is complete, record the action
+      if (isComplete) {
+        await this.recordStrategyCompletion(strategy, ticker, foundRules, [], threshold, newAlert.isTest, [], completedTimeframe);
+      }
+
+    } catch (error) {
+      console.error(`❌ Error evaluating strategy ${strategy.name}:`, error.message);
+    }
+  }
+
+  /**
+   * Evaluate strategy completion for a specific timeframe
+   * @param {Object} strategy - The strategy to evaluate
+   * @param {string} ticker - The ticker symbol
+   * @param {Array} strategyRules - Parsed strategy rules
+   * @param {number} timeframeMinutes - Timeframe in minutes
+   * @returns {Object} - { isComplete: boolean, foundRules: Array, recentAlerts: Array }
+   */
+  async evaluateStrategyForSpecificTimeframe(strategy, ticker, strategyRules, timeframeMinutes) {
+    try {
+      // Calculate time window (timeframe minutes ago)
+      const windowStart = new Date(Date.now() - timeframeMinutes * 60 * 1000);
+      
+      // Get all alerts for this ticker within the specific timeframe window
       const { data: recentAlerts, error: alertsError } = await supabase
         .from('alerts')
         .select('*')
@@ -82,7 +138,7 @@ class StrategyEvaluator {
         throw new Error(`Failed to fetch recent alerts: ${alertsError.message}`);
       }
 
-      // Check which rules are satisfied
+      // Check which rules are satisfied within this timeframe
       const foundRules = [];
       const missingRules = [];
 
@@ -90,35 +146,45 @@ class StrategyEvaluator {
         // Map the simplified indicator name to the full name used in alerts
         const fullIndicatorName = this.mapIndicatorName(rule.indicator);
         
-        const ruleFound = recentAlerts.some(alert => 
+        // Find if this rule is satisfied by any alert in this timeframe window
+        const matchingAlert = recentAlerts.find(alert => 
           alert.indicator === fullIndicatorName && 
           alert.trigger === rule.trigger
         );
 
-        if (ruleFound) {
-          foundRules.push(rule);
+        if (matchingAlert) {
+          foundRules.push({
+            ...rule,
+            alertTimestamp: matchingAlert.timestamp,
+            timeframe: timeframeMinutes
+          });
         } else {
           missingRules.push(rule);
         }
       }
 
-      // Check if strategy is complete (all rules found)
-      const isComplete = missingRules.length === 0;
+      // Strategy is complete if all rules are found within this single timeframe
+      const isComplete = missingRules.length === 0 && foundRules.length === strategyRules.length;
       
-      console.log(`📈 Strategy "${name}" for ${ticker}:`, {
-        complete: isComplete,
-        found: foundRules.length,
-        missing: missingRules.length,
-        timeframe: `${timeframe}m`
-      });
-
-      // If strategy is complete, record the action
-      if (isComplete) {
-        await this.recordStrategyCompletion(strategy, ticker, foundRules, missingRules, threshold, newAlert.isTest, recentAlerts);
-      }
+      console.log(`  📋 Timeframe ${timeframeMinutes}m: Found ${foundRules.length}/${strategyRules.length} rules for ${ticker}`);
+      
+      return {
+        isComplete,
+        foundRules,
+        missingRules,
+        recentAlerts,
+        timeframe: timeframeMinutes
+      };
 
     } catch (error) {
-      console.error(`❌ Error evaluating strategy ${strategy.name}:`, error.message);
+      console.error(`❌ Error evaluating timeframe ${timeframeMinutes}m for strategy ${strategy.name}:`, error.message);
+      return {
+        isComplete: false,
+        foundRules: [],
+        missingRules: strategyRules,
+        recentAlerts: [],
+        timeframe: timeframeMinutes
+      };
     }
   }
 
@@ -131,8 +197,9 @@ class StrategyEvaluator {
    * @param {number} threshold - Strategy threshold for determining action
    * @param {boolean} isTest - Whether this is a test signal
    * @param {Array} recentAlerts - Recent alerts for this ticker (for price lookup)
+   * @param {number} completedTimeframe - The timeframe where strategy was completed
    */
-  async recordStrategyCompletion(strategy, ticker, foundRules, missingRules, threshold, isTest = false, recentAlerts = []) {
+  async recordStrategyCompletion(strategy, ticker, foundRules, missingRules, threshold, isTest = false, recentAlerts = [], completedTimeframe = null) {
     try {
       // Determine action based on strategy name and triggers
       // Analyze both strategy name and triggers to determine BUY vs SELL
@@ -186,7 +253,8 @@ class StrategyEvaluator {
         strategy: strategy.name,
         action: action,
         score: score,
-        foundRules: foundRules.length
+        foundRules: foundRules.length,
+        completedTimeframe: completedTimeframe ? `${completedTimeframe}m` : 'unknown'
       });
 
       // Send notifications
@@ -202,7 +270,8 @@ class StrategyEvaluator {
         triggers,
         score,
         isTest: isTest,
-        price: alertWithPrice ? alertWithPrice.price : null
+        price: alertWithPrice ? alertWithPrice.price : null,
+        timeframe: completedTimeframe ? `${completedTimeframe}m` : 'any'
       };
 
       // Send Telegram notification
@@ -369,9 +438,9 @@ class StrategyEvaluator {
   }
 
   /**
-   * Calculate score data for a specific strategy
+   * Calculate score data for a specific strategy with timeframe-specific logic
    * @param {Object} strategy - The strategy to evaluate
-   * @param {Array} recentAlerts - All alerts from the last hour
+   * @param {Array} recentAlerts - All alerts from the time window
    * @returns {Object|null} Strategy score data
    */
   async calculateStrategyScore(strategy, recentAlerts) {
@@ -385,13 +454,16 @@ class StrategyEvaluator {
         return null;
       }
 
-      // Find which rules have been satisfied by recent alerts
-      const foundRules = [];
-      const missingRules = [];
-      let totalScore = 0;
-      let bestTicker = null;
+      let bestResult = {
+        ticker: 'N/A',
+        timeframe: timeframe === -1 ? 'any' : `${timeframe}m`,
+        alertsFound: [],
+        missingAlerts: strategyRules.map(r => r.trigger),
+        score: 0,
+        completedTimeframe: null
+      };
 
-      // Group alerts by ticker to find the best ticker for this strategy
+      // Group alerts by ticker
       const alertsByTicker = new Map();
       recentAlerts.forEach(alert => {
         if (!alertsByTicker.has(alert.ticker)) {
@@ -400,59 +472,121 @@ class StrategyEvaluator {
         alertsByTicker.get(alert.ticker).push(alert);
       });
 
-      // Find the ticker with the most matching alerts for this strategy
-      let maxMatches = 0;
-      let bestTickerFoundRules = [];
-      let bestTickerMissingRules = [];
-
+      // Evaluate each ticker
       for (const [ticker, tickerAlerts] of alertsByTicker) {
-        const tickerFoundRules = [];
-        const tickerMissingRules = [];
+        let tickerResult = null;
 
-        for (const rule of strategyRules) {
-          const fullIndicatorName = this.mapIndicatorName(rule.indicator);
+        if (timeframe === -1) {
+          // ANY TIMEFRAME: Check each timeframe for this ticker
+          const timeframesToCheck = [5, 15, 60, 240, 1440]; // 5m, 15m, 1h, 4h, 1d
           
-          const ruleFound = tickerAlerts.some(alert => 
-            alert.indicator === fullIndicatorName && 
-            alert.trigger === rule.trigger
-          );
-
-          if (ruleFound) {
-            tickerFoundRules.push(rule.trigger);
-          } else {
-            tickerMissingRules.push(rule.trigger);
+          for (const tf of timeframesToCheck) {
+            const result = await this.calculateScoreForTickerAndTimeframe(strategy, ticker, strategyRules, tf, recentAlerts);
+            
+            if (result && result.foundRules.length > (tickerResult?.foundRules.length || 0)) {
+              tickerResult = {
+                ...result,
+                completedTimeframe: tf
+              };
+              
+              // If strategy is complete on this timeframe, break
+              if (result.isComplete) {
+                break;
+              }
+            }
+          }
+        } else {
+          // SPECIFIC TIMEFRAME: Check only the specified timeframe
+          tickerResult = await this.calculateScoreForTickerAndTimeframe(strategy, ticker, strategyRules, timeframe, recentAlerts);
+          if (tickerResult) {
+            tickerResult.completedTimeframe = timeframe;
           }
         }
 
-        // If this ticker has more matches, use it as the best ticker for this strategy
-        if (tickerFoundRules.length > maxMatches) {
-          maxMatches = tickerFoundRules.length;
-          bestTicker = ticker;
-          bestTickerFoundRules = tickerFoundRules;
-          bestTickerMissingRules = tickerMissingRules;
+        // Update best result if this ticker has more matches
+        if (tickerResult && tickerResult.foundRules.length > bestResult.alertsFound.length) {
+          bestResult = {
+            ticker: ticker,
+            timeframe: timeframe === -1 ? `any (${tickerResult.completedTimeframe}m)` : `${timeframe}m`,
+            alertsFound: tickerResult.foundRules.map(r => r.trigger),
+            missingAlerts: tickerResult.missingRules.map(r => r.trigger),
+            score: tickerResult.score,
+            completedTimeframe: tickerResult.completedTimeframe
+          };
         }
-      }
-
-      // Calculate score for found rules
-      if (bestTicker && maxMatches > 0) {
-        const foundRulesForScore = strategyRules.filter(rule => 
-          bestTickerFoundRules.includes(rule.trigger)
-        );
-        totalScore = await this.calculateScore(foundRulesForScore);
       }
 
       return {
         strategy: name,
-        ticker: bestTicker || 'N/A',
-        timeframe: `${timeframe}m`,
+        ticker: bestResult.ticker,
+        timeframe: bestResult.timeframe,
         timestamp: new Date().toLocaleTimeString(),
-        alertsFound: bestTickerFoundRules,
-        missingAlerts: bestTickerMissingRules,
-        score: totalScore
+        alertsFound: bestResult.alertsFound,
+        missingAlerts: bestResult.missingAlerts,
+        score: bestResult.score
       };
 
     } catch (error) {
       console.error(`❌ Error calculating strategy score for ${strategy.name}:`, error.message);
+      return null;
+    }
+  }
+
+  /**
+   * Calculate score for a specific ticker and timeframe combination
+   * @param {Object} strategy - The strategy to evaluate
+   * @param {string} ticker - The ticker symbol
+   * @param {Array} strategyRules - Parsed strategy rules
+   * @param {number} timeframeMinutes - Timeframe in minutes
+   * @param {Array} allAlerts - All recent alerts to filter from
+   * @returns {Object|null} Score result for this ticker/timeframe
+   */
+  async calculateScoreForTickerAndTimeframe(strategy, ticker, strategyRules, timeframeMinutes, allAlerts) {
+    try {
+      // Filter alerts to this ticker and timeframe window
+      const windowStart = new Date(Date.now() - timeframeMinutes * 60 * 1000);
+      const relevantAlerts = allAlerts.filter(alert => 
+        alert.ticker === ticker && 
+        new Date(alert.timestamp) >= windowStart
+      );
+
+      const foundRules = [];
+      const missingRules = [];
+
+      // Check each rule against the relevant alerts
+      for (const rule of strategyRules) {
+        const fullIndicatorName = this.mapIndicatorName(rule.indicator);
+        
+        const matchingAlert = relevantAlerts.find(alert => 
+          alert.indicator === fullIndicatorName && 
+          alert.trigger === rule.trigger
+        );
+
+        if (matchingAlert) {
+          foundRules.push(rule);
+        } else {
+          missingRules.push(rule);
+        }
+      }
+
+      // Calculate score for found rules
+      let totalScore = 0;
+      if (foundRules.length > 0) {
+        totalScore = await this.calculateScore(foundRules);
+      }
+
+      const isComplete = missingRules.length === 0 && foundRules.length === strategyRules.length;
+
+      return {
+        isComplete,
+        foundRules,
+        missingRules,
+        score: totalScore,
+        timeframe: timeframeMinutes
+      };
+
+    } catch (error) {
+      console.error(`❌ Error calculating score for ${ticker} on ${timeframeMinutes}m:`, error.message);
       return null;
     }
   }

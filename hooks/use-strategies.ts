@@ -89,7 +89,7 @@ export function useStrategies() {
             rule_groups: parsedRuleGroups, // Database field
             ruleGroups: parsedRuleGroups, // Frontend alias for compatibility
             // Add frontend compatibility fields
-            summary: `${parsedRules.length} alerts • ${strategy.timeframe}m • ${strategy.threshold > 0 ? 'BUY' : 'SELL'} threshold`,
+            summary: `${parsedRules.length} alerts • ${strategy.timeframe === 0 ? 'any' : strategy.timeframe + 'm'} • ${strategy.threshold > 0 ? 'BUY' : 'SELL'} threshold`,
             rule: `IF ${parsedRules.map((r: any) => `${r.indicator}: ${r.trigger}`).join(' + ')} THEN ${strategy.threshold > 0 ? 'BUY' : 'SELL'}`,
             components: {},
             alertDetails: parsedRules.map((r: any, index: number) => ({
@@ -188,7 +188,7 @@ export function useStrategies() {
         rules: parsedRules, // Use parsed rules
         rule_groups: parsedRuleGroups, // Database field
         ruleGroups: parsedRuleGroups, // Frontend alias
-        summary: `${parsedRules.length} alerts • ${newStrategy.timeframe}m • ${newStrategy.threshold > 0 ? 'BUY' : 'SELL'} threshold`,
+        summary: `${parsedRules.length} alerts • ${newStrategy.timeframe === 0 ? 'any' : newStrategy.timeframe + 'm'} • ${newStrategy.threshold > 0 ? 'BUY' : 'SELL'} threshold`,
         rule: `IF ${parsedRules.map((r: any) => `${r.indicator}: ${r.trigger}`).join(' + ')} THEN ${newStrategy.threshold > 0 ? 'BUY' : 'SELL'}`,
         components: {},
         alertDetails: parsedRules.map((r: any) => ({
@@ -273,7 +273,7 @@ export function useStrategies() {
         rules: parsedRules, // Use parsed rules
         rule_groups: parsedRuleGroups, // Database field
         ruleGroups: parsedRuleGroups, // Frontend alias
-        summary: `${parsedRules.length} alerts • ${updatedStrategy.timeframe}m • ${updatedStrategy.threshold > 0 ? 'BUY' : 'SELL'} threshold`,
+        summary: `${parsedRules.length} alerts • ${updatedStrategy.timeframe === 0 ? 'any' : updatedStrategy.timeframe + 'm'} • ${updatedStrategy.threshold > 0 ? 'BUY' : 'SELL'} threshold`,
         rule: `IF ${parsedRules.map((r: any) => `${r.indicator}: ${r.trigger}`).join(' + ')} THEN ${updatedStrategy.threshold > 0 ? 'BUY' : 'SELL'}`,
         components: {},
         alertDetails: parsedRules.map((r: any) => ({

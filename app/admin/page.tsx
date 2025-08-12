@@ -78,9 +78,9 @@ export default function AdminPage() {
         setApiStatus("unavailable")
         // Fallback data if API is not ready
         setIndicators([
-          { id: '1', name: 'nautilus', display_name: 'Nautilus™', description: 'Advanced oscillator with divergence detection and volume analysis', category: 'oscillator', enabled: true, created_at: '', updated_at: '' },
-          { id: '2', name: 'market_core', display_name: 'Market Core Pro™', description: 'Smart Money Concepts (SMC) with order blocks, FVG, and structure breaks', category: 'smc', enabled: true, created_at: '', updated_at: '' },
-          { id: '3', name: 'market_waves', display_name: 'Market Waves Pro™', description: 'Trend analysis with flow detection and wave patterns', category: 'trend', enabled: true, created_at: '', updated_at: '' },
+          { id: '1', name: 'nautilus', display_name: 'Oscillator', description: 'Advanced oscillator with divergence detection and volume analysis', category: 'oscillator', enabled: true, created_at: '', updated_at: '' },
+          { id: '2', name: 'market_core', display_name: 'SMC', description: 'Smart Money Concepts (SMC) with order blocks, FVG, and structure breaks', category: 'smc', enabled: true, created_at: '', updated_at: '' },
+          { id: '3', name: 'market_waves', display_name: 'Waves', description: 'Trend analysis with flow detection and wave patterns', category: 'trend', enabled: true, created_at: '', updated_at: '' },
           { id: '4', name: 'extreme_zones', display_name: 'Extreme Zones', description: 'Premium, discount, and equilibrium zone analysis', category: 'zones', enabled: true, created_at: '', updated_at: '' }
         ])
         return

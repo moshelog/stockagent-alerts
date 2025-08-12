@@ -216,7 +216,7 @@ export default function ManualStrategyModal({ isOpen, onClose, onSave, editingSt
   const [interGroupOperator, setInterGroupOperator] = useState<"AND" | "OR">("OR")
 
   const timeframeOptions = [
-    { value: "5m", label: "Any" },
+    { value: "-1", label: "Any" },
     { value: "1m", label: "1 Minute" },
     { value: "5m", label: "5 Minutes" },
     { value: "15m", label: "15 Minutes" },
@@ -245,7 +245,7 @@ export default function ManualStrategyModal({ isOpen, onClose, onSave, editingSt
         setThreshold(editingStrategy.threshold)
         // Convert database timeframe (number) to modal format (string with 'm')
         const timeframeValue = typeof editingStrategy.timeframe === 'number' 
-          ? `${editingStrategy.timeframe}m`
+          ? (editingStrategy.timeframe === -1 ? "-1" : `${editingStrategy.timeframe}m`)
           : editingStrategy.timeframe || "15m"
         setTimeframe(timeframeValue)
         setInterGroupOperator("OR") // Default for existing strategies

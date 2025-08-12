@@ -714,9 +714,12 @@ export function GroupedAlertsTable({
                             </span>
                           )
                         })()}
-                        {/* Synergy Status Tag */}
+                        {/* Synergy Status Tag - Only show if synergy exists */}
                         {(() => {
                           const synergyStatus = getSynergyStatus(filteredAlerts)
+                          // Only render tag if there's actual synergy (up or down), hide for 'none'
+                          if (synergyStatus === 'none') return null
+                          
                           const synergyTag = getSynergyTag(synergyStatus)
                           return (
                             <span 

@@ -25,7 +25,7 @@ const indicatorOptions = [
   { value: "extreme_zones", label: "Extreme Zones" },
 ]
 
-// Function to get default weight based on alert name (0-10 range)
+// Function to get default weight based on alert name (1/0/-1 system)
 const getDefaultWeight = (alertName: string): number => {
   const bearishKeywords = ['bearish', 'sell', 'overbought', 'premium', 'breakdown', 'down']
   const bullishKeywords = ['bullish', 'buy', 'oversold', 'discount', 'breakout', 'up']
@@ -33,12 +33,12 @@ const getDefaultWeight = (alertName: string): number => {
   const lowerName = alertName.toLowerCase()
   
   if (bearishKeywords.some(keyword => lowerName.includes(keyword))) {
-    return 2 // Bearish signals get low positive weight
+    return -1 // Bearish signals get negative weight
   } else if (bullishKeywords.some(keyword => lowerName.includes(keyword))) {
-    return 8 // Bullish signals get high positive weight
+    return 1 // Bullish signals get positive weight
   }
   
-  return 5 // Neutral weight for alerts that don't clearly indicate direction
+  return 0 // Neutral weight for alerts that don't clearly indicate direction
 }
 
 // Alert explanations for tooltips
@@ -104,9 +104,9 @@ export default function AvailableAlertsPanel({ alertConfig, onUpdateWeight, show
   const currentAlerts = alerts[selectedIndicator] || []
 
   const handleWeightChange = (alertId: string, weight: number) => {
-    // Clamp weight between 0 and 10 (integer values only)
-    const clampedWeight = Math.max(0, Math.min(10, Math.round(weight)))
-    onUpdateWeight?.(alertId, clampedWeight)
+    // Only allow -1, 0, or 1 values
+    const validWeight = weight === -1 ? -1 : weight === 0 ? 0 : weight === 1 ? 1 : 0
+    onUpdateWeight?.(alertId, validWeight)
   }
 
   const setDefaultWeights = () => {
@@ -202,32 +202,33 @@ export default function AvailableAlertsPanel({ alertConfig, onUpdateWeight, show
                   </span>
                 </div>
 
-                {/* Weight Input */}
+                {/* Weight Dropdown */}
                 {showWeights && (
                   <div className="flex items-center gap-2 flex-shrink-0">
                     <Label htmlFor={`weight-${alert.id}`} className="text-xs sr-only">
                       Weight for {alert.name}
                     </Label>
-                    <Input
-                      id={`weight-${alert.id}`}
-                      type="number"
-                      value={alert.weight}
-                      onChange={(e) => {
-                        const value = Number.parseInt(e.target.value) || 0
-                        handleWeightChange(alert.id, value)
-                      }}
-                      min={0}
-                      max={10}
-                      step={1}
-                      className={`w-16 h-8 text-xs bg-background border-gray-700 text-center font-medium ${
-                        alert.weight > 5
-                          ? "text-green-400 border-green-400/30" // High values = bullish = green
-                          : alert.weight < 5
-                            ? "text-yellow-400 border-yellow-400/30" // Low values = bearish = yellow
-                            : "text-accent-neutral border-gray-700" // Neutral = 5
-                      }`}
-                      placeholder="0"
-                    />
+                    <Select 
+                      value={alert.weight.toString()} 
+                      onValueChange={(value) => handleWeightChange(alert.id, parseInt(value))}
+                    >
+                      <SelectTrigger 
+                        className={`w-16 h-8 text-xs bg-background border-gray-700 text-center font-medium ${
+                          alert.weight === 1
+                            ? "text-green-400 border-green-400/30" // Bullish = green
+                            : alert.weight === -1
+                              ? "text-red-400 border-red-400/30" // Bearish = red
+                              : "text-accent-neutral border-gray-700" // Neutral = 0
+                        }`}
+                      >
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent className="bg-background-surface border-gray-700">
+                        <SelectItem value="1" className="text-green-400">1</SelectItem>
+                        <SelectItem value="0" className="text-accent-neutral">0</SelectItem>
+                        <SelectItem value="-1" className="text-red-400">-1</SelectItem>
+                      </SelectContent>
+                    </Select>
                   </div>
                 )}
               </div>

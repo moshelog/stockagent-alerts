@@ -1056,8 +1056,8 @@ app.get('/api/actions', asyncHandler(async (req, res) => {
 app.post('/api/strategies', asyncHandler(async (req, res) => {
   const { name, timeframe, rules, threshold, enabled = true, ruleGroups } = req.body;
   
-  // Validation
-  if (!name || !timeframe || !rules) {
+  // Validation - check for undefined, not falsy (0 is valid for timeframe)
+  if (!name || timeframe === undefined || !rules) {
     return res.status(400).json({
       error: 'Missing required fields',
       required: ['name', 'timeframe', 'rules']

@@ -216,7 +216,7 @@ export default function ManualStrategyModal({ isOpen, onClose, onSave, editingSt
   const [interGroupOperator, setInterGroupOperator] = useState<"AND" | "OR">("OR")
 
   const timeframeOptions = [
-    { value: "0", label: "Any timeframe" },
+    { value: "0", label: "Any" },
     { value: "1m", label: "1 Minute" },
     { value: "5m", label: "5 Minutes" },
     { value: "15m", label: "15 Minutes" },

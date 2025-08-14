@@ -885,13 +885,33 @@ export function GroupedAlertsTable({
                     
                     {/* Card Footer */}
                     <div className="mt-3 pt-2 border-t border-gray-700/30">
-                      {/* First row: Latest time and total weight */}
-                      <div className="flex items-center justify-between mb-1">
-                        <span className="text-xs text-gray-400">
-                          Latest: {group.alerts[0]?.time}
-                        </span>
+                      <div className="flex items-center justify-between">
+                        {/* Left side: Latest time and indicators */}
+                        <div className="flex items-center gap-2 min-w-0 flex-1">
+                          <span className="text-xs text-gray-400 shrink-0">
+                            Latest: {group.alerts[0]?.time}
+                          </span>
+                          {(() => {
+                            const rsi = getLatestRSI(filteredAlerts)
+                            const adx = getLatestADX(filteredAlerts)
+                            const vwap = getLatestVWAP(filteredAlerts)
+                            const indicators = []
+                            
+                            if (rsi) indicators.push(`RSI: ${rsi}`)
+                            if (adx) indicators.push(`ADX: ${adx}`)
+                            if (vwap) indicators.push(`VWAP: ${vwap}`)
+                            
+                            return indicators.length > 0 ? (
+                              <span className="text-xs text-gray-400 truncate" title={indicators.join(' | ')}>
+                                | {indicators.join(' | ')}
+                              </span>
+                            ) : null
+                          })()}
+                        </div>
+                        
+                        {/* Right side: Total weight */}
                         {showWeights && (
-                          <span className={`text-xs font-bold ${
+                          <span className={`text-xs font-bold shrink-0 ${
                             group.alerts.reduce((sum, alert) => sum + alert.weight, 0) > 0 
                               ? 'text-green-400' 
                               : 'text-red-400'
@@ -900,24 +920,6 @@ export function GroupedAlertsTable({
                           </span>
                         )}
                       </div>
-                      
-                      {/* Second row: Indicator values */}
-                      {(() => {
-                        const rsi = getLatestRSI(filteredAlerts)
-                        const adx = getLatestADX(filteredAlerts)
-                        const vwap = getLatestVWAP(filteredAlerts)
-                        const indicators = []
-                        
-                        if (rsi) indicators.push(`RSI: ${rsi}`)
-                        if (adx) indicators.push(`ADX: ${adx}`)
-                        if (vwap) indicators.push(`VWAP: ${vwap}`)
-                        
-                        return indicators.length > 0 ? (
-                          <div className="text-xs text-gray-400 truncate" title={indicators.join(' | ')}>
-                            {indicators.join(' | ')}
-                          </div>
-                        ) : null
-                      })()}
                     </div>
                   </motion.div>
                 )

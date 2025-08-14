@@ -414,6 +414,58 @@ export function GroupedAlertsTable({
     }
   }
 
+  // Get latest RSI value and status from alerts
+  const getLatestRSI = (groupAlerts: Alert[]) => {
+    const rsiAlert = groupAlerts.find(alert => 
+      alert.trigger.includes('RSI:') || alert.trigger.includes('RSI structure change:')
+    )
+    
+    if (rsiAlert) {
+      // Extract RSI value and status from new format: "RSI: 63.25 (Bullish)"
+      const match = rsiAlert.trigger.match(/RSI:\s*([\d.]+)\s*\(([^)]+)\)/i)
+      if (match) {
+        const value = parseFloat(match[1])
+        const status = match[2].trim()
+        return `${value.toFixed(0)} (${status})`
+      }
+    }
+    return null
+  }
+
+  // Get latest ADX value and status from alerts  
+  const getLatestADX = (groupAlerts: Alert[]) => {
+    const adxAlert = groupAlerts.find(alert => 
+      alert.trigger.includes('ADX:')
+    )
+    
+    if (adxAlert) {
+      // Extract ADX value and status from format: "ADX: 21.3 | Strong Bullish"
+      const match = adxAlert.trigger.match(/ADX:\s*([\d.]+)\s*\|\s*(.+)/i)
+      if (match) {
+        const value = parseFloat(match[1])
+        const status = match[2].trim()
+        return `${value.toFixed(1)} (${status})`
+      }
+    }
+    return null
+  }
+
+  // Get latest VWAP value from alerts
+  const getLatestVWAP = (groupAlerts: Alert[]) => {
+    const vwapAlert = groupAlerts.find(alert => 
+      alert.trigger.includes('VWAP:')
+    )
+    
+    if (vwapAlert) {
+      // Extract VWAP value from format: "VWAP: -2.09%"
+      const match = vwapAlert.trigger.match(/VWAP:\s*([-+]?[\d.]+%)/i)
+      if (match) {
+        return match[1]
+      }
+    }
+    return null
+  }
+
   // Get dot color for individual alert based on trigger text semantics
   const getAlertDotColor = (alert: Alert) => {
     const trigger = alert.trigger.toLowerCase().trim()
@@ -832,19 +884,40 @@ export function GroupedAlertsTable({
                     </div>
                     
                     {/* Card Footer */}
-                    <div className="flex items-center justify-between mt-3 pt-2 border-t border-gray-700/30">
-                      <span className="text-xs text-gray-400">
-                        Latest: {group.alerts[0]?.time}
-                      </span>
-                      {showWeights && (
-                        <span className={`text-xs font-bold ${
-                          group.alerts.reduce((sum, alert) => sum + alert.weight, 0) > 0 
-                            ? 'text-green-400' 
-                            : 'text-red-400'
-                        }`}>
-                          Total: {group.alerts.reduce((sum, alert) => sum + alert.weight, 0).toFixed(1)}
+                    <div className="mt-3 pt-2 border-t border-gray-700/30">
+                      {/* First row: Latest time and total weight */}
+                      <div className="flex items-center justify-between mb-1">
+                        <span className="text-xs text-gray-400">
+                          Latest: {group.alerts[0]?.time}
                         </span>
-                      )}
+                        {showWeights && (
+                          <span className={`text-xs font-bold ${
+                            group.alerts.reduce((sum, alert) => sum + alert.weight, 0) > 0 
+                              ? 'text-green-400' 
+                              : 'text-red-400'
+                          }`}>
+                            Total: {group.alerts.reduce((sum, alert) => sum + alert.weight, 0).toFixed(1)}
+                          </span>
+                        )}
+                      </div>
+                      
+                      {/* Second row: Indicator values */}
+                      {(() => {
+                        const rsi = getLatestRSI(filteredAlerts)
+                        const adx = getLatestADX(filteredAlerts)
+                        const vwap = getLatestVWAP(filteredAlerts)
+                        const indicators = []
+                        
+                        if (rsi) indicators.push(`RSI: ${rsi}`)
+                        if (adx) indicators.push(`ADX: ${adx}`)
+                        if (vwap) indicators.push(`VWAP: ${vwap}`)
+                        
+                        return indicators.length > 0 ? (
+                          <div className="text-xs text-gray-400 truncate" title={indicators.join(' | ')}>
+                            {indicators.join(' | ')}
+                          </div>
+                        ) : null
+                      })()}
                     </div>
                   </motion.div>
                 )

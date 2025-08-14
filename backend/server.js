@@ -185,6 +185,43 @@ app.post('/webhook-json', webhookAuth, validateAlertPayload, asyncHandler(async 
   });
   
   try {
+    // Handle duplicate detection for specific indicators
+    const isDuplicateAlert = ['VWAP', 'RSI', 'ADX'].some(alertType => 
+      trigger.includes(alertType) || indicator.toLowerCase().includes(alertType.toLowerCase())
+    );
+    
+    if (isDuplicateAlert) {
+      // Check for existing recent alert of the same type for this ticker
+      const indicatorType = trigger.includes('VWAP') ? 'VWAP' : 
+                           trigger.includes('RSI') ? 'RSI' : 
+                           trigger.includes('ADX') ? 'ADX' : null;
+      
+      if (indicatorType) {
+        logger.info(`Processing ${indicatorType} alert for duplicate detection (JSON)`, {
+          ticker: ticker.toUpperCase(),
+          trigger,
+          indicatorType
+        });
+        
+        // Delete existing alerts of the same type for this ticker (keep only the newest)
+        const { error: deleteError } = await supabase
+          .from('alerts')
+          .delete()
+          .eq('ticker', ticker.toUpperCase())
+          .like('trigger', `%${indicatorType}%`);
+          
+        if (deleteError) {
+          logger.warn('Failed to delete duplicate alert (JSON)', { 
+            error: deleteError.message,
+            ticker: ticker.toUpperCase(),
+            indicatorType 
+          });
+        } else {
+          logger.info(`Removed previous ${indicatorType} alerts for ${ticker.toUpperCase()} (JSON)`);
+        }
+      }
+    }
+
     // Insert alert into database
     const alertData = {
       ticker: ticker.toUpperCase(),
@@ -350,6 +387,43 @@ app.post('/webhook', webhookAuth, express.text({ type: '*/*' }), asyncHandler(as
   });
 
   try {
+    // Handle duplicate detection for specific indicators
+    const isDuplicateAlert = ['VWAP', 'RSI', 'ADX'].some(indicator => 
+      trigger.includes(indicator) || normalizedIndicator.toLowerCase().includes(indicator.toLowerCase())
+    );
+    
+    if (isDuplicateAlert) {
+      // Check for existing recent alert of the same type for this ticker
+      const indicatorType = trigger.includes('VWAP') ? 'VWAP' : 
+                           trigger.includes('RSI') ? 'RSI' : 
+                           trigger.includes('ADX') ? 'ADX' : null;
+      
+      if (indicatorType) {
+        logger.info(`Processing ${indicatorType} alert for duplicate detection`, {
+          ticker: ticker.toUpperCase(),
+          trigger,
+          indicatorType
+        });
+        
+        // Delete existing alerts of the same type for this ticker (keep only the newest)
+        const { error: deleteError } = await supabase
+          .from('alerts')
+          .delete()
+          .eq('ticker', ticker.toUpperCase())
+          .like('trigger', `%${indicatorType}%`);
+          
+        if (deleteError) {
+          logger.warn('Failed to delete duplicate alert', { 
+            error: deleteError.message,
+            ticker: ticker.toUpperCase(),
+            indicatorType 
+          });
+        } else {
+          logger.info(`Removed previous ${indicatorType} alerts for ${ticker.toUpperCase()}`);
+        }
+      }
+    }
+
     // Insert alert into database
     const alertData = {
       ticker: ticker.toUpperCase(),
@@ -460,6 +534,43 @@ app.post('/webhook-text', webhookAuth, express.text({ type: '*/*' }), asyncHandl
   });
 
   try {
+    // Handle duplicate detection for specific indicators
+    const isDuplicateAlert = ['VWAP', 'RSI', 'ADX'].some(alertType => 
+      trigger.includes(alertType) || indicator.toLowerCase().includes(alertType.toLowerCase())
+    );
+    
+    if (isDuplicateAlert) {
+      // Check for existing recent alert of the same type for this ticker
+      const indicatorType = trigger.includes('VWAP') ? 'VWAP' : 
+                           trigger.includes('RSI') ? 'RSI' : 
+                           trigger.includes('ADX') ? 'ADX' : null;
+      
+      if (indicatorType) {
+        logger.info(`Processing ${indicatorType} alert for duplicate detection (TEXT)`, {
+          ticker: ticker.toUpperCase(),
+          trigger,
+          indicatorType
+        });
+        
+        // Delete existing alerts of the same type for this ticker (keep only the newest)
+        const { error: deleteError } = await supabase
+          .from('alerts')
+          .delete()
+          .eq('ticker', ticker.toUpperCase())
+          .like('trigger', `%${indicatorType}%`);
+          
+        if (deleteError) {
+          logger.warn('Failed to delete duplicate alert (TEXT)', { 
+            error: deleteError.message,
+            ticker: ticker.toUpperCase(),
+            indicatorType 
+          });
+        } else {
+          logger.info(`Removed previous ${indicatorType} alerts for ${ticker.toUpperCase()} (TEXT)`);
+        }
+      }
+    }
+
     // Insert alert into database
     const alertData = {
       ticker: ticker.toUpperCase(),

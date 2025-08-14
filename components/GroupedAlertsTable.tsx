@@ -302,19 +302,41 @@ export function GroupedAlertsTable({
     // Find the most recent RSI alert (they're already sorted by time desc)
     const rsiAlert = groupAlerts.find(alert => 
       alert.trigger.toLowerCase().includes('rsi:') || 
-      alert.indicator === 'Extreme Zones' && alert.trigger.includes('RSI:')
+      alert.indicator === 'Extreme Zones' && alert.trigger.includes('RSI:') ||
+      alert.trigger.includes('RSI structure change:') ||
+      alert.trigger.startsWith('RSI:')
     )
     
     if (rsiAlert) {
-      // Extract RSI status from trigger text
-      const trigger = rsiAlert.trigger.toLowerCase()
-      if (trigger.includes('oversold')) return 'Over Sold'
-      if (trigger.includes('overbought')) return 'Over Bought' 
-      if (trigger.includes('bullish')) return 'Bullish'
-      if (trigger.includes('bearish')) return 'Bearish'
-      if (trigger.includes('neutral')) return 'Neutral'
-      if (trigger.includes('extremely oversold')) return 'Extreme Over Sold'
-      if (trigger.includes('extremely overbought')) return 'Extreme Over Bought'
+      // Extract RSI status from the new structure: "RSI: 63.25 (Bullish)"
+      const trigger = rsiAlert.trigger
+      
+      // Handle new format: "RSI structure change: RSI: 63.25 (Bullish)" or "RSI: 63.25 (Bullish)"
+      let statusMatch = trigger.match(/RSI:\s*[\d.]+\s*\(([^)]+)\)/i)
+      if (statusMatch) {
+        const status = statusMatch[1].trim()
+        // Map the status to our display format
+        switch (status.toLowerCase()) {
+          case 'bullish': return 'Bullish'
+          case 'bearish': return 'Bearish'
+          case 'neutral': return 'Neutral'
+          case 'oversold': return 'Over Sold'
+          case 'overbought': return 'Over Bought'
+          case 'extremely oversold': return 'Extreme Over Sold'
+          case 'extremely overbought': return 'Extreme Over Bought'
+          default: return status // Return as-is if not matched
+        }
+      }
+      
+      // Fallback to old logic for backward compatibility
+      const triggerLower = trigger.toLowerCase()
+      if (triggerLower.includes('oversold')) return 'Over Sold'
+      if (triggerLower.includes('overbought')) return 'Over Bought' 
+      if (triggerLower.includes('bullish')) return 'Bullish'
+      if (triggerLower.includes('bearish')) return 'Bearish'
+      if (triggerLower.includes('neutral')) return 'Neutral'
+      if (triggerLower.includes('extremely oversold')) return 'Extreme Over Sold'
+      if (triggerLower.includes('extremely overbought')) return 'Extreme Over Bought'
     }
     
     // Fallback to neutral if no RSI alert found

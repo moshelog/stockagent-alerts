@@ -145,10 +145,14 @@ function filterLatestAlerts(alerts: Alert[]): Alert[] {
     // Create unique key for alert combination
     const normalizedTimeframe = normalizeTimeframe(alert.timeframe)
     
-    // For HTF and RSI indicators, ignore the trigger (keep only latest regardless of trigger)
-    const isHTForRSI = alert.trigger.toLowerCase().includes('htf') || alert.trigger.toLowerCase().includes('rsi')
+    // For HTF, RSI, VWAP, and ADX indicators, ignore the trigger (keep only latest regardless of trigger)
+    const isIndicatorTypeAlert = alert.trigger.toLowerCase().includes('htf') || 
+                                 alert.trigger.toLowerCase().includes('rsi') ||
+                                 alert.trigger.includes('VWAP:') ||
+                                 alert.trigger.includes('ADX:') ||
+                                 alert.trigger.includes('RSI structure change:')
     
-    const uniqueKey = isHTForRSI 
+    const uniqueKey = isIndicatorTypeAlert 
       ? `${alert.ticker}-${normalizedTimeframe}-${alert.indicator}`
       : `${alert.ticker}-${normalizedTimeframe}-${alert.indicator}-${alert.trigger}`
     

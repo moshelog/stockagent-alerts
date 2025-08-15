@@ -294,27 +294,53 @@ function parseExtremeIndicators(trigger) {
     }
     
     // Extract Volume data: "Vol: 12.49K (+149%) HIGH"
+    logger.info('VOLUME DEBUG: Searching for volume in trigger', {
+      trigger: trigger,
+      triggerLength: trigger.length
+    });
+    
     const volumeMatch = trigger.match(/Vol:\s*([^|]+?)(?:\s*\||$)/i);
+    logger.info('VOLUME DEBUG: Volume regex result', {
+      volumeMatch: volumeMatch,
+      found: !!volumeMatch
+    });
+    
     if (volumeMatch) {
       const volumeInfo = volumeMatch[1].trim();
+      logger.info('VOLUME DEBUG: Volume info extracted', {
+        volumeInfo: volumeInfo
+      });
       
       // Extract volume amount: "12.49K"
       const amountMatch = volumeInfo.match(/([\d.]+[KMB]?)/i);
       if (amountMatch) {
         indicators.volume_amount = amountMatch[1];
+        logger.info('VOLUME DEBUG: Volume amount parsed', {
+          volume_amount: indicators.volume_amount
+        });
       }
       
       // Extract percentage change: "(+149%)" or "(-25%)"
       const percentMatch = volumeInfo.match(/\(([+-]?\d+(?:\.\d+)?)%\)/i);
       if (percentMatch) {
         indicators.volume_change = parseFloat(percentMatch[1]);
+        logger.info('VOLUME DEBUG: Volume change parsed', {
+          volume_change: indicators.volume_change
+        });
       }
       
       // Extract level indicator: "HIGH", "LOW", "NORMAL"
       const levelMatch = volumeInfo.match(/\b(HIGH|LOW|NORMAL)\b/i);
       if (levelMatch) {
         indicators.volume_level = levelMatch[1].toUpperCase();
+        logger.info('VOLUME DEBUG: Volume level parsed', {
+          volume_level: indicators.volume_level
+        });
+      } else {
+        logger.info('VOLUME DEBUG: No volume level found (this is OK)');
       }
+    } else {
+      logger.warn('VOLUME DEBUG: No volume data found in trigger');
     }
     
     // Return indicators if at least one was found
@@ -336,29 +362,46 @@ function parseExtremeIndicators(trigger) {
  */
 async function updateTickerIndicators(ticker, indicators) {
   try {
+    logger.info('VOLUME DEBUG: updateTickerIndicators called', {
+      ticker: ticker,
+      indicators: indicators,
+      hasVolumeAmount: !!indicators.volume_amount,
+      hasVolumeChange: !!indicators.volume_change,
+      hasVolumeLevel: !!indicators.volume_level
+    });
+    
+    const upsertData = {
+      ticker: ticker.toUpperCase(),
+      ...indicators,
+      updated_at: new Date().toISOString()
+    };
+    
+    logger.info('VOLUME DEBUG: Data being sent to database', {
+      upsertData: upsertData
+    });
+    
     // Use upsert to insert or update existing record
     const { data, error } = await supabase
       .from('ticker_indicators')
-      .upsert({
-        ticker: ticker.toUpperCase(),
-        ...indicators,
-        updated_at: new Date().toISOString()
-      }, {
+      .upsert(upsertData, {
         onConflict: 'ticker'
       })
       .select()
       .single();
     
     if (error) {
-      logger.error('Failed to update ticker indicators', {
+      logger.error('VOLUME DEBUG: Failed to update ticker indicators', {
         error: error.message,
+        errorCode: error.code,
+        errorDetails: error.details,
         ticker,
         indicators
       });
     } else {
-      logger.info('Ticker indicators updated successfully', {
+      logger.info('VOLUME DEBUG: Ticker indicators updated successfully', {
         ticker: data.ticker,
-        indicators
+        savedData: data,
+        originalIndicators: indicators
       });
     }
     

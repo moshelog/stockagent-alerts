@@ -6,6 +6,7 @@ import { Button } from "@/components/ui/button"
 import { useState, useMemo, useEffect } from "react"
 import { getExpiringAlerts, getTimeUntilExpiry, groupAlertsByTicker } from "@/utils/alertFiltering"
 import { normalizeTimeframe } from "@/utils/timeframeUtils"
+import { useTickerIndicators } from "@/hooks/useTickerIndicators"
 
 interface Alert {
   id: string
@@ -56,6 +57,9 @@ export function GroupedAlertsTable({
   const [expiringAlerts, setExpiringAlerts] = useState<Set<string>>(new Set())
   const [groupOrder, setGroupOrder] = useState<string[]>([])
   const [draggedGroup, setDraggedGroup] = useState<string | null>(null)
+  
+  // Hook to get real-time indicator values
+  const { getRSIDisplay, getADXDisplay, getVWAPDisplay, getHTFDisplay } = useTickerIndicators()
   const [dragOverGroup, setDragOverGroup] = useState<string | null>(null)
   const viewMode = 'card' // Force card view only
   const [expandedCards, setExpandedCards] = useState<Set<string>>(new Set())
@@ -796,9 +800,9 @@ export function GroupedAlertsTable({
                             {tf}
                           </button>
                         ))}
-                        {/* RSI Status Tag with Value */}
+                        {/* RSI Status Tag with Real-time Value */}
                         {(() => {
-                          const rsiData = getRSIWithValue(filteredAlerts)
+                          const rsiData = getRSIDisplay(group.ticker)
                           const displayText = rsiData.value === '0' 
                             ? `RSI ${rsiData.status}` 
                             : `RSI ${rsiData.value} ${rsiData.status}`
@@ -810,9 +814,9 @@ export function GroupedAlertsTable({
                             </span>
                           )
                         })()}
-                        {/* ADX Status Tag with Value */}
+                        {/* ADX Status Tag with Real-time Value */}
                         {(() => {
-                          const adxData = getADXWithValue(filteredAlerts)
+                          const adxData = getADXDisplay(group.ticker)
                           return (
                             <span 
                               className="text-xs px-2 py-1 rounded border bg-blue-500/20 text-blue-400 border-blue-500/30"
@@ -821,9 +825,9 @@ export function GroupedAlertsTable({
                             </span>
                           )
                         })()}
-                        {/* VWAP Status Tag with Value */}
+                        {/* VWAP Status Tag with Real-time Value */}
                         {(() => {
-                          const vwapData = getVWAPWithValue(filteredAlerts)
+                          const vwapData = getVWAPDisplay(group.ticker)
                           return (
                             <span 
                               className="text-xs px-2 py-1 rounded border bg-purple-500/20 text-purple-400 border-purple-500/30"

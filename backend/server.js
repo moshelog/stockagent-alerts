@@ -144,6 +144,119 @@ const validateAlertPayload = (req, res, next) => {
 };
 
 // ============================================================================
+// HELPER FUNCTIONS FOR EXTREME INDICATORS
+// ============================================================================
+
+/**
+ * Parse technical indicators from Extreme alert trigger text
+ * @param {string} trigger - The trigger text containing indicator values
+ * @returns {object|null} - Parsed indicator values or null if parsing fails
+ */
+function parseExtremeIndicators(trigger) {
+  try {
+    const indicators = {};
+    
+    // Extract VWAP value and percentage: "VWAP: 0.75%"
+    const vwapMatch = trigger.match(/VWAP:\s*([\d.-]+)%?/i);
+    if (vwapMatch) {
+      indicators.vwap_value = parseFloat(vwapMatch[1]);
+    }
+    
+    // Extract RSI value and status: "RSI: 68.5 (OB)" or "RSI: 45.2 (Neutral)"
+    const rsiMatch = trigger.match(/RSI:\s*([\d.-]+)\s*\(([^)]+)\)/i);
+    if (rsiMatch) {
+      indicators.rsi_value = parseFloat(rsiMatch[1]);
+      indicators.rsi_status = rsiMatch[2].trim();
+    }
+    
+    // Extract ADX value, strength, and direction: "ADX: 32.1 (Strong Bullish)"
+    const adxMatch = trigger.match(/ADX:\s*([\d.-]+)\s*\(([^)]+)\)/i);
+    if (adxMatch) {
+      indicators.adx_value = parseFloat(adxMatch[1]);
+      const adxInfo = adxMatch[2].trim();
+      
+      // Parse strength and direction from "Strong Bullish", "Weak Bearish", or "Strong Neutral"
+      const strengthMatch = adxInfo.match(/(Strong|Weak)\s+(Bullish|Bearish|Neutral)/i);
+      if (strengthMatch) {
+        indicators.adx_strength = strengthMatch[1];
+        indicators.adx_direction = strengthMatch[2];
+      } else {
+        // Fallback for different formats
+        indicators.adx_strength = adxInfo.includes('Strong') ? 'Strong' : 'Weak';
+        if (adxInfo.includes('Bullish')) {
+          indicators.adx_direction = 'Bullish';
+        } else if (adxInfo.includes('Bearish')) {
+          indicators.adx_direction = 'Bearish';
+        } else {
+          indicators.adx_direction = 'Neutral';
+        }
+      }
+    }
+    
+    // Extract HTF synergy status: "HTF: Reversal Bullish"
+    const htfMatch = trigger.match(/HTF:\s*([^|]+?)(?:\s*\||$)/i);
+    if (htfMatch) {
+      indicators.htf_status = htfMatch[1].trim();
+    }
+    
+    // Return indicators if at least one was found
+    return Object.keys(indicators).length > 0 ? indicators : null;
+    
+  } catch (error) {
+    logger.error('Error parsing extreme indicators', {
+      error: error.message,
+      trigger
+    });
+    return null;
+  }
+}
+
+/**
+ * Update ticker indicators table with latest values
+ * @param {string} ticker - The ticker symbol
+ * @param {object} indicators - Parsed indicator values
+ */
+async function updateTickerIndicators(ticker, indicators) {
+  try {
+    // Use upsert to insert or update existing record
+    const { data, error } = await supabase
+      .from('ticker_indicators')
+      .upsert({
+        ticker: ticker.toUpperCase(),
+        ...indicators,
+        updated_at: new Date().toISOString()
+      }, {
+        onConflict: 'ticker'
+      })
+      .select()
+      .single();
+    
+    if (error) {
+      logger.error('Failed to update ticker indicators', {
+        error: error.message,
+        ticker,
+        indicators
+      });
+    } else {
+      logger.info('Ticker indicators updated successfully', {
+        ticker: data.ticker,
+        indicators
+      });
+    }
+    
+    return data;
+    
+  } catch (error) {
+    logger.error('Error updating ticker indicators', {
+      error: error.message,
+      ticker,
+      indicators
+    });
+    return null;
+  }
+}
+
+// ============================================================================
 // WEBHOOK ENDPOINTS
 // ============================================================================
 
@@ -387,6 +500,23 @@ app.post('/webhook', webhookAuth, express.text({ type: '*/*' }), asyncHandler(as
   });
 
   try {
+      // Handle Extreme Indicator alerts with new format
+    if (normalizedIndicator === 'Extreme Zones' || normalizedIndicator.toLowerCase() === 'extreme') {
+      // Parse technical indicators from the trigger text
+      // Format: "Premium Zone Touch | VWAP: 0.75% | RSI: 68.5 (OB) | ADX: 32.1 (Strong Bullish) | HTF: Reversal Bullish"
+      const extractedIndicators = parseExtremeIndicators(trigger);
+      
+      if (extractedIndicators) {
+        // Update ticker indicators table with latest values
+        await updateTickerIndicators(ticker.toUpperCase(), extractedIndicators);
+        
+        logger.info('Updated ticker indicators from Extreme alert', {
+          ticker: ticker.toUpperCase(),
+          indicators: extractedIndicators
+        });
+      }
+    }
+
     // Handle duplicate detection for specific indicators
     const isDuplicateAlert = ['VWAP', 'RSI', 'ADX'].some(indicator => 
       trigger.includes(indicator) || normalizedIndicator.toLowerCase().includes(indicator.toLowerCase())
@@ -1082,6 +1212,42 @@ app.delete('/api/alerts', asyncHandler(async (req, res) => {
     success: true, 
     message: 'All alerts cleared successfully' 
   });
+}));
+
+/**
+ * GET /api/ticker-indicators - Get current indicator values for all tickers
+ */
+app.get('/api/ticker-indicators', asyncHandler(async (req, res) => {
+  const { data, error } = await supabase
+    .from('ticker_indicators')
+    .select('*')
+    .order('updated_at', { ascending: false });
+  
+  if (error) {
+    return res.status(500).json({ error: error.message });
+  }
+  
+  res.json(data);
+}));
+
+/**
+ * GET /api/ticker-indicators/:ticker - Get current indicator values for specific ticker
+ */
+app.get('/api/ticker-indicators/:ticker', asyncHandler(async (req, res) => {
+  const { ticker } = req.params;
+  
+  const { data, error } = await supabase
+    .from('ticker_indicators')
+    .select('*')
+    .eq('ticker', ticker.toUpperCase())
+    .single();
+  
+  if (error && error.code !== 'PGRST116') { // PGRST116 = not found
+    return res.status(500).json({ error: error.message });
+  }
+  
+  // Return null if no indicators found for this ticker
+  res.json(data || null);
 }));
 
 /**

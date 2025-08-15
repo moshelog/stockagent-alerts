@@ -433,15 +433,27 @@ export function GroupedAlertsTable({
     )
     
     if (adxAlert) {
-      // Extract ADX value and status from format: "ADX: 21.3 | Strong Bullish"
-      const match = adxAlert.trigger.match(/ADX:\s*([\d.]+)\s*\|\s*(.+)/i)
+      // Extract ADX value and status from multiple possible formats:
+      // Format 1: "ADX: 21.3 | Strong Bullish" 
+      // Format 2: "ADX: 19.3 (Weak Bullish)"
+      let match = adxAlert.trigger.match(/ADX:\s*([\d.]+)\s*\|\s*(.+)/i)
+      if (match) {
+        const value = parseFloat(match[1]).toFixed(1)
+        const status = match[2].trim()
+        return { value, status }
+      }
+      
+      // Try parentheses format
+      match = adxAlert.trigger.match(/ADX:\s*([\d.]+)\s*\(([^)]+)\)/i)
       if (match) {
         const value = parseFloat(match[1]).toFixed(1)
         const status = match[2].trim()
         return { value, status }
       }
     }
-    return null
+    
+    // Return default values instead of null to keep tag visible
+    return { value: '0.0', status: 'Neutral' }
   }
 
   // Get latest VWAP value from alerts for tag display
@@ -457,7 +469,9 @@ export function GroupedAlertsTable({
         return { value: match[1] }
       }
     }
-    return null
+    
+    // Return default value instead of null to keep tag visible
+    return { value: '0.00%' }
   }
 
   // Legacy functions for backward compatibility (if still used elsewhere)
@@ -796,7 +810,6 @@ export function GroupedAlertsTable({
                         {/* ADX Status Tag with Value */}
                         {(() => {
                           const adxData = getADXWithValue(filteredAlerts)
-                          if (!adxData) return null
                           return (
                             <span 
                               className="text-xs px-2 py-1 rounded border bg-blue-500/20 text-blue-400 border-blue-500/30"
@@ -808,7 +821,6 @@ export function GroupedAlertsTable({
                         {/* VWAP Status Tag with Value */}
                         {(() => {
                           const vwapData = getVWAPWithValue(filteredAlerts)
-                          if (!vwapData) return null
                           return (
                             <span 
                               className="text-xs px-2 py-1 rounded border bg-purple-500/20 text-purple-400 border-purple-500/30"

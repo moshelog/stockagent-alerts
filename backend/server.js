@@ -513,11 +513,31 @@ app.post('/webhook', webhookAuth, express.text({ type: '*/*' }), asyncHandler(as
     logger.info('Checking for Extreme alert processing', {
       indicator: indicator,
       normalizedIndicator: normalizedIndicator,
-      isExtreme: normalizedIndicator === 'Extreme Zones' || normalizedIndicator.toLowerCase() === 'extreme',
+      indicatorLower: indicatorLower,
+      isExtreme: normalizedIndicator === 'Extreme Zones' || indicatorLower === 'extreme',
       trigger: trigger
     });
     
-    if (normalizedIndicator === 'Extreme Zones' || indicatorLower === 'extreme' || indicator.toLowerCase() === 'extreme') {
+    // Check for Extreme alerts - multiple ways to match
+    const isExtremeAlert = 
+      indicator === 'Extreme' || 
+      indicator === 'extreme' ||
+      indicator.toLowerCase() === 'extreme' ||
+      normalizedIndicator === 'Extreme Zones' ||
+      indicatorLower === 'extreme';
+    
+    logger.info('Extreme alert detection', {
+      isExtremeAlert: isExtremeAlert,
+      checks: {
+        direct: indicator === 'Extreme',
+        lowercase: indicator === 'extreme',
+        toLowerCase: indicator.toLowerCase() === 'extreme',
+        normalized: normalizedIndicator === 'Extreme Zones',
+        mapped: indicatorLower === 'extreme'
+      }
+    });
+    
+    if (isExtremeAlert) {
       logger.info('Processing Extreme alert for indicator parsing', {
         ticker: ticker.toUpperCase(),
         trigger: trigger

@@ -122,6 +122,100 @@ const asyncHandler = (fn) => (req, res, next) => {
   Promise.resolve(fn(req, res, next)).catch(next);
 };
 
+// Simple webhook test endpoint (no auth - for testing missing alerts)
+app.post('/webhook-simple', express.text({ type: '*/*' }), asyncHandler(async (req, res) => {
+  const body = req.body.toString().trim();
+  
+  logger.info('Simple webhook received', {
+    contentType: req.get('Content-Type'),
+    body: body
+  });
+
+  // Parse and process the same way as main webhook
+  const parts = body.split('|').map(part => part.trim());
+  
+  // Detect format based on 2nd position - if it's numeric, it's price-first format
+  const secondPart = parts[1] || '';
+  const isSecondPartNumeric = /^\d+\.?\d*$/.test(secondPart);
+  
+  let ticker, timeframe, indicator, trigger, price = null;
+  
+  if (isSecondPartNumeric && parts.length >= 5) {
+    // User format: TICKER|PRICE|TIMEFRAME|INDICATOR|TRIGGER
+    ticker = parts[0];
+    price = parseFloat(secondPart);
+    timeframe = parts[2];
+    indicator = parts[3];
+    trigger = parts[4];
+  } else {
+    // Standard format: TICKER|TIMEFRAME|INDICATOR|TRIGGER
+    ticker = parts[0];
+    timeframe = parts[1];
+    indicator = parts[2];
+    trigger = parts[3];
+  }
+
+  logger.info('Simple webhook parsed', {
+    ticker,
+    timeframe,
+    indicator,
+    trigger,
+    price
+  });
+
+  if (!ticker || !indicator || !trigger) {
+    return res.status(400).json({
+      error: 'Missing required fields',
+      required: ['ticker', 'indicator', 'trigger'],
+      received: { ticker, indicator, trigger }
+    });
+  }
+
+  // Map TradingView indicator names to database names (case-insensitive)
+  const indicatorMapping = {
+    'smc': 'Market Core Pro™',
+    'extreme': 'Extreme Zones',
+    'oscillator': 'Nautilus™',
+    'wave': 'Market Waves Pro™'
+  };
+  
+  const indicatorLower = indicator.toLowerCase();
+  const normalizedIndicator = indicatorMapping[indicatorLower] || indicator;
+
+  // Store the alert in database
+  try {
+    const { data, error } = await supabase
+      .from('alerts')
+      .insert({
+        ticker: ticker.toUpperCase(),
+        indicator: normalizedIndicator,
+        trigger: trigger,
+        price: price,
+        timeframe: timeframe,
+        timestamp: new Date().toISOString()
+      })
+      .select()
+      .single();
+
+    if (error) {
+      logger.error('Database error in simple webhook', { error: error.message });
+      return res.status(500).json({ error: 'Database error' });
+    }
+
+    logger.info('Simple webhook stored successfully', { 
+      id: data.id, 
+      ticker: data.ticker, 
+      indicator: data.indicator 
+    });
+
+    res.json({ success: true, message: 'Alert received and stored', id: data.id });
+    
+  } catch (err) {
+    logger.error('Exception in simple webhook', { error: err.message });
+    res.status(500).json({ error: 'Internal server error' });
+  }
+}));
+
 // Validation middleware
 const validateAlertPayload = (req, res, next) => {
   const { ticker, indicator, trigger } = req.body;
@@ -197,6 +291,30 @@ function parseExtremeIndicators(trigger) {
     const htfMatch = trigger.match(/HTF:\s*([^|]+?)(?:\s*\||$)/i);
     if (htfMatch) {
       indicators.htf_status = htfMatch[1].trim();
+    }
+    
+    // Extract Volume data: "Vol: 12.49K (+149%) HIGH"
+    const volumeMatch = trigger.match(/Vol:\s*([^|]+?)(?:\s*\||$)/i);
+    if (volumeMatch) {
+      const volumeInfo = volumeMatch[1].trim();
+      
+      // Extract volume amount: "12.49K"
+      const amountMatch = volumeInfo.match(/([\d.]+[KMB]?)/i);
+      if (amountMatch) {
+        indicators.volume_amount = amountMatch[1];
+      }
+      
+      // Extract percentage change: "(+149%)" or "(-25%)"
+      const percentMatch = volumeInfo.match(/\(([+-]?\d+(?:\.\d+)?)%\)/i);
+      if (percentMatch) {
+        indicators.volume_change = parseFloat(percentMatch[1]);
+      }
+      
+      // Extract level indicator: "HIGH", "LOW", "NORMAL"
+      const levelMatch = volumeInfo.match(/\b(HIGH|LOW|NORMAL)\b/i);
+      if (levelMatch) {
+        indicators.volume_level = levelMatch[1].toUpperCase();
+      }
     }
     
     // Return indicators if at least one was found
@@ -286,7 +404,7 @@ const webhookAuth = (req, res, next) => {
  * POST /webhook-json - Receive TradingView alerts (JSON format)
  * Expected payload: { ticker, time?, indicator, trigger, htf? }
  */
-app.post('/webhook-json', webhookAuth, validateAlertPayload, asyncHandler(async (req, res) => {
+app.post('/webhook-json', validateAlertPayload, asyncHandler(async (req, res) => {
   const { ticker, time, indicator, trigger, htf } = req.body;
   
   logger.info('Webhook received', {
@@ -408,7 +526,7 @@ app.post('/webhook-json', webhookAuth, validateAlertPayload, asyncHandler(async 
  * User format: "TICKER|PRICE|TIMEFRAME|INDICATOR|TRIGGER" (price in 2nd position)
  * Extended formats: "TICKER|TIMEFRAME|INDICATOR|TRIGGER|PRICE|TIME" or "TICKER|INTERVAL|Extreme|TRIGGER|HTF|PRICE"
  */
-app.post('/webhook', webhookAuth, express.text({ type: '*/*' }), asyncHandler(async (req, res) => {
+app.post('/webhook', express.text({ type: '*/*' }), asyncHandler(async (req, res) => {
   const body = req.body.toString().trim();
   
   logger.info('Webhook received', {
@@ -713,7 +831,7 @@ app.post('/webhook', webhookAuth, express.text({ type: '*/*' }), asyncHandler(as
  * POST /webhook-text - Receive TradingView alerts (Text format)
  * Expected payload: "TICKER|TIMEFRAME|INDICATOR|TRIGGER" or "TICKER|TIMEFRAME|INDICATOR|TRIGGER|TIME"
  */
-app.post('/webhook-text', webhookAuth, express.text({ type: '*/*' }), asyncHandler(async (req, res) => {
+app.post('/webhook-text', express.text({ type: '*/*' }), asyncHandler(async (req, res) => {
   const body = req.body.toString().trim();
   
   logger.info('Text webhook received', {

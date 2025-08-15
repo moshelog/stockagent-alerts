@@ -59,7 +59,7 @@ export function GroupedAlertsTable({
   const [draggedGroup, setDraggedGroup] = useState<string | null>(null)
   
   // Hook to get real-time indicator values
-  const { getRSIDisplay, getADXDisplay, getVWAPDisplay, getHTFDisplay } = useTickerIndicators()
+  const { getRSIDisplay, getADXDisplay, getVWAPDisplay, getHTFDisplay, getVolumeDisplay } = useTickerIndicators()
   const [dragOverGroup, setDragOverGroup] = useState<string | null>(null)
   const viewMode = 'card' // Force card view only
   const [expandedCards, setExpandedCards] = useState<Set<string>>(new Set())
@@ -374,6 +374,20 @@ export function GroupedAlertsTable({
       default:
         return 'bg-gray-500/20 text-gray-400 border-gray-500/30'
     }
+  }
+
+  // Get volume tag color based on level and change
+  const getVolumeTagColor = (level: string, change: number) => {
+    if (level === 'HIGH' && change > 0) {
+      return 'bg-green-500/20 text-green-400 border-green-500/30'
+    }
+    if (level === 'HIGH' && change < 0) {
+      return 'bg-red-500/20 text-red-400 border-red-500/30'
+    }
+    if (level === 'LOW') {
+      return 'bg-gray-500/20 text-gray-400 border-gray-500/30'
+    }
+    return 'bg-yellow-500/20 text-yellow-400 border-yellow-500/30' // NORMAL
   }
 
   // Get synergy status from the latest HTF synergy alert in the group
@@ -808,7 +822,7 @@ export function GroupedAlertsTable({
                             : `RSI ${rsiData.value} ${rsiData.status}`
                           return (
                             <span 
-                              className={`text-xs px-2 py-1 rounded border ${getRSITagColor(rsiData.status)}`}
+                              className={`text-xs px-1.5 py-0.5 rounded border ${getRSITagColor(rsiData.status)}`}
                             >
                               {displayText}
                             </span>
@@ -819,7 +833,7 @@ export function GroupedAlertsTable({
                           const adxData = getADXDisplay(group.ticker)
                           return (
                             <span 
-                              className="text-xs px-2 py-1 rounded border bg-blue-500/20 text-blue-400 border-blue-500/30"
+                              className="text-xs px-1.5 py-0.5 rounded border bg-blue-500/20 text-blue-400 border-blue-500/30"
                             >
                               ADX {adxData.value} {adxData.status}
                             </span>
@@ -830,9 +844,26 @@ export function GroupedAlertsTable({
                           const vwapData = getVWAPDisplay(group.ticker)
                           return (
                             <span 
-                              className="text-xs px-2 py-1 rounded border bg-purple-500/20 text-purple-400 border-purple-500/30"
+                              className="text-xs px-1.5 py-0.5 rounded border bg-purple-500/20 text-purple-400 border-purple-500/30"
                             >
                               VWAP {vwapData.value}
+                            </span>
+                          )
+                        })()}
+                        {/* Volume Status Tag with Real-time Value */}
+                        {(() => {
+                          const volumeData = getVolumeDisplay(group.ticker)
+                          if (volumeData.amount === '0') return null // Don't show if no volume data
+                          
+                          const changeText = volumeData.change > 0 ? `+${volumeData.change}%` : `${volumeData.change}%`
+                          // Compact format: "Vol 12.49K +149% HIGH"
+                          const displayText = `Vol ${volumeData.amount} ${changeText} ${volumeData.level}`
+                          
+                          return (
+                            <span 
+                              className={`text-xs px-1.5 py-0.5 rounded border ${getVolumeTagColor(volumeData.level, volumeData.change)}`}
+                            >
+                              {displayText}
                             </span>
                           )
                         })()}
@@ -845,7 +876,7 @@ export function GroupedAlertsTable({
                           const synergyTag = getSynergyTag(synergyStatus)
                           return (
                             <span 
-                              className={`text-xs px-2 py-1 rounded border ${synergyTag.className}`}
+                              className={`text-xs px-1.5 py-0.5 rounded border ${synergyTag.className}`}
                             >
                               {synergyTag.text}
                             </span>

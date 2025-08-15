@@ -282,6 +282,72 @@ app.post('/webhook-test', async (req, res) => {
   res.json({ success: true, message: 'Test endpoint working', received: req.body });
 });
 
+// Test ticker_indicators table access
+app.get('/test-ticker-indicators', async (req, res) => {
+  try {
+    console.log('Testing ticker_indicators table access...');
+    console.log('Supabase client available:', !!supabase);
+    
+    if (!supabase) {
+      return res.json({ 
+        error: 'Supabase client not available',
+        supabaseStatus: false
+      });
+    }
+
+    // Test 1: Try to select from table
+    const { data: selectData, error: selectError } = await supabase
+      .from('ticker_indicators')
+      .select('*')
+      .limit(5);
+
+    console.log('SELECT test result:', { data: selectData, error: selectError });
+
+    // Test 2: Try to insert a test record
+    const testRecord = {
+      ticker: 'TABLETEST',
+      vwap_value: 99.99,
+      rsi_value: 99,
+      rsi_status: 'TEST',
+      adx_value: 99,
+      adx_strength: 'Test',
+      adx_direction: 'Test',
+      htf_status: 'Table Test',
+      updated_at: new Date().toISOString()
+    };
+
+    const { data: insertData, error: insertError } = await supabase
+      .from('ticker_indicators')
+      .upsert(testRecord, { onConflict: 'ticker' })
+      .select()
+      .single();
+
+    console.log('INSERT test result:', { data: insertData, error: insertError });
+
+    res.json({
+      supabaseAvailable: true,
+      selectTest: {
+        success: !selectError,
+        data: selectData,
+        error: selectError
+      },
+      insertTest: {
+        success: !insertError,
+        data: insertData,
+        error: insertError
+      }
+    });
+
+  } catch (err) {
+    console.error('Exception in test endpoint:', err);
+    res.json({
+      error: 'Exception occurred',
+      message: err.message,
+      stack: err.stack
+    });
+  }
+});
+
 // Test notification endpoint - sends notifications without requiring strategy completion
 app.post('/api/test-notification', requireAuth, asyncHandler(async (req, res) => {
   const { action = 'BUY', ticker = 'BTCUSDT.P' } = req.body;
@@ -509,19 +575,29 @@ app.post('/webhook', webhookLimiter, express.text({ type: '*/*' }), async (req, 
       
       // Process remaining parts for HTF/time
       if (partIndex < parts.length) {
-        // Check for new structure with HTF that may contain pipe symbols
-        if (indicator.toLowerCase().includes('extreme') || indicator.toLowerCase() === 'indicator') {
-          // New structure: includes HTF field (HTF may contain pipes)
-          // Join everything from current partIndex onward as HTF field
-          htf = parts.slice(partIndex).join('|').trim();
-          time = null; // No time in this structure
-        } else if (parts.length - partIndex === 1) {
+        if (parts.length - partIndex === 1) {
           // Single remaining part - could be TIME
           time = parts[partIndex];
         } else if (parts.length - partIndex === 2) {
           // Two remaining parts: HTF and TIME
           htf = parts[partIndex];
           time = parts[partIndex + 1];
+        } else {
+          // Multiple remaining parts - check if this is an Extreme alert with indicator data
+          const isExtremeWithIndicators = indicator.toLowerCase().includes('extreme') && 
+            parts.slice(partIndex).some(part => 
+              part.includes('VWAP:') || part.includes('RSI:') || part.includes('ADX:') || part.includes('HTF:')
+            );
+          
+          if (isExtremeWithIndicators) {
+            // Don't join as HTF - leave remaining parts for indicator parsing
+            htf = null;
+            time = null;
+          } else {
+            // Legacy behavior - join remaining parts as HTF
+            htf = parts.slice(partIndex).join('|').trim();
+            time = null;
+          }
         }
       }
     }
@@ -546,6 +622,142 @@ app.post('/webhook', webhookLimiter, express.text({ type: '*/*' }), async (req, 
     // Normalize indicator name - convert to lowercase for matching
     const indicatorLower = indicator.toLowerCase();
     const normalizedIndicator = indicatorMapping[indicatorLower] || indicator;
+
+    // Check for Extreme alerts and process indicator values
+    const isExtremeAlert = 
+      indicator === 'Extreme' || 
+      indicator === 'extreme' ||
+      indicator.toLowerCase() === 'extreme' ||
+      indicator === 'Extreme Zones' ||
+      normalizedIndicator === 'Extreme Zones' ||
+      indicatorLower === 'extreme';
+    
+    console.log('EXTREME ALERT DETECTION:', {
+      indicator: indicator,
+      normalizedIndicator: normalizedIndicator,
+      indicatorLower: indicatorLower,
+      isExtremeAlert: isExtremeAlert,
+      checks: {
+        direct: indicator === 'Extreme',
+        lowercase: indicator === 'extreme',
+        toLowerCase: indicator.toLowerCase() === 'extreme',
+        directExtremeZones: indicator === 'Extreme Zones',
+        normalized: normalizedIndicator === 'Extreme Zones',
+        mapped: indicatorLower === 'extreme'
+      }
+    });
+    
+    if (isExtremeAlert) {
+      console.log('Processing Extreme alert for indicator parsing', {
+        ticker: ticker.toUpperCase(),
+        trigger: trigger,
+        remainingParts: parts.slice(partIndex),
+        allParts: parts
+      });
+      
+      // Parse technical indicators from the remaining parts after the trigger
+      // Format: "Premium Zone Touch | VWAP: 0.75% | RSI: 68.5 (OB) | ADX: 32.1 (Strong Bullish) | HTF: Reversal Bullish"
+      try {
+        const indicators = {};
+        
+        // Get all text including remaining parts for indicator parsing
+        const fullText = parts.slice(partIndex).join(' | ');
+        const searchText = trigger + (fullText ? ' | ' + fullText : '');
+        
+        console.log('INDICATOR PARSING - Search text:', searchText);
+        
+        const vwapMatch = searchText.match(/VWAP:\s*([\d.-]+)%?/i);
+        if (vwapMatch) {
+          indicators.vwap_value = parseFloat(vwapMatch[1]);
+          console.log('VWAP parsed:', indicators.vwap_value);
+        }
+        const rsiMatch = searchText.match(/RSI:\s*([\d.-]+)\s*\(([^)]+)\)/i);
+        if (rsiMatch) {
+          indicators.rsi_value = parseFloat(rsiMatch[1]);
+          indicators.rsi_status = rsiMatch[2].trim();
+          console.log('RSI parsed:', indicators.rsi_value, indicators.rsi_status);
+        }
+        const adxMatch = searchText.match(/ADX:\s*([\d.-]+)\s*\(([^)]+)\)/i);
+        if (adxMatch) {
+          indicators.adx_value = parseFloat(adxMatch[1]);
+          const adxStatus = adxMatch[2].trim();
+          const strengthMatch = adxStatus.match(/(Weak|Moderate|Strong)\s*(Bullish|Bearish|Neutral)?/i);
+          if (strengthMatch) {
+            indicators.adx_strength = strengthMatch[1];
+            indicators.adx_direction = strengthMatch[2] || 'Neutral';
+          } else {
+            indicators.adx_strength = adxStatus;
+            indicators.adx_direction = 'Neutral';
+          }
+          console.log('ADX parsed:', indicators.adx_value, indicators.adx_strength, indicators.adx_direction);
+        }
+        const htfMatch = searchText.match(/HTF:\s*([^|]+?)(?:\s*\||$)/i);
+        if (htfMatch) {
+          indicators.htf_status = htfMatch[1].trim();
+          console.log('HTF parsed:', indicators.htf_status);
+        }
+
+        console.log('Parsed indicators result', {
+          ticker: ticker.toUpperCase(),
+          extractedIndicators: indicators
+        });
+
+        if (Object.keys(indicators).length > 0) {
+          // Update ticker indicators table with latest values
+          try {
+            console.log('ATTEMPTING TICKER INDICATORS UPSERT:', {
+              ticker: ticker.toUpperCase(),
+              indicators: indicators,
+              supabaseAvailable: !!supabase
+            });
+
+            if (!supabase) {
+              console.error('SUPABASE CLIENT NOT AVAILABLE for ticker indicators');
+              return;
+            }
+
+            const { data, error } = await supabase
+              .from('ticker_indicators')
+              .upsert({
+                ticker: ticker.toUpperCase(),
+                ...indicators,
+                updated_at: new Date().toISOString()
+              }, {
+                onConflict: 'ticker'
+              })
+              .select()
+              .single();
+
+            console.log('TICKER INDICATORS UPSERT RESULT:', {
+              success: !error,
+              data: data,
+              error: error,
+              errorCode: error?.code,
+              errorMessage: error?.message
+            });
+
+            if (error) {
+              console.error('Failed to update ticker indicators:', error.message, error);
+            } else {
+              console.log('Successfully updated ticker indicators', {
+                ticker: ticker.toUpperCase(),
+                indicators: indicators,
+                dbResult: data
+              });
+            }
+          } catch (error) {
+            console.error('Exception updating ticker indicators:', error.message, error.stack);
+          }
+        } else {
+          console.log('No indicators extracted from Extreme alert', {
+            ticker: ticker.toUpperCase(),
+            trigger: trigger
+          });
+        }
+      } catch (error) {
+        console.error('Error parsing extreme indicators:', error.message);
+      }
+    }
 
     console.log('WEBHOOK PARSED VALUES:', {
       ticker,
@@ -1792,6 +2004,66 @@ app.delete('/api/alerts/:id', requireAuth, async (req, res) => {
   }
 });
 
+// ============================================================================
+// PUBLIC TICKER INDICATORS ENDPOINTS (UNPROTECTED)
+// ============================================================================
+
+/**
+ * GET /ticker-indicators - Get current indicator values for all tickers (public access)
+ */
+app.get('/ticker-indicators', async (req, res) => {
+  try {
+    if (!supabase) {
+      return res.json([]);
+    }
+    
+    const { data, error } = await supabase
+      .from('ticker_indicators')
+      .select('*')
+      .order('updated_at', { ascending: false });
+    
+    if (error) {
+      console.error('Database error in ticker-indicators:', error.message);
+      return res.status(500).json({ error: error.message });
+    }
+    
+    res.json(data || []);
+  } catch (err) {
+    console.error('Exception in ticker-indicators endpoint:', err.message);
+    res.status(500).json({ error: 'Internal server error' });
+  }
+});
+
+/**
+ * GET /ticker-indicators/:ticker - Get current indicator values for specific ticker (public access)
+ */
+app.get('/ticker-indicators/:ticker', async (req, res) => {
+  try {
+    if (!supabase) {
+      return res.json(null);
+    }
+    
+    const { ticker } = req.params;
+    
+    const { data, error } = await supabase
+      .from('ticker_indicators')
+      .select('*')
+      .eq('ticker', ticker.toUpperCase())
+      .single();
+    
+    if (error && error.code !== 'PGRST116') { // PGRST116 = not found
+      console.error('Database error in ticker-indicators/:ticker:', error.message);
+      return res.status(500).json({ error: error.message });
+    }
+    
+    // Return null if no indicators found for this ticker
+    res.json(data || null);
+  } catch (err) {
+    console.error('Exception in ticker-indicators/:ticker endpoint:', err.message);
+    res.status(500).json({ error: 'Internal server error' });
+  }
+});
+
 // Error handling middleware
 app.use(errorLogger);
 
@@ -1840,6 +2112,72 @@ async function startServer() {
     process.exit(1);
   }
 }
+
+// Debug endpoint for webhook parsing testing
+app.post('/debug-webhook', (req, res) => {
+  try {
+    const body = req.body;
+    console.log('DEBUG WEBHOOK - Body type:', typeof body);
+    console.log('DEBUG WEBHOOK - Raw body:', body);
+    
+    // Parse the same way as the webhook endpoint
+    const parts = body.split('|').map(part => part.trim());
+    console.log('DEBUG WEBHOOK - Parts:', parts);
+    
+    // Basic parsing similar to webhook
+    let ticker, price, timeframe, indicator, trigger;
+    let partIndex = 0;
+    
+    ticker = parts[partIndex] || '';
+    partIndex++;
+    
+    const secondPart = parts[partIndex] || '';
+    const isPricePattern = /^[\d.-]+$/.test(secondPart.trim());
+    
+    if (isPricePattern) {
+      price = parseFloat(secondPart);
+      partIndex++;
+      timeframe = parts[partIndex] || '';
+      partIndex++;
+      indicator = parts[partIndex] || '';
+      partIndex++;
+      trigger = parts[partIndex] || '';
+    } else {
+      price = null;
+      timeframe = secondPart;
+      partIndex++;
+      indicator = parts[partIndex] || '';
+      partIndex++;
+      trigger = parts[partIndex] || '';
+    }
+    
+    const indicatorLower = indicator.toLowerCase();
+    const isExtremeAlert = 
+      indicator === 'Extreme' || 
+      indicator === 'extreme' ||
+      indicator.toLowerCase() === 'extreme' ||
+      indicator === 'Extreme Zones' ||
+      indicatorLower === 'extreme';
+    
+    console.log('DEBUG WEBHOOK - Parsed:', {
+      ticker, price, timeframe, indicator, trigger,
+      isExtremeAlert,
+      indicatorLower,
+      remainingParts: parts.slice(partIndex + 1)
+    });
+    
+    res.json({
+      success: true,
+      parsed: { ticker, price, timeframe, indicator, trigger },
+      isExtremeAlert,
+      parts,
+      remainingParts: parts.slice(partIndex + 1)
+    });
+  } catch (error) {
+    console.error('DEBUG WEBHOOK ERROR:', error);
+    res.status(500).json({ error: error.message });
+  }
+});
 
 // Start the server
 startServer();

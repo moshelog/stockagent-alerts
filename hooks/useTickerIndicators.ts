@@ -10,6 +10,9 @@ interface TickerIndicator {
   adx_strength?: string
   adx_direction?: string
   htf_status?: string
+  volume_amount?: string
+  volume_change?: number
+  volume_level?: string
   updated_at: string
   created_at: string
 }
@@ -120,6 +123,18 @@ export const useTickerIndicators = () => {
     }
   }
 
+  const getVolumeDisplay = (ticker: string) => {
+    const indicator = getIndicatorForTicker(ticker)
+    if (!indicator?.volume_amount) {
+      return { amount: '0', change: 0, level: 'NORMAL' }
+    }
+    return {
+      amount: indicator.volume_amount,
+      change: indicator.volume_change || 0,
+      level: indicator.volume_level || 'NORMAL'
+    }
+  }
+
   return {
     indicators,
     loading,
@@ -129,6 +144,7 @@ export const useTickerIndicators = () => {
     getADXDisplay,
     getVWAPDisplay,
     getHTFDisplay,
+    getVolumeDisplay,
     refresh: fetchIndicators
   }
 }

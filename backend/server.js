@@ -486,6 +486,15 @@ app.post('/webhook', webhookAuth, express.text({ type: '*/*' }), asyncHandler(as
   // Normalize indicator name - convert to lowercase for matching
   const indicatorLower = indicator.toLowerCase();
   const normalizedIndicator = indicatorMapping[indicatorLower] || indicator;
+  
+  // Debug indicator matching
+  logger.info('Indicator matching debug', {
+    original: indicator,
+    lowercase: indicatorLower,
+    normalized: normalizedIndicator,
+    isExtremeMatch: indicatorLower === 'extreme',
+    isExtremeZonesMatch: normalizedIndicator === 'Extreme Zones'
+  });
 
   logger.info('Webhook parsed', {
     format: isSecondPartNumeric ? 'price-first' : 'standard',
@@ -508,7 +517,7 @@ app.post('/webhook', webhookAuth, express.text({ type: '*/*' }), asyncHandler(as
       trigger: trigger
     });
     
-    if (normalizedIndicator === 'Extreme Zones' || normalizedIndicator.toLowerCase() === 'extreme') {
+    if (normalizedIndicator === 'Extreme Zones' || indicatorLower === 'extreme' || indicator.toLowerCase() === 'extreme') {
       logger.info('Processing Extreme alert for indicator parsing', {
         ticker: ticker.toUpperCase(),
         trigger: trigger

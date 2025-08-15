@@ -297,8 +297,8 @@ export function GroupedAlertsTable({
     return 'neutral'
   }
 
-  // Get actual RSI status from the latest RSI alert in the group
-  const getRSIStatus = (groupAlerts: Alert[]) => {
+  // Get actual RSI status with value from the latest RSI alert in the group
+  const getRSIWithValue = (groupAlerts: Alert[]) => {
     // Find the most recent RSI alert (they're already sorted by time desc)
     const rsiAlert = groupAlerts.find(alert => 
       alert.trigger.toLowerCase().includes('rsi:') || 
@@ -308,39 +308,50 @@ export function GroupedAlertsTable({
     )
     
     if (rsiAlert) {
-      // Extract RSI status from the new structure: "RSI: 63.25 (Bullish)"
+      // Extract RSI value and status from the new structure: "RSI: 63.25 (Bullish)"
       const trigger = rsiAlert.trigger
       
       // Handle new format: "RSI structure change: RSI: 63.25 (Bullish)" or "RSI: 63.25 (Bullish)"
-      let statusMatch = trigger.match(/RSI:\s*[\d.]+\s*\(([^)]+)\)/i)
-      if (statusMatch) {
-        const status = statusMatch[1].trim()
+      let valueMatch = trigger.match(/RSI:\s*([\d.]+)\s*\(([^)]+)\)/i)
+      if (valueMatch) {
+        const value = parseFloat(valueMatch[1]).toFixed(0)
+        const status = valueMatch[2].trim()
         // Map the status to our display format
+        let mappedStatus = status
         switch (status.toLowerCase()) {
-          case 'bullish': return 'Bullish'
-          case 'bearish': return 'Bearish'
-          case 'neutral': return 'Neutral'
-          case 'oversold': return 'Over Sold'
-          case 'overbought': return 'Over Bought'
-          case 'extremely oversold': return 'Extreme Over Sold'
-          case 'extremely overbought': return 'Extreme Over Bought'
-          default: return status // Return as-is if not matched
+          case 'bullish': mappedStatus = 'Bullish'; break
+          case 'bearish': mappedStatus = 'Bearish'; break
+          case 'neutral': mappedStatus = 'Neutral'; break
+          case 'oversold': mappedStatus = 'Oversold'; break
+          case 'overbought': mappedStatus = 'Overbought'; break
+          case 'extremely oversold': mappedStatus = 'Extreme Oversold'; break
+          case 'extremely overbought': mappedStatus = 'Extreme Overbought'; break
         }
+        return { value, status: mappedStatus }
       }
       
       // Fallback to old logic for backward compatibility
       const triggerLower = trigger.toLowerCase()
-      if (triggerLower.includes('oversold')) return 'Over Sold'
-      if (triggerLower.includes('overbought')) return 'Over Bought' 
-      if (triggerLower.includes('bullish')) return 'Bullish'
-      if (triggerLower.includes('bearish')) return 'Bearish'
-      if (triggerLower.includes('neutral')) return 'Neutral'
-      if (triggerLower.includes('extremely oversold')) return 'Extreme Over Sold'
-      if (triggerLower.includes('extremely overbought')) return 'Extreme Over Bought'
+      let status = 'Neutral'
+      if (triggerLower.includes('oversold')) status = 'Oversold'
+      if (triggerLower.includes('overbought')) status = 'Overbought' 
+      if (triggerLower.includes('bullish')) status = 'Bullish'
+      if (triggerLower.includes('bearish')) status = 'Bearish'
+      if (triggerLower.includes('neutral')) status = 'Neutral'
+      if (triggerLower.includes('extremely oversold')) status = 'Extreme Oversold'
+      if (triggerLower.includes('extremely overbought')) status = 'Extreme Overbought'
+      
+      return { value: '0', status }
     }
     
     // Fallback to neutral if no RSI alert found
-    return 'Neutral'
+    return { value: '0', status: 'Neutral' }
+  }
+
+  // Legacy function for backward compatibility (if still used elsewhere)
+  const getRSIStatus = (groupAlerts: Alert[]) => {
+    const rsiData = getRSIWithValue(groupAlerts)
+    return rsiData.status
   }
 
   // Get RSI tag color based on status
@@ -414,26 +425,9 @@ export function GroupedAlertsTable({
     }
   }
 
-  // Get latest RSI value and status from alerts
-  const getLatestRSI = (groupAlerts: Alert[]) => {
-    const rsiAlert = groupAlerts.find(alert => 
-      alert.trigger.includes('RSI:') || alert.trigger.includes('RSI structure change:')
-    )
-    
-    if (rsiAlert) {
-      // Extract RSI value and status from new format: "RSI: 63.25 (Bullish)"
-      const match = rsiAlert.trigger.match(/RSI:\s*([\d.]+)\s*\(([^)]+)\)/i)
-      if (match) {
-        const value = parseFloat(match[1])
-        const status = match[2].trim()
-        return `${value.toFixed(0)} (${status})`
-      }
-    }
-    return null
-  }
 
-  // Get latest ADX value and status from alerts  
-  const getLatestADX = (groupAlerts: Alert[]) => {
+  // Get latest ADX value and status from alerts for tag display
+  const getADXWithValue = (groupAlerts: Alert[]) => {
     const adxAlert = groupAlerts.find(alert => 
       alert.trigger.includes('ADX:')
     )
@@ -442,16 +436,16 @@ export function GroupedAlertsTable({
       // Extract ADX value and status from format: "ADX: 21.3 | Strong Bullish"
       const match = adxAlert.trigger.match(/ADX:\s*([\d.]+)\s*\|\s*(.+)/i)
       if (match) {
-        const value = parseFloat(match[1])
+        const value = parseFloat(match[1]).toFixed(1)
         const status = match[2].trim()
-        return `${value.toFixed(1)} (${status})`
+        return { value, status }
       }
     }
     return null
   }
 
-  // Get latest VWAP value from alerts
-  const getLatestVWAP = (groupAlerts: Alert[]) => {
+  // Get latest VWAP value from alerts for tag display
+  const getVWAPWithValue = (groupAlerts: Alert[]) => {
     const vwapAlert = groupAlerts.find(alert => 
       alert.trigger.includes('VWAP:')
     )
@@ -460,10 +454,21 @@ export function GroupedAlertsTable({
       // Extract VWAP value from format: "VWAP: -2.09%"
       const match = vwapAlert.trigger.match(/VWAP:\s*([-+]?[\d.]+%)/i)
       if (match) {
-        return match[1]
+        return { value: match[1] }
       }
     }
     return null
+  }
+
+  // Legacy functions for backward compatibility (if still used elsewhere)
+  const getLatestADX = (groupAlerts: Alert[]) => {
+    const adxData = getADXWithValue(groupAlerts)
+    return adxData ? `${adxData.value} (${adxData.status})` : null
+  }
+
+  const getLatestVWAP = (groupAlerts: Alert[]) => {
+    const vwapData = getVWAPWithValue(groupAlerts)
+    return vwapData ? vwapData.value : null
   }
 
   // Get dot color for individual alert based on trigger text semantics
@@ -777,14 +782,38 @@ export function GroupedAlertsTable({
                             {tf}
                           </button>
                         ))}
-                        {/* RSI Status Tag */}
+                        {/* RSI Status Tag with Value */}
                         {(() => {
-                          const rsiStatus = getRSIStatus(filteredAlerts)
+                          const rsiData = getRSIWithValue(filteredAlerts)
                           return (
                             <span 
-                              className={`text-xs px-2 py-1 rounded border ${getRSITagColor(rsiStatus)}`}
+                              className={`text-xs px-2 py-1 rounded border ${getRSITagColor(rsiData.status)}`}
                             >
-                              {rsiStatus}
+                              RSI {rsiData.value} {rsiData.status}
+                            </span>
+                          )
+                        })()}
+                        {/* ADX Status Tag with Value */}
+                        {(() => {
+                          const adxData = getADXWithValue(filteredAlerts)
+                          if (!adxData) return null
+                          return (
+                            <span 
+                              className="text-xs px-2 py-1 rounded border bg-blue-500/20 text-blue-400 border-blue-500/30"
+                            >
+                              ADX {adxData.value} {adxData.status}
+                            </span>
+                          )
+                        })()}
+                        {/* VWAP Status Tag with Value */}
+                        {(() => {
+                          const vwapData = getVWAPWithValue(filteredAlerts)
+                          if (!vwapData) return null
+                          return (
+                            <span 
+                              className="text-xs px-2 py-1 rounded border bg-purple-500/20 text-purple-400 border-purple-500/30"
+                            >
+                              VWAP {vwapData.value}
                             </span>
                           )
                         })()}
@@ -891,22 +920,6 @@ export function GroupedAlertsTable({
                           <span className="text-xs text-gray-400 shrink-0">
                             Latest: {group.alerts[0]?.time}
                           </span>
-                          {(() => {
-                            const rsi = getLatestRSI(filteredAlerts)
-                            const adx = getLatestADX(filteredAlerts)
-                            const vwap = getLatestVWAP(filteredAlerts)
-                            const indicators = []
-                            
-                            if (rsi) indicators.push(`RSI: ${rsi}`)
-                            if (adx) indicators.push(`ADX: ${adx}`)
-                            if (vwap) indicators.push(`VWAP: ${vwap}`)
-                            
-                            return indicators.length > 0 ? (
-                              <span className="text-xs text-gray-400 truncate" title={indicators.join(' | ')}>
-                                | {indicators.join(' | ')}
-                              </span>
-                            ) : null
-                          })()}
                         </div>
                         
                         {/* Right side: Total weight */}

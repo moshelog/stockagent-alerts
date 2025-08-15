@@ -60,6 +60,87 @@ const asyncHandler = (fn) => (req, res, next) => {
   Promise.resolve(fn(req, res, next)).catch(next);
 };
 
+// Parse Extreme indicators from trigger/htf field
+function parseExtremeIndicators(trigger) {
+  try {
+    const indicators = {};
+    
+    // Extract VWAP value and percentage: "VWAP: 0.75%"
+    const vwapMatch = trigger.match(/VWAP:\s*([\d.-]+)%?/i);
+    if (vwapMatch) {
+      indicators.vwap_value = parseFloat(vwapMatch[1]);
+    }
+    
+    // Extract RSI value and status: "RSI: 68.5 (OB)" or "RSI: 45.2 (Neutral)"
+    const rsiMatch = trigger.match(/RSI:\s*([\d.-]+)\s*\(([^)]+)\)/i);
+    if (rsiMatch) {
+      indicators.rsi_value = parseFloat(rsiMatch[1]);
+      indicators.rsi_status = rsiMatch[2].trim();
+    }
+    
+    // Extract ADX value, strength, and direction: "ADX: 32.1 (Strong Bullish)"
+    const adxMatch = trigger.match(/ADX:\s*([\d.-]+)\s*\(([^)]+)\)/i);
+    if (adxMatch) {
+      indicators.adx_value = parseFloat(adxMatch[1]);
+      const adxInfo = adxMatch[2].trim();
+      
+      // Parse strength and direction from "Strong Bullish", "Weak Bearish", or "Strong Neutral"
+      const strengthMatch = adxInfo.match(/(Strong|Weak)\s+(Bullish|Bearish|Neutral)/i);
+      if (strengthMatch) {
+        indicators.adx_strength = strengthMatch[1];
+        indicators.adx_direction = strengthMatch[2];
+      } else {
+        // Fallback for different formats
+        indicators.adx_strength = adxInfo.includes('Strong') ? 'Strong' : 'Weak';
+        if (adxInfo.includes('Bullish')) {
+          indicators.adx_direction = 'Bullish';
+        } else if (adxInfo.includes('Bearish')) {
+          indicators.adx_direction = 'Bearish';
+        } else {
+          indicators.adx_direction = 'Neutral';
+        }
+      }
+    }
+    
+    // Extract HTF synergy status: "HTF: Reversal Bullish"
+    const htfMatch = trigger.match(/HTF:\s*([^|]+?)(?:\s*\||$)/i);
+    if (htfMatch) {
+      indicators.htf_status = htfMatch[1].trim();
+    }
+    
+    // Extract Volume data: "Vol: 12.49K (+149%) HIGH"
+    const volumeMatch = trigger.match(/Vol:\s*([^|]+?)(?:\s*\||$)/i);
+    if (volumeMatch) {
+      const volumeInfo = volumeMatch[1].trim();
+      
+      // Extract volume amount: "12.49K"
+      const amountMatch = volumeInfo.match(/([\d.]+[KMB]?)/i);
+      if (amountMatch) {
+        indicators.volume_amount = amountMatch[1];
+      }
+      
+      // Extract percentage change: "(+149%)" or "(-25%)"
+      const percentMatch = volumeInfo.match(/\(([+-]?\d+(?:\.\d+)?)%\)/i);
+      if (percentMatch) {
+        indicators.volume_change = parseFloat(percentMatch[1]);
+      }
+      
+      // Extract level indicator: "HIGH", "LOW", "NORMAL"
+      const levelMatch = volumeInfo.match(/\b(HIGH|LOW|NORMAL)\b/i);
+      if (levelMatch) {
+        indicators.volume_level = levelMatch[1].toUpperCase();
+      }
+    }
+    
+    // Return indicators if at least one was found
+    return Object.keys(indicators).length > 0 ? indicators : null;
+    
+  } catch (error) {
+    console.error('Error parsing extreme indicators:', error.message);
+    return null;
+  }
+}
+
 // Health check endpoint (must be before other middleware for Railway)
 app.get('/', (req, res) => {
   res.json({ status: 'healthy', service: 'stockagent-backend' });
@@ -662,6 +743,56 @@ app.post('/webhook', webhookLimiter, express.text({ type: '*/*' }), async (req, 
           logger.error('Failed to save alert', { error: error.message, details: error });
         }
         return res.status(500).json({ error: 'Failed to save alert', details: error.message });
+      }
+
+      // Process Extreme indicators for ticker_indicators table
+      const isExtremeAlert = 
+        normalizedIndicator === 'Extreme' || 
+        normalizedIndicator === 'extreme' ||
+        normalizedIndicator.toLowerCase() === 'extreme' ||
+        normalizedIndicator === 'Extreme Zones' ||
+        normalizedIndicator.toLowerCase() === 'extreme zones';
+      
+      if (isExtremeAlert && htf) {
+        try {
+          console.log('🔍 Processing Extreme indicator for ticker_indicators:', { 
+            ticker: ticker.toUpperCase(), 
+            trigger, 
+            htf 
+          });
+          
+          // Parse indicators from htf field (contains the detailed indicator data)
+          const indicators = parseExtremeIndicators(htf);
+          
+          if (indicators && Object.keys(indicators).length > 0) {
+            console.log('📊 Parsed indicators:', indicators);
+            
+            // Prepare ticker_indicators data
+            const tickerData = {
+              ticker: ticker.toUpperCase(),
+              ...indicators,
+              updated_at: new Date().toISOString()
+            };
+            
+            // Upsert to ticker_indicators table
+            const { error: upsertError } = await supabase
+              .from('ticker_indicators')
+              .upsert([tickerData], { 
+                onConflict: 'ticker',
+                ignoreDuplicates: false 
+              });
+            
+            if (upsertError) {
+              console.error('❌ Failed to upsert ticker indicators:', upsertError);
+            } else {
+              console.log('✅ Successfully updated ticker indicators for', ticker.toUpperCase());
+            }
+          } else {
+            console.log('⚠️ No indicators parsed from htf field:', htf);
+          }
+        } catch (indicatorError) {
+          console.error('❌ Error processing Extreme indicators:', indicatorError);
+        }
       }
 
       // After saving alert, evaluate strategies

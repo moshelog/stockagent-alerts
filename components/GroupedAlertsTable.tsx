@@ -59,7 +59,7 @@ export function GroupedAlertsTable({
   const [draggedGroup, setDraggedGroup] = useState<string | null>(null)
   
   // Hook to get real-time indicator values
-  const { getRSIDisplay, getADXDisplay, getVWAPDisplay, getHTFDisplay } = useTickerIndicators()
+  const { getRSIDisplay, getADXDisplay, getVWAPDisplay, getHTFDisplay, getVolumeDisplay } = useTickerIndicators()
   const [dragOverGroup, setDragOverGroup] = useState<string | null>(null)
   const viewMode = 'card' // Force card view only
   const [expandedCards, setExpandedCards] = useState<Set<string>>(new Set())
@@ -800,6 +800,34 @@ export function GroupedAlertsTable({
                             {tf}
                           </button>
                         ))}
+                        {/* Volume Status Tag with Real-time Value */}
+                        {(() => {
+                          const volumeData = getVolumeDisplay(group.ticker)
+                          const hasVolumeData = volumeData.amount !== '0' || volumeData.level !== 'NORMAL'
+                          
+                          if (!hasVolumeData) return null
+                          
+                          const getVolumeColor = (level: string) => {
+                            switch (level) {
+                              case 'HIGH': return 'bg-red-500/20 text-red-400 border-red-500/30'
+                              case 'LOW': return 'bg-yellow-500/20 text-yellow-400 border-yellow-500/30'
+                              case 'NORMAL': return 'bg-green-500/20 text-green-400 border-green-500/30'
+                              default: return 'bg-gray-500/20 text-gray-400 border-gray-500/30'
+                            }
+                          }
+                          
+                          const changeText = volumeData.change > 0 ? `+${volumeData.change}%` : `${volumeData.change}%`
+                          const displayText = `Vol: ${volumeData.amount} (${changeText}) ${volumeData.level}`
+                          
+                          return (
+                            <span 
+                              className={`text-xs px-2 py-1 rounded border ${getVolumeColor(volumeData.level)}`}
+                              title={`Volume: ${volumeData.amount}, Change: ${changeText}, Level: ${volumeData.level}`}
+                            >
+                              {displayText}
+                            </span>
+                          )
+                        })()}
                         {/* Synergy Status Tag - Only show if synergy exists */}
                         {(() => {
                           const synergyStatus = getSynergyStatus(filteredAlerts)

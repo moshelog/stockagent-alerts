@@ -811,13 +811,13 @@ export function GroupedAlertsTable({
                         </span>
                       </div>
                       
-                      {/* Timeframe indicators and RSI status */}
-                      <div className="flex items-center gap-1 flex-wrap">
+                      {/* Top row: Timeframes, Volume, HTF */}
+                      <div className="flex items-center gap-1 overflow-x-auto scrollbar-thin scrollbar-thumb-gray-600 scrollbar-track-transparent">
                         {timeframes.map((tf, i) => (
                           <button
                             key={i}
                             onClick={() => handleCardTimeframeSelect(group.key, tf)}
-                            className={`text-xs px-2 py-1 rounded cursor-pointer transition-colors ${
+                            className={`text-xs px-1.5 py-0.5 rounded cursor-pointer transition-colors ${
                               tf === selectedTimeframe
                                 ? 'bg-blue-500/20 border border-blue-500/40 text-blue-300'
                                 : 'bg-gray-700/50 text-gray-300 hover:bg-gray-600/50'
@@ -827,49 +827,13 @@ export function GroupedAlertsTable({
                             {tf}
                           </button>
                         ))}
-                        {/* RSI Status Tag with Real-time Value */}
-                        {(() => {
-                          const rsiData = getRSIDisplay(group.ticker)
-                          const displayText = rsiData.value === '0' 
-                            ? `RSI ${rsiData.status}` 
-                            : `RSI ${rsiData.value} ${rsiData.status}`
-                          return (
-                            <span 
-                              className={`text-xs px-1.5 py-0.5 rounded border ${getRSITagColor(rsiData.status)}`}
-                            >
-                              {displayText}
-                            </span>
-                          )
-                        })()}
-                        {/* ADX Status Tag with Real-time Value */}
-                        {(() => {
-                          const adxData = getADXDisplay(group.ticker)
-                          return (
-                            <span 
-                              className="text-xs px-1.5 py-0.5 rounded border bg-blue-500/20 text-blue-400 border-blue-500/30"
-                            >
-                              ADX {adxData.value} {adxData.status}
-                            </span>
-                          )
-                        })()}
-                        {/* VWAP Status Tag with Real-time Value */}
-                        {(() => {
-                          const vwapData = getVWAPDisplay(group.ticker)
-                          return (
-                            <span 
-                              className="text-xs px-1.5 py-0.5 rounded border bg-purple-500/20 text-purple-400 border-purple-500/30"
-                            >
-                              VWAP {vwapData.value}
-                            </span>
-                          )
-                        })()}
                         {/* Volume Status Tag with Real-time Value */}
                         {(() => {
                           const volumeData = getVolumeDisplay(group.ticker)
                           if (volumeData.amount === '0') return null // Don't show if no volume data
                           
                           const changeText = volumeData.change > 0 ? `+${volumeData.change}%` : `${volumeData.change}%`
-                          // Format: "Vol 25.32K -38%" or "Vol 12.49K +149% HIGH" (if level exists)
+                          // Restore full format: "Vol 45.79K (-47%)" or "Vol 150.5K (+22%) HIGH"
                           const displayText = volumeData.level && volumeData.level !== 'NORMAL' 
                             ? `Vol ${volumeData.amount} ${changeText} ${volumeData.level}`
                             : `Vol ${volumeData.amount} ${changeText}`
@@ -882,7 +846,7 @@ export function GroupedAlertsTable({
                             </span>
                           )
                         })()}
-                        {/* Synergy Status Tag - Only show if synergy exists */}
+                        {/* HTF/Synergy Status Tag - Only show if synergy exists */}
                         {(() => {
                           const synergyStatus = getSynergyStatus(filteredAlerts)
                           // Only render tag if there's actual synergy (up or down), hide for 'none'
@@ -980,23 +944,62 @@ export function GroupedAlertsTable({
                     {/* Card Footer */}
                     <div className="mt-3 pt-2 border-t border-gray-700/30">
                       <div className="flex items-center justify-between">
-                        {/* Left side: Latest time and indicators */}
-                        <div className="flex items-center gap-2 min-w-0 flex-1">
+                        {/* Left side: Latest time */}
+                        <div className="flex items-center gap-2 min-w-0">
                           <span className="text-xs text-gray-400 shrink-0">
                             Latest: {group.alerts[0]?.time}
                           </span>
                         </div>
                         
-                        {/* Right side: Total weight */}
-                        {showWeights && (
-                          <span className={`text-xs font-bold shrink-0 ${
-                            group.alerts.reduce((sum, alert) => sum + alert.weight, 0) > 0 
-                              ? 'text-green-400' 
-                              : 'text-red-400'
-                          }`}>
-                            Total: {group.alerts.reduce((sum, alert) => sum + alert.weight, 0).toFixed(1)}
-                          </span>
-                        )}
+                        {/* Right side: Indicator tags and total weight */}
+                        <div className="flex items-center gap-2 shrink-0">
+                          {/* RSI Status Tag with Real-time Value */}
+                          {(() => {
+                            const rsiData = getRSIDisplay(group.ticker)
+                            const displayText = rsiData.value === '0' 
+                              ? `RSI ${rsiData.status}` 
+                              : `RSI ${rsiData.value} ${rsiData.status}`
+                            return (
+                              <span 
+                                className={`text-xs px-1.5 py-0.5 rounded border ${getRSITagColor(rsiData.status)}`}
+                              >
+                                {displayText}
+                              </span>
+                            )
+                          })()}
+                          {/* ADX Status Tag with Real-time Value */}
+                          {(() => {
+                            const adxData = getADXDisplay(group.ticker)
+                            return (
+                              <span 
+                                className="text-xs px-1.5 py-0.5 rounded border bg-blue-500/20 text-blue-400 border-blue-500/30"
+                              >
+                                ADX {adxData.value} {adxData.status}
+                              </span>
+                            )
+                          })()}
+                          {/* VWAP Status Tag with Real-time Value */}
+                          {(() => {
+                            const vwapData = getVWAPDisplay(group.ticker)
+                            return (
+                              <span 
+                                className="text-xs px-1.5 py-0.5 rounded border bg-purple-500/20 text-purple-400 border-purple-500/30"
+                              >
+                                VWAP {vwapData.value}
+                              </span>
+                            )
+                          })()}
+                          {/* Total weight */}
+                          {showWeights && (
+                            <span className={`text-xs font-bold ${
+                              group.alerts.reduce((sum, alert) => sum + alert.weight, 0) > 0 
+                                ? 'text-green-400' 
+                                : 'text-red-400'
+                            }`}>
+                              Total: {group.alerts.reduce((sum, alert) => sum + alert.weight, 0).toFixed(1)}
+                            </span>
+                          )}
+                        </div>
                       </div>
                     </div>
                   </motion.div>

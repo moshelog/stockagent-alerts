@@ -480,6 +480,49 @@ app.post('/webhook-json', webhookLimiter, validateAlertPayload, async (req, res)
       }
     }
 
+    // Process Extreme indicators for volume and technical data
+    const normalizedIndicator = indicator.trim();
+    const indicatorLower = normalizedIndicator.toLowerCase();
+    const isExtremeAlert = 
+      indicator === 'Extreme' || 
+      indicator === 'extreme' ||
+      indicator.toLowerCase() === 'extreme' ||
+      indicator === 'Extreme Zones' ||
+      normalizedIndicator === 'Extreme Zones' ||
+      indicatorLower === 'extreme';
+
+    if (isExtremeAlert && supabase) {
+      if (logger && logger.info) {
+        logger.info('Processing Extreme alert for indicator parsing', {
+          ticker: ticker.toUpperCase(),
+          trigger: trigger
+        });
+      }
+
+      // Parse technical indicators from the trigger text
+      const extractedIndicators = parseExtremeIndicators(trigger);
+      
+      if (extractedIndicators) {
+        try {
+          await updateTickerIndicators(ticker.toUpperCase(), extractedIndicators);
+          if (logger && logger.info) {
+            logger.info('Successfully updated ticker indicators', {
+              ticker: ticker.toUpperCase(),
+              indicators: extractedIndicators
+            });
+          }
+        } catch (error) {
+          if (logger && logger.error) {
+            logger.error('Failed to update ticker indicators', {
+              ticker: ticker.toUpperCase(),
+              indicators: extractedIndicators,
+              error: error.message
+            });
+          }
+        }
+      }
+    }
+
     res.json({ success: true, message: 'Alert received' });
   } catch (error) {
     console.error('Webhook JSON error:', error);
@@ -545,7 +588,8 @@ app.post('/webhook', webhookLimiter, express.text({ type: '*/*' }), async (req, 
       partIndex++;
       indicator = parts[partIndex] || '';
       partIndex++;
-      trigger = parts[partIndex] || '';
+      // Join all remaining parts as trigger to handle multi-part triggers with volume data
+      trigger = parts.slice(partIndex).join(' | ');
       console.log('PARSED WITH PRICE:', { price, timeframe, indicator, trigger });
     } else {
       // Legacy format without price: TICKER|TIMEFRAME|INDICATOR|TRIGGER  
@@ -554,7 +598,8 @@ app.post('/webhook', webhookLimiter, express.text({ type: '*/*' }), async (req, 
       partIndex++;
       indicator = parts[partIndex] || '';
       partIndex++;
-      trigger = parts[partIndex] || '';
+      // Join all remaining parts as trigger to handle multi-part triggers with volume data
+      trigger = parts.slice(partIndex).join(' | ');
       console.log('PARSED WITHOUT PRICE (LEGACY):', { price, timeframe, indicator, trigger });
     }
     
@@ -851,6 +896,49 @@ app.post('/webhook', webhookLimiter, express.text({ type: '*/*' }), async (req, 
     } else {
       if (logger && logger.warn) {
         logger.warn('Database not configured, alert not saved');
+      }
+    }
+
+    // Process Extreme indicators for volume and technical data
+    const normalizedIndicator = indicator.trim();
+    const indicatorLower = normalizedIndicator.toLowerCase();
+    const isExtremeAlert = 
+      indicator === 'Extreme' || 
+      indicator === 'extreme' ||
+      indicator.toLowerCase() === 'extreme' ||
+      indicator === 'Extreme Zones' ||
+      normalizedIndicator === 'Extreme Zones' ||
+      indicatorLower === 'extreme';
+
+    if (isExtremeAlert && supabase) {
+      if (logger && logger.info) {
+        logger.info('Processing Extreme alert for indicator parsing', {
+          ticker: ticker.toUpperCase(),
+          trigger: trigger
+        });
+      }
+
+      // Parse technical indicators from the trigger text
+      const extractedIndicators = parseExtremeIndicators(trigger);
+      
+      if (extractedIndicators) {
+        try {
+          await updateTickerIndicators(ticker.toUpperCase(), extractedIndicators);
+          if (logger && logger.info) {
+            logger.info('Successfully updated ticker indicators', {
+              ticker: ticker.toUpperCase(),
+              indicators: extractedIndicators
+            });
+          }
+        } catch (error) {
+          if (logger && logger.error) {
+            logger.error('Failed to update ticker indicators', {
+              ticker: ticker.toUpperCase(),
+              indicators: extractedIndicators,
+              error: error.message
+            });
+          }
+        }
       }
     }
 
@@ -2141,14 +2229,16 @@ app.post('/debug-webhook', (req, res) => {
       partIndex++;
       indicator = parts[partIndex] || '';
       partIndex++;
-      trigger = parts[partIndex] || '';
+      // Join all remaining parts as trigger to handle multi-part triggers with volume data
+      trigger = parts.slice(partIndex).join(' | ');
     } else {
       price = null;
       timeframe = secondPart;
       partIndex++;
       indicator = parts[partIndex] || '';
       partIndex++;
-      trigger = parts[partIndex] || '';
+      // Join all remaining parts as trigger to handle multi-part triggers with volume data
+      trigger = parts.slice(partIndex).join(' | ');
     }
     
     const indicatorLower = indicator.toLowerCase();
@@ -2178,6 +2268,145 @@ app.post('/debug-webhook', (req, res) => {
     res.status(500).json({ error: error.message });
   }
 });
+
+// ============================================================================
+// VOLUME PROCESSING FUNCTIONS
+// ============================================================================
+
+/**
+ * Parse technical indicators from Extreme alert trigger text (including volume)
+ * @param {string} trigger - The trigger text containing indicator values
+ * @returns {object|null} - Parsed indicator values or null if parsing fails
+ */
+function parseExtremeIndicators(trigger) {
+  try {
+    const indicators = {};
+    
+    // Extract VWAP value and percentage: "VWAP: 0.75%"
+    const vwapMatch = trigger.match(/VWAP:\s*([\d.-]+)%?/i);
+    if (vwapMatch) {
+      indicators.vwap_value = parseFloat(vwapMatch[1]);
+    }
+    
+    // Extract RSI value and status: "RSI: 68.5 (OB)" or "RSI: 45.2 (Neutral)"
+    const rsiMatch = trigger.match(/RSI:\s*([\d.-]+)\s*\(([^)]+)\)/i);
+    if (rsiMatch) {
+      indicators.rsi_value = parseFloat(rsiMatch[1]);
+      indicators.rsi_status = rsiMatch[2].trim();
+    }
+    
+    // Extract ADX value, strength, and direction: "ADX: 32.1 (Strong Bullish)"
+    const adxMatch = trigger.match(/ADX:\s*([\d.-]+)\s*\(([^)]+)\)/i);
+    if (adxMatch) {
+      indicators.adx_value = parseFloat(adxMatch[1]);
+      const adxInfo = adxMatch[2].trim();
+      
+      // Parse strength and direction from "Strong Bullish", "Weak Bearish", or "Strong Neutral"
+      const strengthMatch = adxInfo.match(/(Strong|Weak)\s+(Bullish|Bearish|Neutral)/i);
+      if (strengthMatch) {
+        indicators.adx_strength = strengthMatch[1];
+        indicators.adx_direction = strengthMatch[2];
+      }
+    }
+    
+    // Extract HTF synergy status: "HTF: Reversal Bullish" or "HTF: No Synergy"
+    const htfMatch = trigger.match(/HTF:\s*([^|]+?)(?:\s*\||$)/i);
+    if (htfMatch) {
+      indicators.htf_status = htfMatch[1].trim();
+    }
+    
+    // Extract Volume data: "Vol: 45.79K (-47%)" or "Vol: 150.5K (+22%) HIGH"
+    const volumeMatch = trigger.match(/Vol:\s*([^|]+?)(?:\s*\||$)/i);
+    if (volumeMatch) {
+      const volumeInfo = volumeMatch[1].trim();
+      
+      // Extract volume amount: "45.79K", "150.5K", "3.37M"
+      const amountMatch = volumeInfo.match(/([\d.]+[KMB]?)/i);
+      if (amountMatch) {
+        indicators.volume_amount = amountMatch[1];
+      }
+      
+      // Extract percentage change: "(-47%)" or "(+22%)"
+      const percentMatch = volumeInfo.match(/\(([+-]?\d+(?:\.\d+)?)%\)/i);
+      if (percentMatch) {
+        indicators.volume_change = parseFloat(percentMatch[1]);
+      }
+      
+      // Extract level indicator: "HIGH", "LOW", "NORMAL"
+      const levelMatch = volumeInfo.match(/\b(HIGH|LOW|NORMAL)\b/i);
+      if (levelMatch) {
+        indicators.volume_level = levelMatch[1].toUpperCase();
+      }
+    }
+    
+    return Object.keys(indicators).length > 0 ? indicators : null;
+    
+  } catch (error) {
+    if (logger && logger.error) {
+      logger.error('Error parsing extreme indicators:', error.message);
+    }
+    return null;
+  }
+}
+
+/**
+ * Update ticker indicators table with latest values (including volume)
+ * @param {string} ticker - The ticker symbol
+ * @param {object} indicators - Parsed indicator values
+ */
+async function updateTickerIndicators(ticker, indicators) {
+  try {
+    if (logger && logger.info) {
+      logger.info('VOLUME DEBUG: updateTickerIndicators called', {
+        ticker: ticker,
+        indicators: indicators,
+        hasVolumeAmount: !!indicators.volume_amount,
+        hasVolumeChange: !!indicators.volume_change,
+        hasVolumeLevel: !!indicators.volume_level
+      });
+    }
+    
+    const upsertData = {
+      ticker: ticker.toUpperCase(),
+      ...indicators,
+      updated_at: new Date().toISOString()
+    };
+    
+    // Use upsert to insert or update existing record
+    const { data, error } = await supabase
+      .from('ticker_indicators')
+      .upsert(upsertData, {
+        onConflict: 'ticker'
+      })
+      .select()
+      .single();
+    
+    if (error) {
+      if (logger && logger.error) {
+        logger.error('VOLUME DEBUG: Failed to update ticker indicators', {
+          error: error.message,
+          ticker,
+          indicators
+        });
+      }
+      throw error;
+    } else {
+      if (logger && logger.info) {
+        logger.info('VOLUME DEBUG: Ticker indicators updated successfully', {
+          ticker: data.ticker,
+          savedData: data,
+          originalIndicators: indicators
+        });
+      }
+      return data;
+    }
+  } catch (error) {
+    if (logger && logger.error) {
+      logger.error('Error updating ticker indicators:', error.message);
+    }
+    throw error;
+  }
+}
 
 // Start the server
 startServer();

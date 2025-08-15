@@ -262,23 +262,8 @@ app.get('/ticker-indicators', async (req, res) => {
       return res.json({});
     }
 
-    // Convert array to object with ticker as key
-    const indicators = {};
-    if (data) {
-      data.forEach(item => {
-        indicators[item.ticker] = {
-          rsi_value: item.rsi_value,
-          rsi_status: item.rsi_status,
-          adx_value: item.adx_value,
-          adx_status: item.adx_status,
-          vwap_value: item.vwap_value,
-          htf_synergy: item.htf_synergy,
-          updated_at: item.updated_at
-        };
-      });
-    }
-
-    res.json(indicators);
+    // Return array format for frontend compatibility
+    res.json(data || []);
   } catch (error) {
     console.error('Ticker indicators endpoint error:', error);
     res.json({});
@@ -310,23 +295,8 @@ app.get('/api/ticker-indicators', async (req, res) => {
       return res.json({});
     }
 
-    // Convert array to object with ticker as key
-    const indicators = {};
-    if (data) {
-      data.forEach(item => {
-        indicators[item.ticker] = {
-          rsi_value: item.rsi_value,
-          rsi_status: item.rsi_status,
-          adx_value: item.adx_value,
-          adx_status: item.adx_status,
-          vwap_value: item.vwap_value,
-          htf_synergy: item.htf_synergy,
-          updated_at: item.updated_at
-        };
-      });
-    }
-
-    res.json(indicators);
+    // Return array format for frontend compatibility
+    res.json(data || []);
   } catch (error) {
     console.error('Ticker indicators endpoint error:', error);
     res.json({});

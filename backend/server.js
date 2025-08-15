@@ -141,18 +141,20 @@ app.post('/webhook-simple', express.text({ type: '*/*' }), asyncHandler(async (r
   let ticker, timeframe, indicator, trigger, price = null;
   
   if (isSecondPartNumeric && parts.length >= 5) {
-    // User format: TICKER|PRICE|TIMEFRAME|INDICATOR|TRIGGER
+    // User format: TICKER|PRICE|TIMEFRAME|INDICATOR|TRIGGER (and potentially more parts)
     ticker = parts[0];
     price = parseFloat(secondPart);
     timeframe = parts[2];
     indicator = parts[3];
-    trigger = parts[4];
+    // Join all remaining parts as trigger to handle multi-part triggers with volume data
+    trigger = parts.slice(4).join(' | ');
   } else {
-    // Standard format: TICKER|TIMEFRAME|INDICATOR|TRIGGER
+    // Standard format: TICKER|TIMEFRAME|INDICATOR|TRIGGER (and potentially more parts)
     ticker = parts[0];
     timeframe = parts[1];
     indicator = parts[2];
-    trigger = parts[3];
+    // Join all remaining parts as trigger to handle multi-part triggers with volume data
+    trigger = parts.slice(3).join(' | ');
   }
 
   logger.info('Simple webhook parsed', {
@@ -602,18 +604,20 @@ app.post('/webhook', express.text({ type: '*/*' }), asyncHandler(async (req, res
   let ticker, timeframe, indicator, trigger, price = null;
   
   if (isSecondPartNumeric && parts.length >= 5) {
-    // User format: TICKER|PRICE|TIMEFRAME|INDICATOR|TRIGGER
+    // User format: TICKER|PRICE|TIMEFRAME|INDICATOR|TRIGGER (and potentially more parts)
     ticker = parts[0];
     price = parseFloat(secondPart);
     timeframe = parts[2];
     indicator = parts[3];
-    trigger = parts[4];
+    // Join all remaining parts as trigger to handle multi-part triggers with volume data
+    trigger = parts.slice(4).join(' | ');
   } else {
-    // Standard format: TICKER|TIMEFRAME|INDICATOR|TRIGGER
+    // Standard format: TICKER|TIMEFRAME|INDICATOR|TRIGGER (and potentially more parts)
     ticker = parts[0];
     timeframe = parts[1];
     indicator = parts[2];
-    trigger = parts[3];
+    // Join all remaining parts as trigger to handle multi-part triggers with volume data
+    trigger = parts.slice(3).join(' | ');
   }
   
   // Handle additional parameters for standard format (5th position = price)

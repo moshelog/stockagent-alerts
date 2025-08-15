@@ -241,6 +241,71 @@ The StockAgent platform includes specialized AI subagents for enhanced functiona
 /monitor --performance --real-time --alerts
 ```
 
+## Critical Issue Resolution History
+
+### **2025-08-15: Extreme Indicator System Failure** ⚠️ **CRITICAL RESOLVED**
+
+**Problem**: After implementing new Extreme Indicator webhook format, the system failed to:
+1. Process "Extreme Zones" alerts and extract indicator values (RSI, ADX, VWAP, HTF)
+2. Serve real-time indicator data via public API endpoints
+
+**Root Causes Identified**:
+
+1. **Incorrect Indicator Detection**: 
+   - Webhook format: `"TICKER | PRICE | INTERVAL | Extreme Zones | TRIGGER"`
+   - Detection logic only checked for `indicator === 'Extreme'` 
+   - Actual indicator value was `"Extreme Zones"`
+
+2. **Railway Deployment Configuration Error**:
+   - `railway.json` configured to start `server-full-token.js`
+   - All new code was added to `server.js` (not deployed)
+   - Public API endpoints existed in `server.js` but not in deployed file
+
+**Solutions Applied**:
+
+1. **Fixed Indicator Detection** (`backend/server.js:527`):
+   ```javascript
+   const isExtremeAlert = 
+     indicator === 'Extreme' || 
+     indicator === 'extreme' ||
+     indicator.toLowerCase() === 'extreme' ||
+     indicator === 'Extreme Zones' ||  // ← CRITICAL FIX
+     normalizedIndicator === 'Extreme Zones' ||
+     indicatorLower === 'extreme';
+   ```
+
+2. **Fixed Railway Configuration** (`backend/railway.json:8`):
+   ```json
+   "startCommand": "node server.js"  // Changed from server-full-token.js
+   ```
+
+3. **Added Safety Checks** (Multiple locations):
+   ```javascript
+   if (!authService) {
+     return res.status(503).json({ error: 'Auth service not available' });
+   }
+   ```
+
+**Verification Commands**:
+```bash
+# Test public API endpoint
+curl "https://api.stockagent.app/ticker-indicators"
+
+# Test webhook processing (requires WEBHOOK_SECRET)
+curl -X POST "https://api.stockagent.app/webhook" \
+  -H "Content-Type: text/plain" \
+  -H "X-Webhook-Secret: YOUR_SECRET" \
+  -d "TICKER | 100.0 | 5M | Extreme Zones | Premium Zone | VWAP: 1.5% | RSI: 75.2 (OB) | ADX: 28.5 (Strong Bullish) | HTF: Reversal"
+```
+
+**Impact**: 
+- ✅ Real-time indicator values now display in frontend instead of 0s
+- ✅ Public API endpoints accessible for `useTickerIndicators` hook
+- ✅ Extreme Zones alerts properly parsed and stored
+- ✅ Database integration working with upsert operations
+
+**Tags**: `extreme-indicators-fix`, `railway-config-fix`, `api-endpoints-fix`
+
 ## Railway Deployment Instructions
 
 ### Frontend Deployment (app.stockagent.app)
@@ -264,3 +329,4 @@ railway up
 - Railway expects backend code to be in `/backend` subdirectory from project root
 - Use `railway service [service-name]` to switch between services before deploying
 - Never deploy backend from inside the `/backend` directory - it causes "Could not find root directory: /backend" errors
+- **CRITICAL**: Verify `railway.json` uses correct server file (`server.js` not `server-full-token.js`)

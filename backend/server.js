@@ -519,10 +519,12 @@ app.post('/webhook', webhookAuth, express.text({ type: '*/*' }), asyncHandler(as
     });
     
     // Check for Extreme alerts - multiple ways to match
+    // Handle both current format (Extreme Zones) and new format (Extreme)
     const isExtremeAlert = 
       indicator === 'Extreme' || 
       indicator === 'extreme' ||
       indicator.toLowerCase() === 'extreme' ||
+      indicator === 'Extreme Zones' ||
       normalizedIndicator === 'Extreme Zones' ||
       indicatorLower === 'extreme';
     
@@ -532,6 +534,7 @@ app.post('/webhook', webhookAuth, express.text({ type: '*/*' }), asyncHandler(as
         direct: indicator === 'Extreme',
         lowercase: indicator === 'extreme',
         toLowerCase: indicator.toLowerCase() === 'extreme',
+        directExtremeZones: indicator === 'Extreme Zones',
         normalized: normalizedIndicator === 'Extreme Zones',
         mapped: indicatorLower === 'extreme'
       }
@@ -1149,6 +1152,10 @@ app.post('/api/auth/login', asyncHandler(async (req, res) => {
     return res.status(400).json({ error: 'Username and password are required' });
   }
 
+  if (!authService) {
+    return res.status(503).json({ error: 'Auth service not available' });
+  }
+
   const result = await authService.authenticate(username, password, ipAddress);
 
   if (!result.success) {
@@ -1191,13 +1198,19 @@ app.post('/api/auth/logout', (req, res) => {
 /**
  * GET /api/auth/verify - Verify authentication status
  */
-app.get('/api/auth/verify', authService.requireAuth(), (req, res) => {
-  res.json({ 
-    authenticated: true, 
-    user: {
-      username: req.user.username,
-      isAdmin: req.user.isAdmin
-    }
+app.get('/api/auth/verify', (req, res, next) => {
+  if (!authService) {
+    return res.status(503).json({ error: 'Auth service not available' });
+  }
+  authService.requireAuth()(req, res, (err) => {
+    if (err) return next(err);
+    res.json({ 
+      authenticated: true, 
+      user: {
+        username: req.user.username,
+        isAdmin: req.user.isAdmin
+      }
+    });
   });
 });
 
@@ -1205,20 +1218,45 @@ app.get('/api/auth/verify', authService.requireAuth(), (req, res) => {
 // PUBLIC TICKER INDICATORS ENDPOINTS (UNPROTECTED)
 // ============================================================================
 
+console.log('🔍 REGISTERING PUBLIC ENDPOINTS...');
+logger.info('Registering public ticker-indicators endpoints');
+
+/**
+ * GET /test-public - Simple test endpoint to verify public access works
+ */
+app.get('/test-public', (req, res) => {
+  logger.info('Test public endpoint accessed successfully');
+  res.json({ 
+    message: 'Public endpoint working', 
+    timestamp: new Date().toISOString(),
+    path: req.path 
+  });
+});
+
 /**
  * GET /ticker-indicators - Get current indicator values for all tickers (public access)
  */
 app.get('/ticker-indicators', asyncHandler(async (req, res) => {
-  const { data, error } = await supabase
-    .from('ticker_indicators')
-    .select('*')
-    .order('updated_at', { ascending: false });
+  // Add debugging to verify endpoint is reached
+  logger.info('Public ticker-indicators endpoint accessed');
   
-  if (error) {
-    return res.status(500).json({ error: error.message });
+  try {
+    const { data, error } = await supabase
+      .from('ticker_indicators')
+      .select('*')
+      .order('updated_at', { ascending: false });
+    
+    if (error) {
+      logger.error('Database error in ticker-indicators', { error: error.message });
+      return res.status(500).json({ error: error.message });
+    }
+    
+    logger.info('Returning ticker indicators data', { count: data.length });
+    res.json(data);
+  } catch (err) {
+    logger.error('Exception in ticker-indicators endpoint', { error: err.message });
+    res.status(500).json({ error: 'Internal server error' });
   }
-  
-  res.json(data);
 }));
 
 /**
@@ -1263,6 +1301,9 @@ app.use('/api', (req, res, next) => {
   }
   
   // Require authentication for all other API routes
+  if (!authService) {
+    return res.status(503).json({ error: 'Auth service not available' });
+  }
   authService.requireAuth()(req, res, next);
 });
 
@@ -2742,4 +2783,6 @@ process.on('unhandledRejection', (reason, promise) => {
 });
 
 // Start the server
+console.log('🚀 STARTING SERVER - All routes should be registered by now');
+logger.info('Starting server with all routes registered');
 startServer();

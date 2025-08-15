@@ -500,19 +500,50 @@ app.post('/webhook', webhookAuth, express.text({ type: '*/*' }), asyncHandler(as
   });
 
   try {
-      // Handle Extreme Indicator alerts with new format
+      // Handle Extreme Indicator alerts with new format - Enhanced debugging
+    logger.info('Checking for Extreme alert processing', {
+      indicator: indicator,
+      normalizedIndicator: normalizedIndicator,
+      isExtreme: normalizedIndicator === 'Extreme Zones' || normalizedIndicator.toLowerCase() === 'extreme',
+      trigger: trigger
+    });
+    
     if (normalizedIndicator === 'Extreme Zones' || normalizedIndicator.toLowerCase() === 'extreme') {
+      logger.info('Processing Extreme alert for indicator parsing', {
+        ticker: ticker.toUpperCase(),
+        trigger: trigger
+      });
+      
       // Parse technical indicators from the trigger text
       // Format: "Premium Zone Touch | VWAP: 0.75% | RSI: 68.5 (OB) | ADX: 32.1 (Strong Bullish) | HTF: Reversal Bullish"
       const extractedIndicators = parseExtremeIndicators(trigger);
       
+      logger.info('Parsed indicators result', {
+        ticker: ticker.toUpperCase(),
+        extractedIndicators: extractedIndicators
+      });
+      
       if (extractedIndicators) {
         // Update ticker indicators table with latest values
-        await updateTickerIndicators(ticker.toUpperCase(), extractedIndicators);
-        
-        logger.info('Updated ticker indicators from Extreme alert', {
+        try {
+          const result = await updateTickerIndicators(ticker.toUpperCase(), extractedIndicators);
+          logger.info('Successfully updated ticker indicators', {
+            ticker: ticker.toUpperCase(),
+            indicators: extractedIndicators,
+            dbResult: result
+          });
+        } catch (error) {
+          logger.error('Failed to update ticker indicators', {
+            ticker: ticker.toUpperCase(),
+            indicators: extractedIndicators,
+            error: error.message,
+            stack: error.stack
+          });
+        }
+      } else {
+        logger.warn('No indicators extracted from Extreme alert', {
           ticker: ticker.toUpperCase(),
-          indicators: extractedIndicators
+          trigger: trigger
         });
       }
     }

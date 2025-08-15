@@ -1663,6 +1663,37 @@ app.get('/api/actions', asyncHandler(async (req, res) => {
 }));
 
 // ============================================================================
+// DEBUG ENDPOINTS
+// ============================================================================
+
+/**
+ * POST /debug/parse-volume - Test volume parsing directly
+ */
+app.post('/debug/parse-volume', asyncHandler(async (req, res) => {
+  const { trigger } = req.body;
+  
+  if (!trigger) {
+    return res.status(400).json({ error: 'trigger field required' });
+  }
+  
+  logger.info('DEBUG ENDPOINT: Testing volume parsing', {
+    trigger: trigger
+  });
+  
+  const result = parseExtremeIndicators(trigger);
+  
+  logger.info('DEBUG ENDPOINT: Parse result', {
+    result: result
+  });
+  
+  res.json({
+    input: trigger,
+    parsed: result,
+    hasVolume: !!(result?.volume_amount || result?.volume_change || result?.volume_level)
+  });
+}));
+
+// ============================================================================
 // STRATEGY CRUD ENDPOINTS
 // ============================================================================
 

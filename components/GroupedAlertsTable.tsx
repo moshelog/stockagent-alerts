@@ -378,6 +378,7 @@ export function GroupedAlertsTable({
 
   // Get volume tag color based on level and change
   const getVolumeTagColor = (level: string, change: number) => {
+    // If we have level indicators
     if (level === 'HIGH' && change > 0) {
       return 'bg-green-500/20 text-green-400 border-green-500/30'
     }
@@ -387,7 +388,19 @@ export function GroupedAlertsTable({
     if (level === 'LOW') {
       return 'bg-gray-500/20 text-gray-400 border-gray-500/30'
     }
-    return 'bg-yellow-500/20 text-yellow-400 border-yellow-500/30' // NORMAL
+    if (level === 'NORMAL') {
+      return 'bg-yellow-500/20 text-yellow-400 border-yellow-500/30'
+    }
+    
+    // Fallback: Color based only on change when no level indicator
+    if (change > 0) {
+      return 'bg-green-500/20 text-green-400 border-green-500/30' // Positive change = green
+    } else if (change < 0) {
+      return 'bg-red-500/20 text-red-400 border-red-500/30' // Negative change = red
+    }
+    
+    // Default for zero change or no data
+    return 'bg-cyan-500/20 text-cyan-400 border-cyan-500/30' // Cyan for volume data
   }
 
   // Get synergy status from the latest HTF synergy alert in the group
@@ -856,8 +869,10 @@ export function GroupedAlertsTable({
                           if (volumeData.amount === '0') return null // Don't show if no volume data
                           
                           const changeText = volumeData.change > 0 ? `+${volumeData.change}%` : `${volumeData.change}%`
-                          // Compact format: "Vol 12.49K +149% HIGH"
-                          const displayText = `Vol ${volumeData.amount} ${changeText} ${volumeData.level}`
+                          // Format: "Vol 25.32K -38%" or "Vol 12.49K +149% HIGH" (if level exists)
+                          const displayText = volumeData.level && volumeData.level !== 'NORMAL' 
+                            ? `Vol ${volumeData.amount} ${changeText} ${volumeData.level}`
+                            : `Vol ${volumeData.amount} ${changeText}`
                           
                           return (
                             <span 

@@ -22,8 +22,8 @@ export const useTickerIndicators = () => {
   const fetchIndicators = async () => {
     try {
       const apiUrl = process.env.NODE_ENV === 'production' 
-        ? 'https://api.stockagent.app/api/ticker-indicators'
-        : 'http://localhost:3001/api/ticker-indicators'
+        ? 'https://api.stockagent.app/ticker-indicators'
+        : 'http://localhost:3001/ticker-indicators'
       
       const response = await fetch(apiUrl, {
         credentials: 'include'

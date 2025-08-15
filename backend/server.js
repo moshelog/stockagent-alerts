@@ -1114,6 +1114,46 @@ app.get('/api/auth/verify', authService.requireAuth(), (req, res) => {
 });
 
 // ============================================================================
+// PUBLIC TICKER INDICATORS ENDPOINTS (UNPROTECTED)
+// ============================================================================
+
+/**
+ * GET /ticker-indicators - Get current indicator values for all tickers (public access)
+ */
+app.get('/ticker-indicators', asyncHandler(async (req, res) => {
+  const { data, error } = await supabase
+    .from('ticker_indicators')
+    .select('*')
+    .order('updated_at', { ascending: false });
+  
+  if (error) {
+    return res.status(500).json({ error: error.message });
+  }
+  
+  res.json(data);
+}));
+
+/**
+ * GET /ticker-indicators/:ticker - Get current indicator values for specific ticker (public access)
+ */
+app.get('/ticker-indicators/:ticker', asyncHandler(async (req, res) => {
+  const { ticker } = req.params;
+  
+  const { data, error } = await supabase
+    .from('ticker_indicators')
+    .select('*')
+    .eq('ticker', ticker.toUpperCase())
+    .single();
+  
+  if (error && error.code !== 'PGRST116') { // PGRST116 = not found
+    return res.status(500).json({ error: error.message });
+  }
+  
+  // Return null if no indicators found for this ticker
+  res.json(data || null);
+}));
+
+// ============================================================================
 // API ENDPOINTS (PROTECTED)
 // ============================================================================
 

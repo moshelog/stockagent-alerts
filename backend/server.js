@@ -1129,6 +1129,11 @@ app.use('/api', (req, res, next) => {
     return next();
   }
   
+  // Skip auth for ticker-indicators endpoints (needed for real-time data)
+  if (req.path.startsWith('/ticker-indicators')) {
+    return next();
+  }
+  
   // Require authentication for all other API routes
   authService.requireAuth()(req, res, next);
 });

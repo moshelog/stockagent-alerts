@@ -59,7 +59,7 @@ export function GroupedAlertsTable({
   const [draggedGroup, setDraggedGroup] = useState<string | null>(null)
   
   // Hook to get real-time indicator values
-  const { getRSIDisplay, getADXDisplay, getVWAPDisplay, getHTFDisplay, getVolumeDisplay } = useTickerIndicators()
+  const { getRSIDisplay, getADXDisplay, getVWAPDisplay, getHTFDisplay } = useTickerIndicators()
   const [dragOverGroup, setDragOverGroup] = useState<string | null>(null)
   const viewMode = 'card' // Force card view only
   const [expandedCards, setExpandedCards] = useState<Set<string>>(new Set())
@@ -374,33 +374,6 @@ export function GroupedAlertsTable({
       default:
         return 'bg-gray-500/20 text-gray-400 border-gray-500/30'
     }
-  }
-
-  // Get volume tag color based on level and change
-  const getVolumeTagColor = (level: string, change: number) => {
-    // If we have level indicators
-    if (level === 'HIGH' && change > 0) {
-      return 'bg-green-500/20 text-green-400 border-green-500/30'
-    }
-    if (level === 'HIGH' && change < 0) {
-      return 'bg-red-500/20 text-red-400 border-red-500/30'
-    }
-    if (level === 'LOW') {
-      return 'bg-gray-500/20 text-gray-400 border-gray-500/30'
-    }
-    if (level === 'NORMAL') {
-      return 'bg-yellow-500/20 text-yellow-400 border-yellow-500/30'
-    }
-    
-    // Fallback: Color based only on change when no level indicator
-    if (change > 0) {
-      return 'bg-green-500/20 text-green-400 border-green-500/30' // Positive change = green
-    } else if (change < 0) {
-      return 'bg-red-500/20 text-red-400 border-red-500/30' // Negative change = red
-    }
-    
-    // Default for zero change or no data
-    return 'bg-cyan-500/20 text-cyan-400 border-cyan-500/30' // Cyan for volume data
   }
 
   // Get synergy status from the latest HTF synergy alert in the group
@@ -811,13 +784,13 @@ export function GroupedAlertsTable({
                         </span>
                       </div>
                       
-                      {/* Top row: Timeframes, Volume, HTF */}
-                      <div className="flex items-center gap-1 overflow-x-auto scrollbar-thin scrollbar-thumb-gray-600 scrollbar-track-transparent">
+                      {/* Timeframe indicators and RSI status */}
+                      <div className="flex items-center gap-1 flex-wrap">
                         {timeframes.map((tf, i) => (
                           <button
                             key={i}
                             onClick={() => handleCardTimeframeSelect(group.key, tf)}
-                            className={`text-xs px-1.5 py-0.5 rounded cursor-pointer transition-colors ${
+                            className={`text-xs px-2 py-1 rounded cursor-pointer transition-colors ${
                               tf === selectedTimeframe
                                 ? 'bg-blue-500/20 border border-blue-500/40 text-blue-300'
                                 : 'bg-gray-700/50 text-gray-300 hover:bg-gray-600/50'
@@ -827,26 +800,43 @@ export function GroupedAlertsTable({
                             {tf}
                           </button>
                         ))}
-                        {/* Volume Status Tag with Real-time Value */}
+                        {/* RSI Status Tag with Real-time Value */}
                         {(() => {
-                          const volumeData = getVolumeDisplay(group.ticker)
-                          if (volumeData.amount === '0') return null // Don't show if no volume data
-                          
-                          const changeText = volumeData.change > 0 ? `+${volumeData.change}%` : `${volumeData.change}%`
-                          // Restore full format: "Vol 45.79K (-47%)" or "Vol 150.5K (+22%) HIGH"
-                          const displayText = volumeData.level && volumeData.level !== 'NORMAL' 
-                            ? `Vol ${volumeData.amount} ${changeText} ${volumeData.level}`
-                            : `Vol ${volumeData.amount} ${changeText}`
-                          
+                          const rsiData = getRSIDisplay(group.ticker)
+                          const displayText = rsiData.value === '0' 
+                            ? `RSI ${rsiData.status}` 
+                            : `RSI ${rsiData.value} ${rsiData.status}`
                           return (
                             <span 
-                              className={`text-xs px-1.5 py-0.5 rounded border ${getVolumeTagColor(volumeData.level, volumeData.change)}`}
+                              className={`text-xs px-2 py-1 rounded border ${getRSITagColor(rsiData.status)}`}
                             >
                               {displayText}
                             </span>
                           )
                         })()}
-                        {/* HTF/Synergy Status Tag - Only show if synergy exists */}
+                        {/* ADX Status Tag with Real-time Value */}
+                        {(() => {
+                          const adxData = getADXDisplay(group.ticker)
+                          return (
+                            <span 
+                              className="text-xs px-2 py-1 rounded border bg-blue-500/20 text-blue-400 border-blue-500/30"
+                            >
+                              ADX {adxData.value} {adxData.status}
+                            </span>
+                          )
+                        })()}
+                        {/* VWAP Status Tag with Real-time Value */}
+                        {(() => {
+                          const vwapData = getVWAPDisplay(group.ticker)
+                          return (
+                            <span 
+                              className="text-xs px-2 py-1 rounded border bg-purple-500/20 text-purple-400 border-purple-500/30"
+                            >
+                              VWAP {vwapData.value}
+                            </span>
+                          )
+                        })()}
+                        {/* Synergy Status Tag - Only show if synergy exists */}
                         {(() => {
                           const synergyStatus = getSynergyStatus(filteredAlerts)
                           // Only render tag if there's actual synergy (up or down), hide for 'none'
@@ -855,7 +845,7 @@ export function GroupedAlertsTable({
                           const synergyTag = getSynergyTag(synergyStatus)
                           return (
                             <span 
-                              className={`text-xs px-1.5 py-0.5 rounded border ${synergyTag.className}`}
+                              className={`text-xs px-2 py-1 rounded border ${synergyTag.className}`}
                             >
                               {synergyTag.text}
                             </span>
@@ -944,62 +934,23 @@ export function GroupedAlertsTable({
                     {/* Card Footer */}
                     <div className="mt-3 pt-2 border-t border-gray-700/30">
                       <div className="flex items-center justify-between">
-                        {/* Left side: Latest time */}
-                        <div className="flex items-center gap-2 min-w-0">
+                        {/* Left side: Latest time and indicators */}
+                        <div className="flex items-center gap-2 min-w-0 flex-1">
                           <span className="text-xs text-gray-400 shrink-0">
                             Latest: {group.alerts[0]?.time}
                           </span>
                         </div>
                         
-                        {/* Right side: Indicator tags and total weight */}
-                        <div className="flex items-center gap-2 shrink-0">
-                          {/* RSI Status Tag with Real-time Value */}
-                          {(() => {
-                            const rsiData = getRSIDisplay(group.ticker)
-                            const displayText = rsiData.value === '0' 
-                              ? `RSI ${rsiData.status}` 
-                              : `RSI ${rsiData.value} ${rsiData.status}`
-                            return (
-                              <span 
-                                className={`text-xs px-1.5 py-0.5 rounded border ${getRSITagColor(rsiData.status)}`}
-                              >
-                                {displayText}
-                              </span>
-                            )
-                          })()}
-                          {/* ADX Status Tag with Real-time Value */}
-                          {(() => {
-                            const adxData = getADXDisplay(group.ticker)
-                            return (
-                              <span 
-                                className="text-xs px-1.5 py-0.5 rounded border bg-blue-500/20 text-blue-400 border-blue-500/30"
-                              >
-                                ADX {adxData.value} {adxData.status}
-                              </span>
-                            )
-                          })()}
-                          {/* VWAP Status Tag with Real-time Value */}
-                          {(() => {
-                            const vwapData = getVWAPDisplay(group.ticker)
-                            return (
-                              <span 
-                                className="text-xs px-1.5 py-0.5 rounded border bg-purple-500/20 text-purple-400 border-purple-500/30"
-                              >
-                                VWAP {vwapData.value}
-                              </span>
-                            )
-                          })()}
-                          {/* Total weight */}
-                          {showWeights && (
-                            <span className={`text-xs font-bold ${
-                              group.alerts.reduce((sum, alert) => sum + alert.weight, 0) > 0 
-                                ? 'text-green-400' 
-                                : 'text-red-400'
-                            }`}>
-                              Total: {group.alerts.reduce((sum, alert) => sum + alert.weight, 0).toFixed(1)}
-                            </span>
-                          )}
-                        </div>
+                        {/* Right side: Total weight */}
+                        {showWeights && (
+                          <span className={`text-xs font-bold shrink-0 ${
+                            group.alerts.reduce((sum, alert) => sum + alert.weight, 0) > 0 
+                              ? 'text-green-400' 
+                              : 'text-red-400'
+                          }`}>
+                            Total: {group.alerts.reduce((sum, alert) => sum + alert.weight, 0).toFixed(1)}
+                          </span>
+                        )}
                       </div>
                     </div>
                   </motion.div>

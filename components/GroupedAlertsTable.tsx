@@ -784,7 +784,7 @@ export function GroupedAlertsTable({
                         </span>
                       </div>
                       
-                      {/* Timeframe indicators and RSI status */}
+                      {/* Timeframe indicators */}
                       <div className="flex items-center gap-1 flex-wrap">
                         {timeframes.map((tf, i) => (
                           <button
@@ -800,42 +800,6 @@ export function GroupedAlertsTable({
                             {tf}
                           </button>
                         ))}
-                        {/* RSI Status Tag with Real-time Value */}
-                        {(() => {
-                          const rsiData = getRSIDisplay(group.ticker)
-                          const displayText = rsiData.value === '0' 
-                            ? `RSI ${rsiData.status}` 
-                            : `RSI ${rsiData.value} ${rsiData.status}`
-                          return (
-                            <span 
-                              className={`text-xs px-2 py-1 rounded border ${getRSITagColor(rsiData.status)}`}
-                            >
-                              {displayText}
-                            </span>
-                          )
-                        })()}
-                        {/* ADX Status Tag with Real-time Value */}
-                        {(() => {
-                          const adxData = getADXDisplay(group.ticker)
-                          return (
-                            <span 
-                              className="text-xs px-2 py-1 rounded border bg-blue-500/20 text-blue-400 border-blue-500/30"
-                            >
-                              ADX {adxData.value} {adxData.status}
-                            </span>
-                          )
-                        })()}
-                        {/* VWAP Status Tag with Real-time Value */}
-                        {(() => {
-                          const vwapData = getVWAPDisplay(group.ticker)
-                          return (
-                            <span 
-                              className="text-xs px-2 py-1 rounded border bg-purple-500/20 text-purple-400 border-purple-500/30"
-                            >
-                              VWAP {vwapData.value}
-                            </span>
-                          )
-                        })()}
                         {/* Synergy Status Tag - Only show if synergy exists */}
                         {(() => {
                           const synergyStatus = getSynergyStatus(filteredAlerts)
@@ -939,6 +903,46 @@ export function GroupedAlertsTable({
                           <span className="text-xs text-gray-400 shrink-0">
                             Latest: {group.alerts[0]?.time}
                           </span>
+                        </div>
+                        
+                        {/* Center: RSI, ADX, VWAP indicators */}
+                        <div className="flex items-center gap-1 flex-wrap">
+                          {/* RSI Status Tag with Real-time Value */}
+                          {(() => {
+                            const rsiData = getRSIDisplay(group.ticker)
+                            const displayText = rsiData.value === '0' 
+                              ? `RSI ${rsiData.status}` 
+                              : `RSI ${rsiData.value} ${rsiData.status}`
+                            return (
+                              <span 
+                                className={`text-xs px-2 py-1 rounded border ${getRSITagColor(rsiData.status)}`}
+                              >
+                                {displayText}
+                              </span>
+                            )
+                          })()}
+                          {/* ADX Status Tag with Real-time Value */}
+                          {(() => {
+                            const adxData = getADXDisplay(group.ticker)
+                            return (
+                              <span 
+                                className="text-xs px-2 py-1 rounded border bg-blue-500/20 text-blue-400 border-blue-500/30"
+                              >
+                                ADX {adxData.value} {adxData.status}
+                              </span>
+                            )
+                          })()}
+                          {/* VWAP Status Tag with Real-time Value */}
+                          {(() => {
+                            const vwapData = getVWAPDisplay(group.ticker)
+                            return (
+                              <span 
+                                className="text-xs px-2 py-1 rounded border bg-purple-500/20 text-purple-400 border-purple-500/30"
+                              >
+                                VWAP {vwapData.value}
+                              </span>
+                            )
+                          })()}
                         </div>
                         
                         {/* Right side: Total weight */}

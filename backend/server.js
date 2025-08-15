@@ -1170,7 +1170,7 @@ app.use('/api', (req, res, next) => {
   }
   
   // Skip auth for ticker-indicators endpoints (needed for real-time data)
-  if (req.path.startsWith('/ticker-indicators')) {
+  if (req.path.startsWith('/ticker-indicators') || req.path.includes('ticker-indicators')) {
     return next();
   }
   

@@ -21,15 +21,31 @@ export const useTickerIndicators = () => {
 
   const fetchIndicators = async () => {
     try {
-      const apiUrl = process.env.NODE_ENV === 'production' 
-        ? 'https://api.stockagent.app/ticker-indicators'
-        : 'http://localhost:3001/ticker-indicators'
+      // Try the public endpoint first, then fall back to the API endpoint
+      const urls = process.env.NODE_ENV === 'production' 
+        ? ['https://api.stockagent.app/ticker-indicators', 'https://api.stockagent.app/api/ticker-indicators']
+        : ['http://localhost:3001/ticker-indicators', 'http://localhost:3001/api/ticker-indicators']
       
-      const response = await fetch(apiUrl, {
-        credentials: 'include'
-      })
-      if (!response.ok) {
-        throw new Error(`HTTP error! status: ${response.status}`)
+      let response
+      let lastError
+      
+      for (const url of urls) {
+        try {
+          response = await fetch(url, {
+            credentials: 'include'
+          })
+          if (response.ok) {
+            break
+          }
+          lastError = new Error(`HTTP error! status: ${response.status}`)
+        } catch (err) {
+          lastError = err
+          continue
+        }
+      }
+      
+      if (!response || !response.ok) {
+        throw lastError || new Error('All endpoints failed')
       }
       const data: TickerIndicator[] = await response.json()
       

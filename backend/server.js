@@ -543,6 +543,34 @@ app.post('/webhook', webhookAuth, express.text({ type: '*/*' }), asyncHandler(as
         trigger: trigger
       });
       
+      // FORCE a simple test insert first to verify database connectivity
+      try {
+        const testResult = await supabase
+          .from('ticker_indicators')
+          .upsert({
+            ticker: 'TEST_FORCE',
+            vwap_value: 99.99,
+            rsi_value: 99.99,
+            rsi_status: 'TEST',
+            updated_at: new Date().toISOString()
+          }, {
+            onConflict: 'ticker'
+          })
+          .select()
+          .single();
+        
+        logger.info('FORCE TEST INSERT RESULT', {
+          success: !testResult.error,
+          data: testResult.data,
+          error: testResult.error
+        });
+      } catch (testError) {
+        logger.error('FORCE TEST INSERT FAILED', {
+          error: testError.message,
+          stack: testError.stack
+        });
+      }
+      
       // Parse technical indicators from the trigger text
       // Format: "Premium Zone Touch | VWAP: 0.75% | RSI: 68.5 (OB) | ADX: 32.1 (Strong Bullish) | HTF: Reversal Bullish"
       const extractedIndicators = parseExtremeIndicators(trigger);

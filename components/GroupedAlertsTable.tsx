@@ -799,11 +799,14 @@ export function GroupedAlertsTable({
                         {/* RSI Status Tag with Value */}
                         {(() => {
                           const rsiData = getRSIWithValue(filteredAlerts)
+                          const displayText = rsiData.value === '0' 
+                            ? `RSI ${rsiData.status}` 
+                            : `RSI ${rsiData.value} ${rsiData.status}`
                           return (
                             <span 
                               className={`text-xs px-2 py-1 rounded border ${getRSITagColor(rsiData.status)}`}
                             >
-                              RSI {rsiData.value} {rsiData.status}
+                              {displayText}
                             </span>
                           )
                         })()}
